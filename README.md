@@ -4,7 +4,7 @@
 
 Uses https://github.com/zxdavb/evohome_rf (requires a Honeywell HGI80 or similar).
 
-## Installation instructions
+## Installation Instructions
 
 Download the custom component in your custom_components folder, in `custom_components/evohome_rf` (best way):
 ```bash
