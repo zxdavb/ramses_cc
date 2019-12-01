@@ -45,11 +45,11 @@ async def async_setup_platform(
         broker.sensors.append(device)
 
     new_devices = [d for d in broker.client.domains if d not in broker.sensors]
-    for device in [d for d in new_devices if d.zone_idx not in ["system", "dhw"]]:
+    for device in [d for d in new_devices if d.domain_id not in ["system"]]:
         _LOGGER.warn(
             "Found a Device (%s), id=%s",
-            device.zone_type,
-            device.zone_idx,
+            device._type,
+            device.domain_id,
         )
         new_entities.append(EvoDemand(broker, device, DEVICE_CLASS_DEMAND))
         broker.sensors.append(device)
@@ -104,7 +104,7 @@ class EvoBattery(EvoSensor):
     @property
     def state(self) -> Optional[int]:
         """Return the battery level of the device."""
-        if self._evo_device.battery:
+        if self._evo_device.battery is not None:
             return int(self._evo_device.battery * 100)
 
 
@@ -114,8 +114,9 @@ class EvoDemand(EvoSensor):
     @property
     def state(self) -> Optional[int]:
         """Return the heat demand of the actuator."""
-        if self._evo_device.heat_demand:
+        if self._evo_device.heat_demand is not None:
             return int(self._evo_device.heat_demand * 100)
+
 
 
 class EvoTemperature(EvoSensor):
@@ -124,7 +125,8 @@ class EvoTemperature(EvoSensor):
     @property
     def state(self) -> Optional[str]:
         """Return the temperature of the sensor."""
-        return self._evo_device.temperature
+        if self._evo_device.temperature is not None:
+            return self._evo_device.temperature
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:

@@ -123,7 +123,7 @@ class EvoBroker:
 
         _domains = [x for x in self.client.domains if x not in self.sensors]
         _devices = [x for x in self.client.devices if x not in self.sensors]
-        if [d for d in _domains if d.zone_idx not in ["system", "dhw"]] or [
+        if [d for d in _domains if d.domain_id not in ["system"]] or [
             d for d in _devices if d.device_type in ["STA", "TRV"]
         ]:
             self.hass.async_create_task(

@@ -91,7 +91,8 @@ class EvoZone(EvoEntity, ClimateDevice):
     @property
     def current_temperature(self) -> Optional[float]:
         """Return the current temperature."""
-        return self._evo_device.temperature
+        if self._evo_device.temperature is not None:
+            return self._evo_device.temperature
 
     @property
     def target_temperature(self) -> Optional[float]:

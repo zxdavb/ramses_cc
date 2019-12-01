@@ -57,7 +57,7 @@ class EvoWindow(EvoEntity, BinarySensorDevice):
     def is_on(self) -> bool:
         """Return the status of the window."""
         if self._evo_device.window_state is None:
-            return False
+            return False  # assume window closed (state sent 1/day if no changea)
         return self._evo_device.window_state
 
     @property
