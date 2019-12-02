@@ -2,9 +2,11 @@
 
 (WIP) HA custom_component for Honeywell Evohome RF protocol.
 
-Uses https://github.com/zxdavb/evohome_rf (requires a Honeywell HGI80 or similar).
+Uses https://github.com/zxdavb/evohome_rf (requires a Honeywell HGI80 or [similar](https://www.automatedhome.co.uk/vbulletin/showthread.php?5085-My-HGI80-equivalent-Domoticz-setup-without-HGI80)).
 
 ## Installation Instructions
+
+You will need a working version of HA, after verion 0.100.  You will need a HGI80, or [similar](https://www.automatedhome.co.uk/vbulletin/showthread.php?5085-My-HGI80-equivalent-Domoticz-setup-without-HGI80).
 
 Download the custom component in your custom_components folder, in `custom_components/evohome_rf` (best way):
 ```bash
