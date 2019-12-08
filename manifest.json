@@ -3,7 +3,7 @@
   "name": "Honeywell evohome (RAMSES II protocol) agent",
   "documentation": "https://github.com/zxdavb/evohome",
   "requirements": [
-    "evohome==0.0.5"
+    "evohome==0.0.6"
   ],
   "dependencies": [],
   "codeowners": ["@zxdavb"]

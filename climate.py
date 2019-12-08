@@ -103,4 +103,4 @@ class EvoZone(EvoEntity, ClimateDevice):
     @property
     def supported_features(self) -> int:
         """Return the list of supported features."""
-        return 0
+        return SUPPORT_TARGET_TEMPERATURE
