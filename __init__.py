@@ -10,7 +10,6 @@ import serial
 import evohome
 import voluptuous as vol
 
-from homeassistant.const import CONF_PORT
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
@@ -24,7 +23,11 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=10)
 
 CONFIG_SCHEMA = vol.Schema(
-    {DOMAIN: vol.Schema({vol.Required(CONF_PORT): cv.string})}, extra=vol.ALLOW_EXTRA
+    {DOMAIN: vol.Schema({
+        vol.Required("serial_port"): cv.string,
+        vol.Required("packet_log"): cv.string
+
+    })}, extra=vol.ALLOW_EXTRA
 )
 
 
@@ -36,21 +39,26 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         return dict(app_storage if app_storage else {})
 
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
-    evohome_config = await load_system_config(store)
+    evohome_store = await load_system_config(store)
 
-    _LOGGER.debug("Config = %s", evohome_config)
+    _LOGGER.warning("Store = %s", evohome_store)
+    _LOGGER.warning("Config =  %s", hass_config[DOMAIN])
 
-    import ptvsd  # pylint: disable=import-error
+    # import ptvsd  # pylint: disable=import-error
 
     _LOGGER.setLevel(logging.DEBUG)
-    _LOGGER.warning("Waiting for debugger to attach...")
+    # _LOGGER.warning("Waiting for debugger to attach...")
     # ptvsd.enable_attach(address=("172.27.0.138", 5679))
 
     # ptvsd.wait_for_attach()
-    _LOGGER.debug("Debugger is attached!")
+    # _LOGGER.debug("Debugger is attached!")
 
     try:  # TODO: test invalid serial_port="AA"
-        client = evohome.Gateway(serial_port=hass_config[DOMAIN][CONF_PORT])
+        client = evohome.Gateway(
+            serial_port=hass_config[DOMAIN]["serial_port"],
+            output_file=hass_config[DOMAIN]["packet_log"],
+            loop=hass.loop
+        )
     except serial.SerialException as exc:
         _LOGGER.exception("Unable to open serial port. Message is: %s", exc)
         return False
