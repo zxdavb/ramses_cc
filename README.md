@@ -22,8 +22,11 @@ Add the following to your configuration.yaml (required, and you need to set the 
 
 ```yaml
 evohome_rf:
-  port: /dev/ttyUSB0
+  serial_port: /dev/ttyUSB0
+  packet_log: /home/zxdavb/packets.log
 ```
+
+(`packet_log` is required now, but will be optional after beta phase is over)
 
 Consider adding these two line to the logs section of your configuration.yaml (optional, and logging is a bit messy at the moment):
 
