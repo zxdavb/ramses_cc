@@ -55,7 +55,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
 
     try:  # TODO: test invalid serial_port="AA"
         client = evohome.Gateway(
-            serial_port=hass_config[DOMAIN]["serial_port"],
+            port_name=hass_config[DOMAIN]["serial_port"],
             output_file=hass_config[DOMAIN]["packet_log"],
             loop=hass.loop
         )
