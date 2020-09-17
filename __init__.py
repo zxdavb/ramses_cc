@@ -4,30 +4,56 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 from datetime import timedelta
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import serial
 import evohome
 import voluptuous as vol
 
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+    TEMP_CELSIUS,
+)
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
+from .const import (
+    ATTR_BATTERY,
+    ATTR_HEAT_DEMAND,
+    DOMAIN,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+    DEVICE_HAS_BINARY_SENSOR,
+    DEVICE_HAS_SENSOR,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=10)
+SCAN_INTERVAL_DEFAULT = timedelta(seconds=300)
+SCAN_INTERVAL_MINIMUM = timedelta(seconds=10)
 
 CONFIG_SCHEMA = vol.Schema(
-    {DOMAIN: vol.Schema({
-        vol.Required("serial_port"): cv.string,
-        vol.Required("packet_log"): cv.string
-
-    })}, extra=vol.ALLOW_EXTRA
+    {
+        DOMAIN: vol.Schema(
+            {
+                vol.Required("serial_port"): cv.string,
+                vol.Required("packet_log"): cv.string,
+                vol.Optional(
+                    CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
+                ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
+                vol.Optional("schema"): dict,
+                vol.Optional("allowlist"): list,
+                vol.Optional("blocklist"): list,
+            }
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
 )
 
 
@@ -41,24 +67,21 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
     evohome_store = await load_system_config(store)
 
-    _LOGGER.warning("Store = %s", evohome_store)
-    _LOGGER.warning("Config =  %s", hass_config[DOMAIN])
+    _LOGGER.debug("Store = %s, Config =  %s", evohome_store, hass_config[DOMAIN])
 
     # import ptvsd  # pylint: disable=import-error
-
-    _LOGGER.setLevel(logging.DEBUG)
     # _LOGGER.warning("Waiting for debugger to attach...")
     # ptvsd.enable_attach(address=("172.27.0.138", 5679))
 
     # ptvsd.wait_for_attach()
     # _LOGGER.debug("Debugger is attached!")
 
+    kwargs = dict(hass_config[DOMAIN])
+    serial_port = kwargs.pop("serial_port")
+    kwargs["blocklist"] = dict.fromkeys(kwargs.pop("blocklist"), {})
+
     try:  # TODO: test invalid serial_port="AA"
-        client = evohome.Gateway(
-            port_name=hass_config[DOMAIN]["serial_port"],
-            output_file=hass_config[DOMAIN]["packet_log"],
-            loop=hass.loop
-        )
+        client = evohome.Gateway(serial_port, loop=hass.loop, **kwargs)
     except serial.SerialException as exc:
         _LOGGER.exception("Unable to open serial port. Message is: %s", exc)
         return False
@@ -70,10 +93,12 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
 
     broker.hass_config = hass_config
 
-    # broker.loop_task = hass.async_create_task(client.start())
+    # #roker.loop_task = hass.async_create_task(client.start())
     broker.loop_task = hass.loop.create_task(client.start())
 
-    hass.helpers.event.async_track_time_interval(broker.update, SCAN_INTERVAL)
+    hass.helpers.event.async_track_time_interval(
+        broker.update, hass_config[DOMAIN][CONF_SCAN_INTERVAL]
+    )
 
     return True
 
@@ -93,6 +118,7 @@ class EvoBroker:
 
         self.binary_sensors = []
         self.climates = []
+        self.water_heater = None
         self.sensors = []
 
         self.hass_config = None
@@ -104,17 +130,6 @@ class EvoBroker:
 
         await self._store.async_save(app_storage)
 
-    async def discover(self, *args, **kwargs) -> None:
-        """Enumerate the Controller, all Zones, and the DHW relay (if any)."""
-
-        try:
-            self.config = await self.client.discover()
-        except serial.SerialException as exc:
-            _LOGGER.exception("message = %s", exc)
-            return
-
-        _LOGGER.debug("Config = %s", self.config)
-
     async def update(self, *args, **kwargs) -> None:
         """Retreive the latest state data..."""
 
@@ -123,33 +138,48 @@ class EvoBroker:
         # async def _update(self, *args, **kwargs) -> None:
         #     """Retreive the latest state data..."""
 
-        _zones = [x for x in self.client.zones if x not in self.climates]
-        if [z for z in _zones if z.zone_type == "Radiator Valve" and z.name]:
+        evohome = self.client.evo
+        _LOGGER.warning("Schema = %s", evohome.schema if evohome is not None else None)
+        if evohome is None:
+            return
+
+        if [z for z in evohome.zones if z not in self.climates]:
             self.hass.async_create_task(
                 async_load_platform(self.hass, "climate", DOMAIN, {}, self.hass_config)
             )
 
-        _domains = [x for x in self.client.domains if x not in self.sensors]
-        _devices = [x for x in self.client.devices if x not in self.sensors]
-        if [d for d in _domains if d.domain_id not in ["system"]] or [
-            d for d in _devices if d.device_type in ["STA", "TRV"]
+        # if evohome.dhw and self.water_heater is None:
+        #     self.hass.async_create_task(
+        #         async_load_platform(
+        #             self.hass, "water_heater", DOMAIN, {}, self.hass_config
+        #         )
+        #     )
+
+        if [
+            d
+            for d in evohome.devices
+            if d not in self.sensors and d.type in DEVICE_HAS_SENSOR
         ]:
             self.hass.async_create_task(
                 async_load_platform(self.hass, "sensor", DOMAIN, {}, self.hass_config)
             )
 
-        _devices = [x for x in self.client.devices if x not in self.binary_sensors]
-        if [d for d in _devices if d.device_type == "TRV"]:
+        if [
+            d
+            for d in evohome.devices
+            if d not in self.binary_sensors and d.type in DEVICE_HAS_BINARY_SENSOR
+        ]:
             self.hass.async_create_task(
                 async_load_platform(
                     self.hass, "binary_sensor", DOMAIN, {}, self.hass_config
                 )
             )
 
+        _LOGGER.warning("Params = %s", evohome.params)
+        _LOGGER.warning("Status = %s", evohome.status)
+
         # inform the evohome devices that state data has been updated
         self.hass.helpers.dispatcher.async_dispatcher_send(DOMAIN)
-
-        _LOGGER.debug("Status = %s", None)
 
 
 class EvoEntity(Entity):
@@ -175,7 +205,7 @@ class EvoEntity(Entity):
     @property
     def unique_id(self) -> Optional[str]:
         """Return a unique ID."""
-        return None  # self._unique_id
+        return self._unique_id
 
     @property
     def name(self) -> str:
@@ -190,3 +220,32 @@ class EvoEntity(Entity):
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
         self.hass.helpers.dispatcher.async_dispatcher_connect(DOMAIN, self._refresh)
+
+
+class EvoDevice(EvoEntity):
+    """Base for any evohome II-compatible entity (e.g. Climate, Sensor)."""
+
+    @property
+    def device_class(self) -> str:
+        """Return the device class of the sensor."""
+        return self._device_class
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        return {
+            "zone_idx": self._evo_device.zone.idx if self._evo_device.zone else None,
+            "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
+        }
+
+
+class EvoZone(EvoEntity):
+    """Base for any evohome II-compatible entity (e.g. Climate, Sensor)."""
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        return {
+            "heating_type": self._evo_device.heating_type,
+            "zone_config": self._evo_device.zone_config,
+        }

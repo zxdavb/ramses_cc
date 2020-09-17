@@ -1,6 +1,5 @@
 """Support for (RAMSES-II RF-based) devices of Honeywell systems."""
 import logging
-from datetime import timedelta
 from typing import Any, Dict, Optional
 
 from homeassistant.const import (
@@ -10,11 +9,17 @@ from homeassistant.const import (
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from . import DOMAIN, EvoEntity
-
-# from .const import DOMAIN
+from . import DOMAIN, EvoDevice
+from .const import (
+    ATTR_BATTERY,
+    ATTR_HEAT_DEMAND,
+    ATTR_SETPOINT,
+    ATTR_TEMPERATURE,
+    DEVICE_HAS_SENSOR,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
 
 DEVICE_CLASS_DEMAND: str = "heat_demand"
 
@@ -28,74 +33,54 @@ async def async_setup_platform(
 
     broker = hass.data[DOMAIN]["broker"]
 
-    new_devices = [x for x in broker.client.devices if x not in broker.sensors]
+    new_devices = [
+        d
+        for d in broker.client.evo.devices
+        if d not in broker.sensors and d.type in DEVICE_HAS_SENSOR
+    ]
+    if not new_devices:
+        return
 
+    broker.sensors += new_devices
     new_entities = []
-    for device in [d for d in new_devices if d.device_type in ["STA", "TRV"]]:
-        _LOGGER.warn(
-            "Found a Device (%s), id=%s, zone=%s",
-            device.device_type,
-            device.device_id,
-            device.parent_zone,
+
+    for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY)]:
+        _LOGGER.error(
+            "Found a Sensor (battery), id=%s, zone=%s", device.id, device.zone
         )
         new_entities.append(EvoBattery(broker, device, DEVICE_CLASS_BATTERY))
-        new_entities.append(EvoTemperature(broker, device, DEVICE_CLASS_TEMPERATURE))
-        if device.device_type == "TRV":
-            new_entities.append(EvoDemand(broker, device, DEVICE_CLASS_DEMAND))
-        broker.sensors.append(device)
 
-    new_devices = [d for d in broker.client.domains if d not in broker.sensors]
-    for device in [d for d in new_devices if d.domain_id not in ["system"]]:
-        _LOGGER.warn(
-            "Found a Device (%s), id=%s",
-            device._type,
-            device.domain_id,
-        )
+    for device in [d for d in new_devices if hasattr(d, ATTR_HEAT_DEMAND)]:
+        _LOGGER.error("Found a Sensor (demand), id=%s, zone=%s", device.id, device.zone)
         new_entities.append(EvoDemand(broker, device, DEVICE_CLASS_DEMAND))
-        broker.sensors.append(device)
+
+    for device in [d for d in new_devices if hasattr(d, ATTR_TEMPERATURE)]:
+        _LOGGER.error("Found a Sensor (temp), id=%s, zone=%s", device.id, device.zone)
+        new_entities.append(EvoTemperature(broker, device, DEVICE_CLASS_TEMPERATURE))
 
     if new_entities:
         async_add_entities(new_entities, update_before_add=True)
 
 
-class EvoSensor(EvoEntity):
+class EvoSensor(EvoDevice):
     """Representation of a generic sensor."""
 
-    def __init__(self, broker, device, device_class) -> None:
+    def __init__(self, evo_broker, evo_device, device_class) -> None:
         """Initialize the sensor."""
-        super().__init__(broker, device)
+        super().__init__(evo_broker, evo_device)
 
+        self._unique_id = f"{evo_device.id}-{device_class}"
         self._device_class = device_class
-
-        _name_suffix = {
-            DEVICE_CLASS_TEMPERATURE: "temp",
-            DEVICE_CLASS_DEMAND: "demand",
-        }.get(device_class, device_class)
-        self._name = f"{device.device_id} {_name_suffix}"
+        self._name = f"{evo_device.id} {device_class}"
 
         self._unit_of_measurement = {DEVICE_CLASS_TEMPERATURE: TEMP_CELSIUS}.get(
             device_class, "%"
         )
 
     @property
-    def device_class(self) -> str:
-        """Return the device class of the sensor."""
-        return self._device_class
-
-    @property
     def unit_of_measurement(self) -> str:
         """Return the unit of measurement of the sensor."""
         return self._unit_of_measurement
-
-    async def async_update(self) -> None:
-        """Process the sensor's state data."""
-        pass
-
-    @property
-    def device_state_attributes(self) -> Dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        zone = self._evo_broker.client.zone_by_id.get(self._evo_device.parent_zone)
-        return {"parent_zone": zone.name if zone else None}
 
 
 class EvoBattery(EvoSensor):
@@ -104,8 +89,10 @@ class EvoBattery(EvoSensor):
     @property
     def state(self) -> Optional[int]:
         """Return the battery level of the device."""
-        if self._evo_device.battery is not None:
-            return int(self._evo_device.battery * 100)
+        if self._evo_device.battery_state is not None:
+            if self._evo_device.battery_state.get("battery_level") is not None:
+                return int(self._evo_device.battery_state["battery_level"] * 100)
+            return 100 if self._evo_device.battery_state["low_battery"] else 10
 
 
 class EvoDemand(EvoSensor):
@@ -118,9 +105,8 @@ class EvoDemand(EvoSensor):
             return int(self._evo_device.heat_demand * 100)
 
 
-
 class EvoTemperature(EvoSensor):
-    """Representation of a temperature sensor."""
+    """Representation of a temperature sensor (incl. DHW sensor)."""
 
     @property
     def state(self) -> Optional[str]:
@@ -131,8 +117,9 @@ class EvoTemperature(EvoSensor):
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        zone = self._evo_broker.client.zone_by_id.get(self._evo_device.parent_zone)
-        return {
-            "parent_zone": zone.name if zone else None,
-            "setpoint": self._evo_device.setpoint,
-        }
+        if hasattr(self._evo_device, ATTR_SETPOINT):
+            return {
+                **super().device_state_attributes,
+                ATTR_SETPOINT: self._evo_device.setpoint,
+            }
+        return super().device_state_attributes
