@@ -215,7 +215,13 @@ class EvoEntity(Entity):
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {"state": self._device_state_attrs}
+        # result = {}
+        # for attr in ("schema", "config", "status"):
+        #     if hasattr(self._evo_device, attr):
+        #         result.update({attr: getattr(self._evo_device, attr)})
+        return {
+            "controller": self._evo_device._ctl.id if self._evo_device._ctl else None,
+        }
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
@@ -234,7 +240,8 @@ class EvoDevice(EvoEntity):
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
-            "zone_idx": self._evo_device.zone.idx if self._evo_device.zone else None,
+            **super().device_state_attributes,
+            "domain_id": self._evo_device._domain_id,
             "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
         }
 
@@ -246,6 +253,7 @@ class EvoZone(EvoEntity):
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
+            **super().device_state_attributes,
             "heating_type": self._evo_device.heating_type,
             "zone_config": self._evo_device.zone_config,
         }
