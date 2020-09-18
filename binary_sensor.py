@@ -27,8 +27,6 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
-    print("AAA", discovery_info)
-
     broker = hass.data[DOMAIN]["broker"]
 
     new_devices = [

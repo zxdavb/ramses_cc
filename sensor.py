@@ -40,8 +40,6 @@ async def async_setup_platform(
     if not new_devices:
         return
 
-    print("BBB", discovery_info)
-
     broker.sensors += new_devices
     new_entities = []
 
