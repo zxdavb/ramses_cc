@@ -8,7 +8,7 @@ from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_WINDOW,
 )
 
-from . import DOMAIN, EvoDevice
+from . import DOMAIN, EvoDeviceBase
 from .const import ATTR_ACTUATOR_STATE, ATTR_WINDOW_STATE, DEVICE_HAS_BINARY_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,19 +38,19 @@ async def async_setup_platform(
         _LOGGER.warning(
             "Found a Binary Sensor (window), id=%s, zone=%s", device.id, device.zone
         )
-        new_entities.append(EvoWindow(broker, device))
+        new_entities.append(EvoWindow(broker, device, DEVICE_CLASS_WINDOW))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_ACTUATOR_STATE)]:
         _LOGGER.warning(
             "Found a Binary Sensor (actuator), id=%s, zone=%s", device.id, device.zone
         )
-        new_entities.append(EvoActuator(broker, device))
+        new_entities.append(EvoActuator(broker, device, "actuator"))
 
     if new_entities:
         async_add_entities(new_entities, update_before_add=True)
 
 
-class EvoBinarySensor(EvoDevice, BinarySensorEntity):
+class EvoBinarySensorBase(EvoDeviceBase, BinarySensorEntity):
     """Representation of a generic binary sensor."""
 
     def __init__(self, evo_broker, evo_device, device_class) -> None:
@@ -62,12 +62,8 @@ class EvoBinarySensor(EvoDevice, BinarySensorEntity):
         self._name = f"{evo_device.id} {device_class}"
 
 
-class EvoActuator(EvoBinarySensor):
+class EvoActuator(EvoBinarySensorBase):
     """Representation of an actautor."""
-
-    def __init__(self, evo_broker, evo_device) -> None:
-        """Initialize the sensor."""
-        super().__init__(evo_broker, evo_device, "actuator")
 
     @property
     def is_on(self) -> bool:
@@ -75,12 +71,8 @@ class EvoActuator(EvoBinarySensor):
         return self._evo_device.actuator_enabled
 
 
-class EvoWindow(EvoBinarySensor):
+class EvoWindow(EvoBinarySensorBase):
     """Representation of an open window sensor."""
-
-    def __init__(self, evo_broker, evo_device) -> None:
-        """Initialize the sensor."""
-        super().__init__(evo_broker, evo_device, DEVICE_CLASS_WINDOW)
 
     @property
     def is_on(self) -> bool:

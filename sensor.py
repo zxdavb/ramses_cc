@@ -9,7 +9,7 @@ from homeassistant.const import (
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from . import DOMAIN, EvoDevice
+from . import DOMAIN, EvoDeviceBase
 from .const import (
     ATTR_BATTERY,
     ATTR_HEAT_DEMAND,
@@ -66,7 +66,7 @@ async def async_setup_platform(
         async_add_entities(new_entities, update_before_add=True)
 
 
-class EvoSensor(EvoDevice):
+class EvoSensorBase(EvoDeviceBase):
     """Representation of a generic sensor."""
 
     def __init__(self, evo_broker, evo_device, device_class) -> None:
@@ -87,19 +87,20 @@ class EvoSensor(EvoDevice):
         return self._unit_of_measurement
 
 
-class EvoBattery(EvoSensor):
+class EvoBattery(EvoSensorBase):
     """Representation of a battery sensor."""
 
     @property
     def state(self) -> Optional[int]:
         """Return the battery level of the device."""
-        if self._evo_device.battery_state is not None:
-            if self._evo_device.battery_state.get("battery_level") is not None:
-                return int(self._evo_device.battery_state["battery_level"] * 100)
-            return 100 if self._evo_device.battery_state["low_battery"] else 10
+        if self._evo_device.battery_state is None:
+            return
+        if self._evo_device.battery_state.get("battery_level") is not None:
+            return int(self._evo_device.battery_state["battery_level"] * 100)
+        return 80 if self._evo_device.battery_state["low_battery"] else 10
 
 
-class EvoDemand(EvoSensor):
+class EvoDemand(EvoSensorBase):
     """Representation of a heat demand sensor."""
 
     @property
@@ -109,7 +110,7 @@ class EvoDemand(EvoSensor):
             return int(self._evo_device.heat_demand * 100)
 
 
-class EvoTemperature(EvoSensor):
+class EvoTemperature(EvoSensorBase):
     """Representation of a temperature sensor (incl. DHW sensor)."""
 
     @property

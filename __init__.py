@@ -228,7 +228,7 @@ class EvoEntity(Entity):
         self.hass.helpers.dispatcher.async_dispatcher_connect(DOMAIN, self._refresh)
 
 
-class EvoDevice(EvoEntity):
+class EvoDeviceBase(EvoEntity):
     """Base for any evohome II-compatible entity (e.g. Climate, Sensor)."""
 
     @property
