@@ -20,7 +20,7 @@ from homeassistant.components.climate.const import (
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from . import DOMAIN, EvoZone
+from . import DOMAIN, EvoZoneBase
 from .const import ATTR_HEAT_DEMAND
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ async def async_setup_platform(
     new_entities = []
 
     for zone in [z for z in new_zones]:
-        _LOGGER.warn(
+        _LOGGER.warning(
             "Found a Zone (%s), id=%s, name=%s", zone.heating_type, zone.idx, zone.name,
         )
         new_entities.append(EvoZone(broker, zone))
@@ -52,7 +52,7 @@ async def async_setup_platform(
         async_add_entities(new_entities, update_before_add=True)
 
 
-class EvoZone(EvoZone, ClimateEntity):
+class EvoZone(EvoZoneBase, ClimateEntity):
     """Base for a Honeywell evohome Zone."""
 
     def __init__(self, evo_broker, evo_device) -> None:
@@ -62,14 +62,7 @@ class EvoZone(EvoZone, ClimateEntity):
         self._unique_id = evo_device.id
         # self._icon = "mdi:radiator"
 
-    @property
-    def name(self) -> str:
-        return self._evo_device.name
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement used by the platform."""
-        return TEMP_CELSIUS
+        self._supported_features = SUPPORT_TARGET_TEMPERATURE
 
     @property
     def hvac_mode(self) -> str:
@@ -90,26 +83,15 @@ class EvoZone(EvoZone, ClimateEntity):
             )
 
     @property
-    def current_temperature(self) -> Optional[float]:
-        """Return the current temperature."""
-        return self._evo_device.temperature
-
-    @property
     def target_temperature(self) -> Optional[float]:
         """Return the temperature we try to reach."""
         return self._evo_device.setpoint
 
     @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return SUPPORT_TARGET_TEMPERATURE
-
-    @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        if hasattr(self._evo_device, ATTR_HEAT_DEMAND):
-            return {
-                **super().device_state_attributes,
-                ATTR_HEAT_DEMAND: self._evo_device.heat_demand,
-            }
-        return super().device_state_attributes
+        return {
+            **super().device_state_attributes,
+            "heating_type": self._evo_device.heating_type,
+            "zone_config": self._evo_device.zone_config,
+        }

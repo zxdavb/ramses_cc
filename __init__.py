@@ -148,12 +148,12 @@ class EvoBroker:
                 async_load_platform(self.hass, "climate", DOMAIN, {}, self.hass_config)
             )
 
-        # if evohome.dhw and self.water_heater is None:
-        #     self.hass.async_create_task(
-        #         async_load_platform(
-        #             self.hass, "water_heater", DOMAIN, {}, self.hass_config
-        #         )
-        #     )
+        if evohome.dhw and self.water_heater is None:
+            self.hass.async_create_task(
+                async_load_platform(
+                    self.hass, "water_heater", DOMAIN, {}, self.hass_config
+                )
+            )
 
         if [
             d
@@ -246,14 +246,24 @@ class EvoDevice(EvoEntity):
         }
 
 
-class EvoZone(EvoEntity):
-    """Base for any evohome II-compatible entity (e.g. Climate, Sensor)."""
+class EvoZoneBase(EvoEntity):
+    """Base for any evohome RF-compatible entity (e.g. Climate, Sensor)."""
 
     @property
-    def device_state_attributes(self) -> Dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        return {
-            **super().device_state_attributes,
-            "heating_type": self._evo_device.heating_type,
-            "zone_config": self._evo_device.zone_config,
-        }
+    def current_temperature(self) -> Optional[float]:
+        """Return the current temperature."""
+        return self._evo_device.temperature
+
+    @property
+    def name(self) -> str:
+        return self._evo_device.name
+
+    @property
+    def supported_features(self) -> int:
+        """Return the list of supported features."""
+        return self._supported_features
+
+    @property
+    def temperature_unit(self) -> str:
+        """Return the unit of measurement used by the platform."""
+        return TEMP_CELSIUS
