@@ -24,13 +24,11 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from .const import (
-    ATTR_BATTERY,
-    ATTR_HEAT_DEMAND,
     DOMAIN,
     STORAGE_KEY,
     STORAGE_VERSION,
-    DEVICE_HAS_BINARY_SENSOR,
-    DEVICE_HAS_SENSOR,
+    BINARY_SENSOR_ATTRS,
+    SENSOR_ATTRS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -155,20 +153,12 @@ class EvoBroker:
                 )
             )
 
-        if [
-            d
-            for d in evohome.devices
-            if d not in self.sensors and d.type in DEVICE_HAS_SENSOR
-        ]:
+        if [d for d in evohome.devices if d not in self.sensors]:
             self.hass.async_create_task(
                 async_load_platform(self.hass, "sensor", DOMAIN, {}, self.hass_config)
             )
 
-        if [
-            d
-            for d in evohome.devices
-            if d not in self.binary_sensors and d.type in DEVICE_HAS_BINARY_SENSOR
-        ]:
+        if [d for d in evohome.devices if d not in self.binary_sensors]:
             self.hass.async_create_task(
                 async_load_platform(
                     self.hass, "binary_sensor", DOMAIN, {}, self.hass_config

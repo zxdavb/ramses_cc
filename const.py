@@ -4,20 +4,13 @@ DOMAIN = "evohome_cc"
 STORAGE_VERSION = 1
 STORAGE_KEY = DOMAIN
 
-ATTR_BATTERY = "battery_state"
 ATTR_HEAT_DEMAND = "heat_demand"
 ATTR_SETPOINT = "setpoint"
 ATTR_TEMPERATURE = "temperature"
 
 ATTR_ACTUATOR_STATE: str = "actuator_enabled"
-ATTR_WINDOW_STATE: str = "window_state"  # On means open, Off means closed
+ATTR_BATTERY_STATE: str = "battery_state"
+ATTR_WINDOW_STATE: str = "window_state"
 
-DEVICE_HAS_SENSOR = (
-    "03",
-    "04",
-    "07",
-    "12",
-    "22",
-    "34",
-)
-DEVICE_HAS_BINARY_SENSOR = ("04", "10", "13")
+BINARY_SENSOR_ATTRS = (ATTR_ACTUATOR_STATE, ATTR_BATTERY_STATE, ATTR_WINDOW_STATE)
+SENSOR_ATTRS = (ATTR_BATTERY_STATE, ATTR_HEAT_DEMAND, ATTR_TEMPERATURE)

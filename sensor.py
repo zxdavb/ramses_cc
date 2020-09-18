@@ -11,17 +11,16 @@ from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoDeviceBase
 from .const import (
-    ATTR_BATTERY,
+    ATTR_BATTERY_STATE,
     ATTR_HEAT_DEMAND,
     ATTR_SETPOINT,
     ATTR_TEMPERATURE,
-    DEVICE_HAS_SENSOR,
+    SENSOR_ATTRS,
 )
 
-_LOGGER = logging.getLogger(__name__)
-
-
 DEVICE_CLASS_DEMAND: str = "heat_demand"
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
@@ -36,15 +35,17 @@ async def async_setup_platform(
     new_devices = [
         d
         for d in broker.client.evo.devices
-        if d not in broker.sensors and d.type in DEVICE_HAS_SENSOR
+        if d not in broker.sensors and any([hasattr(d, a) for a in SENSOR_ATTRS])
     ]
     if not new_devices:
         return
 
+    print("BBB", discovery_info)
+
     broker.sensors += new_devices
     new_entities = []
 
-    for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY)]:
+    for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY_STATE)]:
         _LOGGER.warning(
             "Found a Sensor (battery), id=%s, zone=%s", device.id, device.zone
         )
@@ -57,9 +58,7 @@ async def async_setup_platform(
         new_entities.append(EvoDemand(broker, device, DEVICE_CLASS_DEMAND))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_TEMPERATURE)]:
-        _LOGGER.warning(
-            "Found a Sensor (temp), id=%s, zone=%s", device.id, device.zone
-        )
+        _LOGGER.warning("Found a Sensor (temp), id=%s, zone=%s", device.id, device.zone)
         new_entities.append(EvoTemperature(broker, device, DEVICE_CLASS_TEMPERATURE))
 
     if new_entities:

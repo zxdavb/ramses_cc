@@ -5,11 +5,17 @@ from typing import Any, Dict
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
+    DEVICE_CLASS_BATTERY,
     DEVICE_CLASS_WINDOW,
 )
 
 from . import DOMAIN, EvoDeviceBase
-from .const import ATTR_ACTUATOR_STATE, ATTR_WINDOW_STATE, DEVICE_HAS_BINARY_SENSOR
+from .const import (
+    ATTR_ACTUATOR_STATE,
+    ATTR_BATTERY_STATE,
+    ATTR_WINDOW_STATE,
+    BINARY_SENSOR_ATTRS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,12 +27,15 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
+    print("AAA", discovery_info)
+
     broker = hass.data[DOMAIN]["broker"]
 
     new_devices = [
         d
         for d in broker.client.evo.devices
-        if d not in broker.binary_sensors and d.type in DEVICE_HAS_BINARY_SENSOR
+        if d not in broker.binary_sensors
+        and any([hasattr(d, a) for a in BINARY_SENSOR_ATTRS])
     ]
     if not new_devices:
         return
@@ -34,17 +43,23 @@ async def async_setup_platform(
     broker.binary_sensors += new_devices
     new_entities = []
 
-    for device in [d for d in new_devices if hasattr(d, ATTR_WINDOW_STATE)]:
-        _LOGGER.warning(
-            "Found a Binary Sensor (window), id=%s, zone=%s", device.id, device.zone
-        )
-        new_entities.append(EvoWindow(broker, device, DEVICE_CLASS_WINDOW))
-
     for device in [d for d in new_devices if hasattr(d, ATTR_ACTUATOR_STATE)]:
         _LOGGER.warning(
             "Found a Binary Sensor (actuator), id=%s, zone=%s", device.id, device.zone
         )
         new_entities.append(EvoActuator(broker, device, "actuator"))
+
+    for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY_STATE)]:
+        _LOGGER.warning(
+            "Found a Binary Sensor (battery), id=%s, zone=%s", device.id, device.zone
+        )
+        new_entities.append(EvoBattery(broker, device, DEVICE_CLASS_BATTERY))
+
+    for device in [d for d in new_devices if hasattr(d, ATTR_WINDOW_STATE)]:
+        _LOGGER.warning(
+            "Found a Binary Sensor (window), id=%s, zone=%s", device.id, device.zone
+        )
+        new_entities.append(EvoWindow(broker, device, DEVICE_CLASS_WINDOW))
 
     if new_entities:
         async_add_entities(new_entities, update_before_add=True)
@@ -63,12 +78,31 @@ class EvoBinarySensorBase(EvoDeviceBase, BinarySensorEntity):
 
 
 class EvoActuator(EvoBinarySensorBase):
-    """Representation of an actautor."""
+    """Representation of an actuator."""
 
     @property
     def is_on(self) -> bool:
         """Return the status of the window."""
         return self._evo_device.actuator_enabled
+
+
+class EvoBattery(EvoBinarySensorBase):
+    """Representation of a low battery sensor."""
+
+    @property
+    def is_on(self) -> bool:
+        """Return the status of the battery: on means low."""
+        if self._evo_device.battery_state is not None:
+            return self._evo_device.battery_state.get("low_battery")
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        if self._evo_device.battery_state is None:
+            battery_level = None
+        else:
+            battery_level = self._evo_device.battery_state.get("battery_level")
+        return {**super().device_state_attributes, "battery_level": battery_level}
 
 
 class EvoWindow(EvoBinarySensorBase):

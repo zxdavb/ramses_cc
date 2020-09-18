@@ -12,6 +12,7 @@ from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 import homeassistant.util.dt as dt_util
 
 from . import DOMAIN, EvoZoneBase
+
 # from .const import
 
 _LOGGER = logging.getLogger(__name__)
