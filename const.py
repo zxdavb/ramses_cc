@@ -1,5 +1,5 @@
 """Support for Honeywell's RAMSES II protocol."""
-DOMAIN = "evohome_rf"
+DOMAIN = "evohome_cc"
 
 STORAGE_VERSION = 1
 STORAGE_KEY = DOMAIN

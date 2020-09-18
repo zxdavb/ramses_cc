@@ -45,17 +45,21 @@ async def async_setup_platform(
     new_entities = []
 
     for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY)]:
-        _LOGGER.error(
+        _LOGGER.warning(
             "Found a Sensor (battery), id=%s, zone=%s", device.id, device.zone
         )
         new_entities.append(EvoBattery(broker, device, DEVICE_CLASS_BATTERY))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_HEAT_DEMAND)]:
-        _LOGGER.error("Found a Sensor (demand), id=%s, zone=%s", device.id, device.zone)
+        _LOGGER.warning(
+            "Found a Sensor (demand), id=%s, zone=%s", device.id, device.zone
+        )
         new_entities.append(EvoDemand(broker, device, DEVICE_CLASS_DEMAND))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_TEMPERATURE)]:
-        _LOGGER.error("Found a Sensor (temp), id=%s, zone=%s", device.id, device.zone)
+        _LOGGER.warning(
+            "Found a Sensor (temp), id=%s, zone=%s", device.id, device.zone
+        )
         new_entities.append(EvoTemperature(broker, device, DEVICE_CLASS_TEMPERATURE))
 
     if new_entities:

@@ -35,13 +35,15 @@ async def async_setup_platform(
     new_entities = []
 
     for device in [d for d in new_devices if hasattr(d, ATTR_WINDOW_STATE)]:
-        _LOGGER.error(
+        _LOGGER.warning(
             "Found a Binary Sensor (window), id=%s, zone=%s", device.id, device.zone
         )
         new_entities.append(EvoWindow(broker, device))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_ACTUATOR_STATE)]:
-        _LOGGER.error("Found a Binary Sensor (actuator), id=%s, zone=%s", device.id, device.zone)
+        _LOGGER.warning(
+            "Found a Binary Sensor (actuator), id=%s, zone=%s", device.id, device.zone
+        )
         new_entities.append(EvoActuator(broker, device))
 
     if new_entities:
