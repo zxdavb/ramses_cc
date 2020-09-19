@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
 ) -> None:
-    """Set up the evohome sensor sensor entities."""
+    """Set up the evohome sensor entities."""
     if discovery_info is None:
         return
 
@@ -70,6 +70,11 @@ class EvoActuator(EvoBinarySensorBase):
     """Representation of an actuator."""
 
     @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._evo_device.actuator_enabled is not None
+
+    @property
     def is_on(self) -> bool:
         """Return the status of the window."""
         return self._evo_device.actuator_enabled
@@ -77,6 +82,11 @@ class EvoActuator(EvoBinarySensorBase):
 
 class EvoBattery(EvoBinarySensorBase):
     """Representation of a low battery sensor."""
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._evo_device.battery_state is not None
 
     @property
     def is_on(self) -> bool:
@@ -96,6 +106,11 @@ class EvoBattery(EvoBinarySensorBase):
 
 class EvoWindow(EvoBinarySensorBase):
     """Representation of an open window sensor."""
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._evo_device.window_state is not None
 
     @property
     def is_on(self) -> bool:
