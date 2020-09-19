@@ -9,12 +9,11 @@ from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_WINDOW,
 )
 
-from . import DOMAIN, EvoDeviceBase
+from . import DOMAIN, EvoDeviceBase, new_binary_sensors
 from .const import (
     ATTR_ACTUATOR_STATE,
     ATTR_BATTERY_STATE,
     ATTR_WINDOW_STATE,
-    BINARY_SENSOR_ATTRS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,16 +28,7 @@ async def async_setup_platform(
 
     broker = hass.data[DOMAIN]["broker"]
 
-    new_devices = [
-        d
-        for d in broker.client.evo.devices
-        if d not in broker.binary_sensors
-        and any([hasattr(d, a) for a in BINARY_SENSOR_ATTRS])
-    ]
-    if not new_devices:
-        return
-
-    broker.binary_sensors += new_devices
+    new_devices = new_binary_sensors(broker)
     new_entities = []
 
     for device in [d for d in new_devices if hasattr(d, ATTR_ACTUATOR_STATE)]:
@@ -60,6 +50,7 @@ async def async_setup_platform(
         new_entities.append(EvoWindow(broker, device, DEVICE_CLASS_WINDOW))
 
     if new_entities:
+        broker.binary_sensors += new_devices
         async_add_entities(new_entities, update_before_add=True)
 
 
@@ -70,7 +61,7 @@ class EvoBinarySensorBase(EvoDeviceBase, BinarySensorEntity):
         """Initialize the sensor."""
         super().__init__(evo_broker, evo_device)
 
-        self._unique_id = f"{evo_device.id}-{device_class}"
+        self._unique_id = f"{evo_device.id}-{device_class}_state"
         self._device_class = device_class
         self._name = f"{evo_device.id} {device_class}"
 

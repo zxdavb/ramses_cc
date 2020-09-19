@@ -9,13 +9,12 @@ from homeassistant.const import (
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from . import DOMAIN, EvoDeviceBase
+from . import DOMAIN, EvoDeviceBase, new_sensors
 from .const import (
     ATTR_BATTERY_STATE,
     ATTR_HEAT_DEMAND,
     ATTR_SETPOINT,
     ATTR_TEMPERATURE,
-    SENSOR_ATTRS,
 )
 
 DEVICE_CLASS_DEMAND: str = "heat_demand"
@@ -32,15 +31,7 @@ async def async_setup_platform(
 
     broker = hass.data[DOMAIN]["broker"]
 
-    new_devices = [
-        d
-        for d in broker.client.evo.devices
-        if d not in broker.sensors and any([hasattr(d, a) for a in SENSOR_ATTRS])
-    ]
-    if not new_devices:
-        return
-
-    broker.sensors += new_devices
+    new_devices = new_sensors(broker)
     new_entities = []
 
     for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY_STATE)]:
@@ -60,6 +51,7 @@ async def async_setup_platform(
         new_entities.append(EvoTemperature(broker, device, DEVICE_CLASS_TEMPERATURE))
 
     if new_entities:
+        broker.sensors += new_devices
         async_add_entities(new_entities, update_before_add=True)
 
 

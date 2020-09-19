@@ -55,6 +55,23 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
+def new_binary_sensors(broker) -> list:
+    return [
+        d
+        for d in broker.client.evo.devices
+        if d not in broker.binary_sensors
+        and any([hasattr(d, a) for a in BINARY_SENSOR_ATTRS])
+    ]
+
+
+def new_sensors(broker) -> list:
+    return [
+        d
+        for d in broker.client.evo.devices
+        if d not in broker.sensors and any([hasattr(d, a) for a in SENSOR_ATTRS])
+    ]
+
+
 async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     """xxx."""
 
@@ -153,12 +170,12 @@ class EvoBroker:
                 )
             )
 
-        if [d for d in evohome.devices if d not in self.sensors]:
+        if new_sensors(self):
             self.hass.async_create_task(
                 async_load_platform(self.hass, "sensor", DOMAIN, {}, self.hass_config)
             )
 
-        if [d for d in evohome.devices if d not in self.binary_sensors]:
+        if new_binary_sensors(self):
             self.hass.async_create_task(
                 async_load_platform(
                     self.hass, "binary_sensor", DOMAIN, {}, self.hass_config
