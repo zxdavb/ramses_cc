@@ -10,4 +10,4 @@ It requires a serial-to-RF devices, either a Honeywell HGI80 (rare, expensive), 
 
 It uses the [evohome_rf](https://github.com/zxdavb/evohome_rf) client library to decode the RAMSES-II protocol used by these devices. Note that other systems, such as HVAC, also use this protocol, YMMV.
 
-See the (wiki)[https://github.com/zxdavb/evohome_cc/wiki/Installation-&-Configuration) for instal, config, etc.
+See the (wiki)[https://github.com/zxdavb/evohome_cc/wiki/Installation-&-Configuration] for installation, configuration, troubleshooting, etc.
