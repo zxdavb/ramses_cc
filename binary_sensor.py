@@ -91,17 +91,15 @@ class EvoBattery(EvoBinarySensorBase):
     @property
     def is_on(self) -> bool:
         """Return the status of the battery: on means low."""
-        if self._evo_device.battery_state is not None:
-            return self._evo_device.battery_state.get("low_battery")
+        return self._evo_device.battery_state.get("low_battery")
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        if self._evo_device.battery_state is None:
-            battery_level = None
-        else:
-            battery_level = self._evo_device.battery_state.get("battery_level")
-        return {**super().device_state_attributes, "battery_level": battery_level}
+        return {
+            **super().device_state_attributes,
+            "battery_level": self._evo_device.battery_state["battery_level"]
+        }
 
 
 class EvoWindow(EvoBinarySensorBase):

@@ -46,9 +46,10 @@ CONFIG_SCHEMA = vol.Schema(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
                 vol.Optional("schema"): dict,
-                vol.Optional("allowlist"): list,
+                # vol.Optional("allow_list"): list,
                 vol.Optional("ignore_list"): list,
-            }
+            },
+            # extra=vol.ALLOW_EXTRA,  # TODO: remove for production
         )
     },
     extra=vol.ALLOW_EXTRA,
@@ -93,7 +94,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
 
     kwargs = dict(hass_config[DOMAIN])
     serial_port = kwargs.pop("serial_port")
-    kwargs["blocklist"] = dict.fromkeys(kwargs.pop("ignore_list"), {})
+    kwargs["blocklist"] = dict.fromkeys(kwargs.pop("ignore_list", []), {})
 
     try:  # TODO: test invalid serial_port="AA"
         client = evohome.Gateway(serial_port, loop=hass.loop, **kwargs)
