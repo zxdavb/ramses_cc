@@ -1,42 +1,13 @@
-# evohome_cc
+## Overview
+**evohome_cc** is a HA custom component that works with some Honeywell 868 MHz RF-based systems such as **evohome**, **Sundial**, **Hometronic**, and many others.  
 
-(WIP) HA custom_component for Honeywell Evohome RF protocol.
+The simplest way to know if it will work with yoursystem is to identify the box connected to your heat source equivalent to one of (there will be other systems that also work):
+ - R8810A: OpenTherm Bridge
+ - BDR91A: Wireless Relay
+ - HC60NG: Wireless Relay (older hardware version)
 
-Uses https://github.com/zxdavb/evohome_rf (requires a Honeywell HGI80 or [similar](https://www.automatedhome.co.uk/vbulletin/showthread.php?5085-My-HGI80-equivalent-Domoticz-setup-without-HGI80)).
+It requires a serial-to-RF devices, either a Honeywell HGI80 (rare, expensive), or a nanoCUL (eBay, ~EUR25, make sure you get the 868 MHz version, not the 434 MHz version) running [evofw3](https://github.com/ghoti57/evofw3).
 
-## Installation Instructions
+It uses the [evohome_rf](https://github.com/zxdavb/evohome_rf) client library to decode the RAMSES-II protocol used by these devices. Note that other systems, such as HVAC, also use this protocol, YMMV.
 
-You will need a working version of HA, after verion 0.100.  You will need a HGI80, or [similar](https://www.automatedhome.co.uk/vbulletin/showthread.php?5085-My-HGI80-equivalent-Domoticz-setup-without-HGI80).
-
-Download the custom component in your custom_components folder, in `custom_components/evohome_rf` (best way):
-```bash
-git clone https://github.com/zxdavb/evohome_cc evohome_rf
-```
-... or (if you cant/wont be using git):
-```bash
-mkdir evohome_cc
-curl -L https://api.github.com/repos/zxdavb/evohome_cc/tarball | tar xz -C evohome_cc --strip-components=1
-```
-
-Add the following to your configuration.yaml (required, and you need to set the port correctly):
-
-```yaml
-evohome_rf:
-  serial_port: /dev/ttyUSB0
-  packet_log: /home/zxdavb/packets.log
-```
-
-(`packet_log` is required now, but will be optional after beta phase is over)
-
-Consider adding these two line to the logs section of your configuration.yaml (optional, and logging is a bit messy at the moment):
-
-```yaml
-logger:
-  ...
-  logs:
-    homeassistant.components.evohome_rf: debug
-    evohome: debug
-   ....
-```
-Restart HA, and provide feedback via the HA forum:
-https://community.home-assistant.io/t/honeywell-evohome-via-rf-hgi80-hgs80/151584
+See the (wiki)[https://github.com/zxdavb/evohome_cc/wiki/Installation-&-Configuration) for instal, config, etc.
