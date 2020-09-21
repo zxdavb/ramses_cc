@@ -34,11 +34,11 @@ async def async_setup_platform(
     new_devices = new_sensors(broker)
     new_entities = []
 
-    for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY_STATE)]:
-        _LOGGER.warning(
-            "Found a Sensor (battery), id=%s, zone=%s", device.id, device.zone
-        )
-        new_entities.append(EvoBattery(broker, device, DEVICE_CLASS_BATTERY))
+    # for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY_STATE)]:
+    #     _LOGGER.warning(
+    #         "Found a Sensor (battery), id=%s, zone=%s", device.id, device.zone
+    #     )
+    #     new_entities.append(EvoBattery(broker, device, DEVICE_CLASS_BATTERY))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_HEAT_DEMAND)]:
         _LOGGER.warning(
@@ -86,7 +86,7 @@ class EvoBattery(EvoSensorBase):
             return
         if self._evo_device.battery_state.get("battery_level") is not None:
             return int(self._evo_device.battery_state["battery_level"] * 100)
-        return 80 if self._evo_device.battery_state["low_battery"] else 10
+        # return 10 if self._evo_device.battery_state["low_battery"] else 80
 
 
 class EvoDemand(EvoSensorBase):
