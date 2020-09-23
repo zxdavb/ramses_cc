@@ -60,19 +60,18 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         super().__init__(evo_broker, evo_device)
 
         self._unique_id = evo_device.id
-        # self._icon = "mdi:radiator"
+        self._icon = "mdi:radiator"
 
-        self._supported_features = SUPPORT_TARGET_TEMPERATURE
-
-    @property
-    def hvac_mode(self) -> str:
-        """Return hvac operation ie. heat, cool mode."""
-        return HVAC_MODE_HEAT
+        self._supported_features = SUPPORT_TARGET_TEMPERATURE  # SUPPORT_PRESET_MODE |
 
     @property
-    def hvac_modes(self) -> List[str]:
-        """Return the list of available hvac operation modes."""
-        return [HVAC_MODE_HEAT]
+    def device_state_attributes(self) -> Dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        return {
+            **super().device_state_attributes,
+            "heating_type": self._evo_device.heating_type,
+            "zone_config": self._evo_device.zone_config,
+        }
 
     @property
     def hvac_action(self) -> Optional[str]:
@@ -83,15 +82,55 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             )
 
     @property
+    def hvac_mode(self) -> Optional[str]:
+        """Return hvac operation ie. heat, cool mode."""
+        if self._evo_device.mode:
+            if self._evo_device.mode["mode"] == "FollowSchedule":
+                return HVAC_MODE_AUTO
+            if self._evo_device.mode["mode"] == "PermanentOverride" and all(
+                (
+                    self.target_temperature is not None,
+                    self.min_temp is not None,
+                    self.target_temperature <= self.min_temp
+                )
+            ):
+                return HVAC_MODE_OFF
+            return HVAC_MODE_HEAT
+
+    @property
+    def hvac_modes(self) -> List[str]:
+        """Return the list of available hvac operation modes."""
+        return [HVAC_MODE_AUTO, HVAC_MODE_OFF, HVAC_MODE_HEAT]
+
+    @property
+    def max_temp(self) -> Optional[float]:
+        """Return the maximum target temperature of a Zone."""
+        if self._evo_device.zone_config:
+            return self._evo_device.zone_config["max_temp"]
+
+    @property
+    def min_temp(self) -> Optional[float]:
+        """Return the minimum target temperature of a Zone."""
+        if self._evo_device.zone_config:
+            return self._evo_device.zone_config["min_temp"]
+
+    # @property
+    # def preset_mode(self) -> Optional[str]:
+    #     """Return the current preset mode, e.g., home, away, temp."""
+    #     if self._evo_tcs.systemModeStatus["mode"] in [EVO_AWAY, EVO_HEATOFF]:
+    #         return TCS_PRESET_TO_HA.get(self._evo_tcs.systemModeStatus["mode"])
+    #     return EVO_PRESET_TO_HA.get(self._evo_device.setpointStatus["setpointMode"])
+
+    @property
     def target_temperature(self) -> Optional[float]:
         """Return the temperature we try to reach."""
         return self._evo_device.setpoint
 
-    @property
-    def device_state_attributes(self) -> Dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        return {
-            **super().device_state_attributes,
-            "heating_type": self._evo_device.heating_type,
-            "zone_config": self._evo_device.zone_config,
-        }
+    async def async_set_hvac_mode(self, hvac_mode: str) -> None:
+        """Set a Zone to one of its native operating modes."""
+        if hvac_mode == HVAC_MODE_AUTO:  # FollowSchedule
+            await self._evo_device.cancel_override()
+        elif hvac_mode == HVAC_MODE_HEAT:  # TemporaryOverride
+            await self._evo_device.set_override(mode="02", setpoint=25)
+        else:  # HVAC_MODE_OFF, PermentOverride, temp = min
+            await self._evo_device.frost_protect()
