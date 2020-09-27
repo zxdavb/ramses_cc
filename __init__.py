@@ -240,6 +240,11 @@ class EvoDeviceBase(EvoEntity):
     """Base for any evohome II-compatible entity (e.g. Climate, Sensor)."""
 
     @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._evo_device._present
+
+    @property
     def device_class(self) -> str:
         """Return the device class of the sensor."""
         return self._device_class
