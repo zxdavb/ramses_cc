@@ -7,7 +7,7 @@ import logging
 from typing import Any, Dict, Optional
 
 import serial
-import evohome
+import evohome_rf
 import voluptuous as vol
 
 from homeassistant.const import (
@@ -97,7 +97,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     kwargs["blocklist"] = dict.fromkeys(kwargs.pop("ignore_list", []), {})
 
     try:  # TODO: test invalid serial_port="AA"
-        client = evohome.Gateway(serial_port, loop=hass.loop, **kwargs)
+        client = evohome_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
     except serial.SerialException as exc:
         _LOGGER.exception("Unable to open serial port. Message is: %s", exc)
         return False
