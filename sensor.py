@@ -13,11 +13,10 @@ from . import DOMAIN, EvoDeviceBase, new_sensors
 from .const import (
     ATTR_BATTERY_STATE,
     ATTR_HEAT_DEMAND,
+    ATTR_RELAY_DEMAND,
     ATTR_SETPOINT,
     ATTR_TEMPERATURE,
 )
-
-DEVICE_CLASS_DEMAND: str = "heat_demand"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,9 +41,15 @@ async def async_setup_platform(
 
     for device in [d for d in new_devices if hasattr(d, ATTR_HEAT_DEMAND)]:
         _LOGGER.warning(
-            "Found a Sensor (demand), id=%s, zone=%s", device.id, device.zone
+            "Found a Sensor (heat demand), id=%s, zone=%s", device.id, device.zone
         )
-        new_entities.append(EvoDemand(broker, device, DEVICE_CLASS_DEMAND))
+        new_entities.append(EvoHeatDemand(broker, device, ATTR_HEAT_DEMAND))
+
+    for device in [d for d in new_devices if hasattr(d, ATTR_RELAY_DEMAND)]:
+        _LOGGER.warning(
+            "Found a Sensor (relay demand), id=%s, zone=%s", device.id, device.zone
+        )
+        new_entities.append(EvoRelayDemand(broker, device, ATTR_RELAY_DEMAND))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_TEMPERATURE)]:
         _LOGGER.warning("Found a Sensor (temp), id=%s, zone=%s", device.id, device.zone)
@@ -89,7 +94,7 @@ class EvoBattery(EvoSensorBase):
         # return 10 if self._evo_device.battery_state["low_battery"] else 80
 
 
-class EvoDemand(EvoSensorBase):
+class EvoHeatDemand(EvoSensorBase):
     """Representation of a heat demand sensor."""
 
     @property
@@ -97,6 +102,16 @@ class EvoDemand(EvoSensorBase):
         """Return the heat demand of the actuator."""
         if self._evo_device.heat_demand is not None:
             return int(self._evo_device.heat_demand * 100)
+
+
+class EvoRelayDemand(EvoSensorBase):
+    """Representation of a relay demand sensor."""
+
+    @property
+    def state(self) -> Optional[int]:
+        """Return the heat demand of the actuator."""
+        if self._evo_device.relay_demand is not None:
+            return int(self._evo_device.relay_demand * 100)
 
 
 class EvoTemperature(EvoSensorBase):

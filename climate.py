@@ -90,14 +90,13 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if self._evo_device.mode["mode"] == "FollowSchedule":
             return HVAC_MODE_AUTO
 
-        if self._evo_device.mode["mode"] == "PermanentOverride" and all(
-            (
-                self.target_temperature is not None,
-                self.min_temp is not None,
-                self.target_temperature <= self.min_temp
-            )
-        ):
-            return HVAC_MODE_OFF
+        if self._evo_device.mode["mode"] == "PermanentOverride":
+            if (
+                self.target_temperature
+                and self.min_temp
+                and self.target_temperature <= self.min_temp
+            ):
+                return HVAC_MODE_OFF
 
         return HVAC_MODE_HEAT
 

@@ -242,7 +242,7 @@ class EvoDeviceBase(EvoEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return self._evo_device._present
+        return self._evo_device._is_present
 
     @property
     def device_class(self) -> str:
