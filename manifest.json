@@ -3,7 +3,7 @@
   "name": "Honeywell evohome (RAMSES II protocol) agent",
   "documentation": "https://github.com/zxdavb/evohome_cc",
   "requirements": [
-    "evohome-rf==0.3.0", "pyserial-asyncio==0.4"
+    "evohome-rf==0.3.2", "pyserial-asyncio==0.4"
   ],
   "dependencies": [],
   "codeowners": ["@zxdavb"]
