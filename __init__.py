@@ -11,10 +11,7 @@ import evohome_rf
 import voluptuous as vol
 
 from homeassistant.const import (
-    ATTR_ENTITY_ID,
-    CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
-    CONF_USERNAME,
     TEMP_CELSIUS,
 )
 from homeassistant.core import callback
@@ -48,7 +45,8 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional("schema"): dict,
                 # vol.Optional("allow_list"): list,
                 vol.Optional("ignore_list"): list,
-            },
+                vol.Optional("max_zones", default=12): vol.Any(None, int),
+           },
             # extra=vol.ALLOW_EXTRA,  # TODO: remove for production
         )
     },
