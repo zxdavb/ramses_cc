@@ -46,7 +46,7 @@ CONFIG_SCHEMA = vol.Schema(
                 # vol.Optional("allow_list"): list,
                 vol.Optional("ignore_list"): list,
                 vol.Optional("max_zones", default=12): vol.Any(None, int),
-           },
+            },
             # extra=vol.ALLOW_EXTRA,  # TODO: remove for production
         )
     },
