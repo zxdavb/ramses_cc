@@ -11,18 +11,18 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
     PRESET_AWAY,
-    PRESET_BOOST,
+    # PRESET_BOOST,
     PRESET_ECO,
     PRESET_HOME,
     PRESET_NONE,
     SUPPORT_PRESET_MODE,
     SUPPORT_TARGET_TEMPERATURE,
 )
-from homeassistant.const import TEMP_CELSIUS
+# from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
-from .const import ATTR_HEAT_DEMAND
+# from .const import ATTR_HEAT_DEMAND
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -175,7 +175,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
         self._unique_id = evo_device.id
         self._icon = "mdi:thermostat"
 
-        self._supported_features = SUPPORT_PRESET_MODE
+        self._supported_features = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
 
     @property
     def current_temperature(self) -> Optional[float]:
@@ -266,9 +266,21 @@ class EvoController(EvoZoneBase, ClimateEntity):
         """
         return [PRESET_NONE, PRESET_ECO, PRESET_AWAY, PRESET_HOME, "custom"]
 
+    @property
+    def target_temperature(self) -> Optional[float]:
+        """Return the temperature we try to reach."""
+        zones = [z for z in self._evo_device.zones if z.setpoint is not None]
+        temps = [z.setpoint for z in zones if z.heat_demand is not None]
+        if temps:
+            return min(temps)
+        return max([z.setpoint for z in zones]) if temps else None
+
+        # temps = [z.setpoint for z in self._evo_device.zones]
+        # return round(sum(temps) / len(temps), 1) if temps else None
+
     # async def async_set_temperature(self, **kwargs) -> None:
     #     """Raise exception as Controllers don't have a target temperature."""
-    #     raise NotImplementedError("Evohome Controllers don't have target temperatures.")
+    #     raise NotImplementedError("Evohome Controllers don't have setpoints.")
 
     # async def async_set_hvac_mode(self, hvac_mode: str) -> None:
     #     """Set an operating mode for a Controller."""
