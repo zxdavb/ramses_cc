@@ -7,8 +7,13 @@ import logging
 from typing import Any, Dict, Optional
 
 import serial
-import evohome_rf
 import voluptuous as vol
+
+try:
+    from . import evohome_rf
+except ModuleNotFoundError:
+    import evohome_rf
+
 
 from homeassistant.const import (
     CONF_SCAN_INTERVAL,
