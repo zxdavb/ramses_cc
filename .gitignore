@@ -2,6 +2,8 @@
 
 !.gitignore
 
+.evohome_rf/*
+
 secrets*
 secrets*.*
 
