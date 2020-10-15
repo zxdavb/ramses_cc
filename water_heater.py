@@ -1,6 +1,9 @@
-"""Support for WaterHeater devices of (RAMSES-II RF-based) Honeywell systems."""
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
+
+Provides support for water_heater entities.
+"""
 import logging
-from typing import List
+from typing import List, Optional
 
 from homeassistant.components.water_heater import (
     SUPPORT_AWAY_MODE,

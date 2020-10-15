@@ -1,4 +1,4 @@
-"""Support for Honeywell's evohome II RF protocol.
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
 
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
@@ -11,7 +11,7 @@ import voluptuous as vol
 
 try:
     from . import evohome_rf
-except ModuleNotFoundError:
+except (ImportError, ModuleNotFoundError):
     import evohome_rf
 
 
@@ -26,6 +26,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from .const import (
+    __version__,
     DOMAIN,
     STORAGE_KEY,
     STORAGE_VERSION,
@@ -83,6 +84,17 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         app_storage = await store.async_load()
         return dict(app_storage if app_storage else {})
 
+    if __version__ == evohome_rf.__version__:
+        _LOGGER.warning(
+            "evohome_cc v%s, using evohome_rf v%s", __version__, evohome_rf.__version__
+        )
+    else:
+        _LOGGER.error(
+            "evohome_cc v%s, using evohome_rf v%s - they don't match!",
+            __version__,
+            evohome_rf.__version__
+        )
+
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
     evohome_store = await load_system_config(store)
 
@@ -104,6 +116,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     except serial.SerialException as exc:
         _LOGGER.exception("Unable to open serial port. Message is: %s", exc)
         return False
+
 
     hass.data[DOMAIN] = {}
     hass.data[DOMAIN]["broker"] = broker = EvoBroker(

@@ -1,4 +1,7 @@
-"""Support for (RAMSES-II RF-based) devices of Honeywell systems."""
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
+
+Provides support for sensors.
+"""
 import logging
 from typing import Any, Dict, Optional
 

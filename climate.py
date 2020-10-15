@@ -1,4 +1,7 @@
-"""Support for Climate devices of (RAMSES-II RF-based) Honeywell systems."""
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
+
+Provides support for climate entities.
+"""
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -18,10 +21,12 @@ from homeassistant.components.climate.const import (
     SUPPORT_PRESET_MODE,
     SUPPORT_TARGET_TEMPERATURE,
 )
+
 # from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
+
 # from .const import ATTR_HEAT_DEMAND
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,10 +49,7 @@ async def async_setup_platform(
 
     for zone in [z for z in broker.client.evo.zones if z not in broker.climates]:
         _LOGGER.warning(
-            "Found a Zone (%s), id=%s, name=%s",
-            zone.heating_type,
-            zone.idx,
-            zone.name,
+            "Found a Zone (%s), id=%s, name=%s", zone.heating_type, zone.idx, zone.name,
         )
         new_entities.append(EvoZone(broker, zone))
         broker.climates.append(zone)

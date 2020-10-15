@@ -1,4 +1,9 @@
-"""Support for Honeywell's RAMSES II protocol."""
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
+
+Requires a Honeywell HGI80 (or compatible) gateway.
+"""
+__version__ = "0.4.2"
+
 DOMAIN = "evohome_cc"
 
 STORAGE_VERSION = 1
