@@ -156,7 +156,7 @@ class EvoFaultLog(EvoDeviceBase):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return self._fault_log is not None
+        return self._evo_device._fault_log._fault_log_done
 
     @property
     def state(self) -> str:
