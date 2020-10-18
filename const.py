@@ -2,7 +2,7 @@
 
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
-__version__ = "0.4.2"
+__version__ = "0.4.3"
 
 DOMAIN = "evohome_cc"
 
@@ -14,7 +14,7 @@ ATTR_RELAY_DEMAND = "relay_demand"
 ATTR_SETPOINT = "setpoint"
 ATTR_TEMPERATURE = "temperature"
 
-ATTR_ACTUATOR_STATE = "actuator_enabled"
+ATTR_ACTUATOR_STATE = "actuator_state"
 ATTR_BATTERY_STATE = "battery_state"
 ATTR_WINDOW_STATE = "window_state"
 

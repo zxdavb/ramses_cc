@@ -20,6 +20,7 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_LOGGER.setLevel(logging.INFO)  # TODO: remove for production
 
 
 async def async_setup_platform(
@@ -35,19 +36,19 @@ async def async_setup_platform(
     new_entities = []
 
     for device in [d for d in new_devices if hasattr(d, ATTR_ACTUATOR_STATE)]:
-        _LOGGER.warning(
+        _LOGGER.info(
             "Found a Binary Sensor (actuator), id=%s, zone=%s", device.id, device.zone
         )
         new_entities.append(EvoActuator(broker, device, "actuator"))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY_STATE)]:
-        _LOGGER.warning(
+        _LOGGER.info(
             "Found a Binary Sensor (battery), id=%s, zone=%s", device.id, device.zone
         )
         new_entities.append(EvoBattery(broker, device, DEVICE_CLASS_BATTERY))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_WINDOW_STATE)]:
-        _LOGGER.warning(
+        _LOGGER.info(
             "Found a Binary Sensor (window), id=%s, zone=%s", device.id, device.zone
         )
         new_entities.append(EvoWindow(broker, device, DEVICE_CLASS_WINDOW))
@@ -75,12 +76,12 @@ class EvoActuator(EvoBinarySensorBase):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return self._evo_device.actuator_enabled is not None
+        return self._evo_device.enabled is not None
 
     @property
     def is_on(self) -> bool:
         """Return the status of the window."""
-        return self._evo_device.actuator_enabled
+        return self._evo_device.enabled
 
 
 class EvoBattery(EvoBinarySensorBase):
@@ -89,12 +90,12 @@ class EvoBattery(EvoBinarySensorBase):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return self._evo_device.battery_state is not None
+        return self._evo_device.battery_low is not None
 
     @property
     def is_on(self) -> bool:
         """Return the status of the battery: on means low."""
-        return self._evo_device.battery_state.get("low_battery")
+        return self._evo_device.battery_low
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:

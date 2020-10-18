@@ -35,6 +35,7 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_LOGGER.setLevel(logging.DEBUG)  # TODO: remove for production
 
 SCAN_INTERVAL_DEFAULT = timedelta(seconds=300)
 SCAN_INTERVAL_MINIMUM = timedelta(seconds=10)
@@ -86,13 +87,15 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
 
     if __version__ == evohome_rf.__version__:
         _LOGGER.warning(
-            "evohome_cc v%s, using evohome_rf v%s", __version__, evohome_rf.__version__
+            "evohome_cc v%s, using evohome_rf v%s - versions match (this is good)",
+            __version__,
+            evohome_rf.__version__
         )
     else:
         _LOGGER.error(
-            "evohome_cc v%s, using evohome_rf v%s - they don't match!",
+            "evohome_cc v%s, using evohome_rf v%s - versions don't match (this is bad)",
             __version__,
-            evohome_rf.__version__
+            evohome_rf.__version__,
         )
 
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
@@ -116,7 +119,6 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     except serial.SerialException as exc:
         _LOGGER.exception("Unable to open serial port. Message is: %s", exc)
         return False
-
 
     hass.data[DOMAIN] = {}
     hass.data[DOMAIN]["broker"] = broker = EvoBroker(
@@ -163,15 +165,15 @@ class EvoBroker:
         await self._store.async_save(app_storage)
 
     async def update(self, *args, **kwargs) -> None:
-        """Retreive the latest state data..."""
+        """Retrieve the latest state data..."""
 
         #     self.hass.async_create_task(self._update(self.hass, *args, **kwargs))
 
         # async def _update(self, *args, **kwargs) -> None:
-        #     """Retreive the latest state data..."""
+        #     """Retrieve the latest state data..."""
 
         evohome = self.client.evo
-        _LOGGER.warning("Schema = %s", evohome.schema if evohome is not None else None)
+        _LOGGER.debug("Schema = %s", evohome.schema if evohome is not None else None)
         if evohome is None:
             return
 
@@ -199,8 +201,8 @@ class EvoBroker:
                 )
             )
 
-        _LOGGER.warning("Params = %s", evohome.params)
-        _LOGGER.warning("Status = %s", evohome.status)
+        _LOGGER.debug("Params = %s", evohome.params)
+        _LOGGER.debug("Status = %s", evohome.status)
 
         # inform the evohome devices that state data has been updated
         self.hass.helpers.dispatcher.async_dispatcher_send(DOMAIN)

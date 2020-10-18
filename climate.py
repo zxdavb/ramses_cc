@@ -30,6 +30,7 @@ from . import DOMAIN, EvoZoneBase
 # from .const import ATTR_HEAT_DEMAND
 
 _LOGGER = logging.getLogger(__name__)
+_LOGGER.setLevel(logging.INFO)  # TODO: remove for production
 
 
 async def async_setup_platform(
@@ -43,12 +44,12 @@ async def async_setup_platform(
     new_entities = []
 
     if broker.client.evo not in broker.climates:
-        _LOGGER.warning("Found a Controller, id=%s", broker.client.evo)
+        _LOGGER.info("Found a Controller, id=%s", broker.client.evo)
         new_entities.append(EvoController(broker, broker.client.evo))
         broker.climates.append(broker.client.evo)
 
     for zone in [z for z in broker.client.evo.zones if z not in broker.climates]:
-        _LOGGER.warning(
+        _LOGGER.info(
             "Found a Zone (%s), id=%s, name=%s", zone.heating_type, zone.idx, zone.name,
         )
         new_entities.append(EvoZone(broker, zone))
