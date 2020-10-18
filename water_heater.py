@@ -19,6 +19,7 @@ from . import DOMAIN, EvoZoneBase
 # from .const import
 
 _LOGGER = logging.getLogger(__name__)
+_LOGGER.setLevel(logging.INFO)  # TODO: remove for production
 
 STATE_AUTO = "auto"
 
@@ -39,7 +40,7 @@ async def async_setup_platform(
 
     dhw = broker.water_heater = broker.client.evo.dhw
 
-    _LOGGER.warning(
+    _LOGGER.info(
         "Found a Water Heater (stored DHW), id=%s, name=%s", dhw.idx, dhw.name
     )
 

@@ -22,6 +22,7 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_LOGGER.setLevel(logging.INFO)  # TODO: remove for production
 
 
 async def async_setup_platform(
@@ -36,27 +37,27 @@ async def async_setup_platform(
     new_devices = new_sensors(broker)
     new_entities = []
 
-    # for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY_STATE)]:
-    #     _LOGGER.warning(
-    #         "Found a Sensor (battery), id=%s, zone=%s", device.id, device.zone
-    #     )
-    #     new_entities.append(EvoBattery(broker, device, DEVICE_CLASS_BATTERY))
-
     for device in [d for d in new_devices if hasattr(d, ATTR_HEAT_DEMAND)]:
-        _LOGGER.warning(
+        _LOGGER.info(
             "Found a Sensor (heat demand), id=%s, zone=%s", device.id, device.zone
         )
         new_entities.append(EvoHeatDemand(broker, device, ATTR_HEAT_DEMAND))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_RELAY_DEMAND)]:
-        _LOGGER.warning(
+        _LOGGER.info(
             "Found a Sensor (relay demand), id=%s, zone=%s", device.id, device.zone
         )
         new_entities.append(EvoRelayDemand(broker, device, ATTR_RELAY_DEMAND))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_TEMPERATURE)]:
-        _LOGGER.warning("Found a Sensor (temp), id=%s, zone=%s", device.id, device.zone)
+        _LOGGER.info("Found a Sensor (temp), id=%s, zone=%s", device.id, device.zone)
         new_entities.append(EvoTemperature(broker, device, DEVICE_CLASS_TEMPERATURE))
+
+    for device in [d for d in new_devices if hasattr(d, "fault_log")]:
+        _LOGGER.info(
+            "Found a Sensor (fault log), id=%s, zone=%s", device.id, device.zone
+        )
+        new_entities.append(EvoFaultLog(broker, device, "fault_log"))
 
     if new_entities:
         broker.sensors += new_devices
@@ -84,21 +85,13 @@ class EvoSensorBase(EvoDeviceBase):
         return self._unit_of_measurement
 
 
-class EvoBattery(EvoSensorBase):
-    """Representation of a battery sensor."""
-
-    @property
-    def state(self) -> Optional[int]:
-        """Return the battery level of the device."""
-        if self._evo_device.battery_state is None:
-            return
-        if self._evo_device.battery_state.get("battery_level") is not None:
-            return int(self._evo_device.battery_state["battery_level"] * 100)
-        # return 10 if self._evo_device.battery_state["low_battery"] else 80
-
-
 class EvoHeatDemand(EvoSensorBase):
     """Representation of a heat demand sensor."""
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._evo_device.heat_demand is not None
 
     @property
     def state(self) -> Optional[int]:
@@ -111,6 +104,11 @@ class EvoRelayDemand(EvoSensorBase):
     """Representation of a relay demand sensor."""
 
     @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._evo_device.relay_demand is not None
+
+    @property
     def state(self) -> Optional[int]:
         """Return the heat demand of the actuator."""
         if self._evo_device.relay_demand is not None:
@@ -119,6 +117,11 @@ class EvoRelayDemand(EvoSensorBase):
 
 class EvoTemperature(EvoSensorBase):
     """Representation of a temperature sensor (incl. DHW sensor)."""
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._evo_device.temperature is not None
 
     @property
     def state(self) -> Optional[str]:
@@ -135,3 +138,42 @@ class EvoTemperature(EvoSensorBase):
                 ATTR_SETPOINT: self._evo_device.setpoint,
             }
         return super().device_state_attributes
+
+
+class EvoFaultLog(EvoDeviceBase):
+    """Representation of a system's fault log."""
+
+    def __init__(self, evo_broker, evo_device, device_class) -> None:
+        """Initialize the sensor."""
+        super().__init__(evo_broker, evo_device)
+
+        self._unique_id = f"{evo_device.id}-{device_class}"
+        self._device_class = device_class
+        self._name = f"{evo_device.id} {device_class}"
+
+        self._fault_log = None
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._fault_log is not None
+
+    @property
+    def state(self) -> str:
+        """Return the number of issues."""
+        if self._fault_log is not None:
+            return len(self._fault_log)
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        """Return the device state attributes."""
+        return self._fault_log
+
+    @property
+    def unit_of_measurement(self) -> str:
+        """Return the unit of measurement of the sensor."""
+        return "entries"
+
+    async def async_update(self) -> None:
+        """Process the sensor's state data."""
+        self._fault_log = self._evo_device.fault_log()  # TODO: needs sorting
