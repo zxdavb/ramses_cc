@@ -2,7 +2,13 @@
 
 !.gitignore
 
-.evohome_rf/*
+# HACS-specific ignores
+.HA_VERSION
+.storage/
+*.yaml
+blueprints/
+home-assistant_v2.db
+
 
 secrets*
 secrets*.*
