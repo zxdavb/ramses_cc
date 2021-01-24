@@ -2,7 +2,8 @@
 
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
-__version__ = "0.4.3"
+
+__version__ = "0.5.0"
 
 DOMAIN = "evohome_cc"
 

@@ -103,13 +103,6 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
 
     _LOGGER.debug("Store = %s, Config =  %s", evohome_store, hass_config[DOMAIN])
 
-    # import ptvsd  # pylint: disable=import-error
-    # _LOGGER.warning("Waiting for debugger to attach...")
-    # ptvsd.enable_attach(address=("172.27.0.138", 5679))
-
-    # ptvsd.wait_for_attach()
-    # _LOGGER.debug("Debugger is attached!")
-
     kwargs = dict(hass_config[DOMAIN])
     serial_port = kwargs.pop("serial_port")
     kwargs["blocklist"] = dict.fromkeys(kwargs.pop("ignore_list", []), {})
