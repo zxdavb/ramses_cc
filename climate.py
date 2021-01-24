@@ -45,6 +45,7 @@ TCS_PRESET_TO_HA = {
 }
 
 HA_PRESET_TO_TCS = {v: k for k, v in TCS_PRESET_TO_HA.items()}
+HA_HVAC_TO_TCS = {HVAC_MODE_OFF: "heat_off", HVAC_MODE_HEAT: "auto"}
 
 async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
@@ -298,9 +299,9 @@ class EvoController(EvoZoneBase, ClimateEntity):
     #     """Raise exception as Controllers don't have a target temperature."""
     #     raise NotImplementedError("Evohome Controllers don't have setpoints.")
 
-    # async def async_set_hvac_mode(self, hvac_mode: str) -> None:
-    #     """Set an operating mode for a Controller."""
-    #     await self._set_tcs_mode(HA_HVAC_TO_TCS.get(hvac_mode))
+    async def async_set_hvac_mode(self, hvac_mode: str) -> None:
+        """Set an operating mode for a Controller."""
+        await self._evo_device.set_mode(HA_HVAC_TO_TCS.get(hvac_mode))
 
     async def async_set_preset_mode(self, preset_mode: Optional[str]) -> None:
         """Set the preset mode; if None, then revert to 'Auto' mode."""
