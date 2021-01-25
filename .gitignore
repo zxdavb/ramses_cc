@@ -13,7 +13,6 @@ home-assistant_v2.db
 secrets*
 secrets*.*
 
-*.json
 *.old
 *.out
 *.txt
