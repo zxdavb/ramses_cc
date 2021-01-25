@@ -35,6 +35,20 @@ from . import DOMAIN, EvoZoneBase
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.INFO)  # TODO: remove for production
 
+PRESET_RESET = "Reset"  # reset all child zones to EVO_FOLLOW
+PRESET_CUSTOM = "Custom"
+
+TCS_PRESET_TO_HA = {
+    "away": PRESET_AWAY,
+    "custom": PRESET_CUSTOM,
+    "eco": PRESET_ECO,
+    "day_off": PRESET_HOME,
+    "auto_with_reset": PRESET_RESET,
+    "auto": None
+}
+
+HA_PRESET_TO_TCS = {v: k for k, v in TCS_PRESET_TO_HA.items()}
+HA_HVAC_TO_TCS = {HVAC_MODE_OFF: "heat_off", HVAC_MODE_HEAT: "auto"}
 
 async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
@@ -291,10 +305,10 @@ class EvoController(EvoZoneBase, ClimateEntity):
     #     """Raise exception as Controllers don't have a target temperature."""
     #     raise NotImplementedError("Evohome Controllers don't have setpoints.")
 
-    # async def async_set_hvac_mode(self, hvac_mode: str) -> None:
-    #     """Set an operating mode for a Controller."""
-    #     await self._set_tcs_mode(HA_HVAC_TO_TCS.get(hvac_mode))
+    async def async_set_hvac_mode(self, hvac_mode: str) -> None:
+        """Set an operating mode for a Controller."""
+        await self._evo_device.set_mode(HA_HVAC_TO_TCS.get(hvac_mode))
 
-    # async def async_set_preset_mode(self, preset_mode: Optional[str]) -> None:
-    #     """Set the preset mode; if None, then revert to 'Auto' mode."""
-    #     await self._set_tcs_mode(HA_PRESET_TO_TCS.get(preset_mode, EVO_AUTO))
+    async def async_set_preset_mode(self, preset_mode: Optional[str]) -> None:
+        """Set the preset mode; if None, then revert to 'Auto' mode."""
+        await self._evo_device.set_mode(HA_PRESET_TO_TCS.get(preset_mode, "auto"))
