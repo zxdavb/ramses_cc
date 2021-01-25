@@ -1,7 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
 """Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
 
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
+
 from datetime import timedelta
 import logging
 from typing import Any, Dict, Optional
@@ -89,7 +93,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         _LOGGER.warning(
             "evohome_cc v%s, using evohome_rf v%s - versions match (this is good)",
             __version__,
-            evohome_rf.__version__
+            evohome_rf.__version__,
         )
     else:
         _LOGGER.error(
@@ -102,13 +106,6 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     evohome_store = await load_system_config(store)
 
     _LOGGER.debug("Store = %s, Config =  %s", evohome_store, hass_config[DOMAIN])
-
-    # import ptvsd  # pylint: disable=import-error
-    # _LOGGER.warning("Waiting for debugger to attach...")
-    # ptvsd.enable_attach(address=("172.27.0.138", 5679))
-
-    # ptvsd.wait_for_attach()
-    # _LOGGER.debug("Debugger is attached!")
 
     kwargs = dict(hass_config[DOMAIN])
     serial_port = kwargs.pop("serial_port")

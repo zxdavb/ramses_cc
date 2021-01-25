@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
 """Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
 
 Provides support for climate entities.
@@ -64,7 +67,10 @@ async def async_setup_platform(
 
     for zone in [z for z in broker.client.evo.zones if z not in broker.climates]:
         _LOGGER.info(
-            "Found a Zone (%s), id=%s, name=%s", zone.heating_type, zone.idx, zone.name,
+            "Found a Zone (%s), id=%s, name=%s",
+            zone.heating_type,
+            zone.idx,
+            zone.name,
         )
         new_entities.append(EvoZone(broker, zone))
         broker.climates.append(zone)
@@ -101,11 +107,11 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
         if self._evo_device.heat_demand:
             return CURRENT_HVAC_HEAT
-        if self._evo_device._ctl.mode is None:
+        if self._evo_device._evo.mode is None:
             return
-        if self._evo_device._ctl.mode["system_mode"] == "heat_off":
+        if self._evo_device._evo.mode["system_mode"] == "heat_off":
             return CURRENT_HVAC_OFF
-        if self._evo_device._ctl.mode is not None:
+        if self._evo_device._evo.mode is not None:
             return CURRENT_HVAC_IDLE
 
     @property
@@ -113,11 +119,11 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         """Return hvac operation ie. heat, cool mode."""
         # print(f"hvac_mode(CTL) mode={self._evo_device.mode}")
 
-        if self._evo_device._ctl.mode is None:
+        if self._evo_device._evo.mode is None:
             return
-        if self._evo_device._ctl.mode["system_mode"] == "heat_off":
+        if self._evo_device._evo.mode["system_mode"] == "heat_off":
             return HVAC_MODE_OFF
-        if self._evo_device._ctl.mode["system_mode"] == "away":
+        if self._evo_device._evo.mode["system_mode"] == "away":
             return HVAC_MODE_AUTO
 
         if self._evo_device.mode is None:
