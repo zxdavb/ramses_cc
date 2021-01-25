@@ -1,7 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
 """Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
 
 Provides support for water_heater entities.
 """
+
 import logging
 from typing import List, Optional
 
@@ -40,9 +44,7 @@ async def async_setup_platform(
 
     dhw = broker.water_heater = broker.client.evo.dhw
 
-    _LOGGER.info(
-        "Found a Water Heater (stored DHW), id=%s, name=%s", dhw.idx, dhw.name
-    )
+    _LOGGER.info("Found a Water Heater (stored DHW), id=%s, name=%s", dhw.idx, dhw.name)
 
     async_add_entities([EvoDHW(broker, dhw)], update_before_add=True)
 

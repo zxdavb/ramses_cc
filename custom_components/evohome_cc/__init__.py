@@ -1,7 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
 """Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
 
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
+
 from datetime import timedelta
 import logging
 from typing import Any, Dict, Optional
@@ -89,7 +93,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         _LOGGER.warning(
             "evohome_cc v%s, using evohome_rf v%s - versions match (this is good)",
             __version__,
-            evohome_rf.__version__
+            evohome_rf.__version__,
         )
     else:
         _LOGGER.error(
