@@ -50,6 +50,7 @@ TCS_PRESET_TO_HA = {
 HA_PRESET_TO_TCS = {v: k for k, v in TCS_PRESET_TO_HA.items()}
 HA_HVAC_TO_TCS = {HVAC_MODE_OFF: "heat_off", HVAC_MODE_HEAT: "auto"}
 
+
 async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
 ) -> None:
