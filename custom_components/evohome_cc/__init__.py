@@ -19,10 +19,7 @@ except (ImportError, ModuleNotFoundError):
     import evohome_rf
 
 
-from homeassistant.const import (
-    CONF_SCAN_INTERVAL,
-    TEMP_CELSIUS,
-)
+from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
@@ -170,7 +167,7 @@ class EvoBroker:
         #     """Retrieve the latest state data..."""
 
         evohome = self.client.evo
-        _LOGGER.info("Schema = %s", evohome.schema if evohome is not None else None)
+        _LOGGER.debug("Schema = %s", evohome.schema if evohome is not None else None)
         if evohome is None:
             return
 
@@ -198,8 +195,8 @@ class EvoBroker:
                 )
             )
 
-        _LOGGER.info("Params = %s", evohome.params)
-        _LOGGER.info("Status = %s", evohome.status)
+        _LOGGER.debug("Params = %s", evohome.params)
+        _LOGGER.debug("Status = %s", evohome.status)
 
         # inform the evohome devices that state data has been updated
         self.hass.helpers.dispatcher.async_dispatcher_send(DOMAIN)
@@ -269,8 +266,8 @@ class EvoDeviceBase(EvoEntity):
         """Return the integration-specific state attributes."""
         return {
             **super().device_state_attributes,
-            "domain_id": self._evo_device._domain_id,
-            "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
+            # "domain_id": self._evo_device. self._domain_id,
+            # "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
         }
 
 
@@ -295,3 +292,12 @@ class EvoZoneBase(EvoEntity):
     def temperature_unit(self) -> str:
         """Return the unit of measurement used by the platform."""
         return TEMP_CELSIUS
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        return {
+            **super().device_state_attributes,
+            # "zone_idx": self._evo_device.idx,
+            # "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
+        }

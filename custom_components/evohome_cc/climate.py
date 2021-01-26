@@ -44,7 +44,7 @@ TCS_PRESET_TO_HA = {
     "eco": PRESET_ECO,
     "day_off": PRESET_HOME,
     "auto_with_reset": PRESET_RESET,
-    "auto": None
+    "auto": None,
 }
 
 HA_PRESET_TO_TCS = {v: k for k, v in TCS_PRESET_TO_HA.items()}
@@ -68,10 +68,7 @@ async def async_setup_platform(
 
     for zone in [z for z in broker.client.evo.zones if z not in broker.climates]:
         _LOGGER.info(
-            "Found a Zone (%s), id=%s, name=%s",
-            zone.heating_type,
-            zone.idx,
-            zone.name,
+            "Found a Zone (%s), id=%s, name=%s", zone.heating_type, zone.idx, zone.name
         )
         new_entities.append(EvoZone(broker, zone))
         broker.climates.append(zone)
@@ -216,7 +213,6 @@ class EvoController(EvoZoneBase, ClimateEntity):
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
-            **super().device_state_attributes,
             "heat_demand": self._evo_device.heat_demand,
         }
 

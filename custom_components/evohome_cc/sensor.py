@@ -34,28 +34,32 @@ async def async_setup_platform(
 
     broker = hass.data[DOMAIN]["broker"]
 
-    new_devices = new_sensors(broker)
+    new_devices = new_sensors(broker) + [broker.client.evo]
     new_entities = []
 
     for device in [d for d in new_devices if hasattr(d, ATTR_HEAT_DEMAND)]:
         _LOGGER.info(
-            "Found a Sensor (heat demand), id=%s, zone=%s", device.id, device.zone
+            "Found a Sensor (heat demand), id=%s, zone=%s", device.id, device._domain_id
         )
         new_entities.append(EvoHeatDemand(broker, device, ATTR_HEAT_DEMAND))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_RELAY_DEMAND)]:
         _LOGGER.info(
-            "Found a Sensor (relay demand), id=%s, zone=%s", device.id, device.zone
+            "Found a Sensor (relay demand), id=%s, zone=%s",
+            device.id,
+            device._domain_id,
         )
         new_entities.append(EvoRelayDemand(broker, device, ATTR_RELAY_DEMAND))
 
     for device in [d for d in new_devices if hasattr(d, ATTR_TEMPERATURE)]:
-        _LOGGER.info("Found a Sensor (temp), id=%s, zone=%s", device.id, device.zone)
+        _LOGGER.info(
+            "Found a Sensor (temp), id=%s, zone=%s", device.id, device._domain_id
+        )
         new_entities.append(EvoTemperature(broker, device, DEVICE_CLASS_TEMPERATURE))
 
     for device in [d for d in new_devices if hasattr(d, "fault_log")]:
         _LOGGER.info(
-            "Found a Sensor (fault log), id=%s, zone=%s", device.id, device.zone
+            "Found a Sensor (fault log), id=%s, zone=%s", device.id, device._domain_id
         )
         new_entities.append(EvoFaultLog(broker, device, "fault_log"))
 
