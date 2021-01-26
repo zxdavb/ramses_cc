@@ -125,6 +125,8 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if self._evo_device._evo.mode["system_mode"] == "heat_off":
             return HVAC_MODE_OFF
         if self._evo_device._evo.mode["system_mode"] == "away":
+            if self._evo_device.heat_demand is not None and self._evo_device.heat_demand > 0:
+                return HVAC_MODE_HEAT
             return HVAC_MODE_AUTO
 
         if self._evo_device.mode is None:
@@ -243,7 +245,10 @@ class EvoController(EvoZoneBase, ClimateEntity):
             return
         if self._evo_device.mode["system_mode"] == "heat_off":
             return HVAC_MODE_OFF
-        if self._evo_device.mode["system_mode"] == "away":
+        if self.i_evo_device.mode["system_mode"] == "away":
+            # if the setpoint is higher then the current temperature, it triggers a heat_demand
+            if self._evo_device.heat_demand is not None and self._evo_device.heat_demand > 0:
+                return HVAC_MODE_HEAT
             return HVAC_MODE_AUTO  # users can't adjust setpoints in away mode
         return HVAC_MODE_HEAT
 
