@@ -25,6 +25,12 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
 )
 
+from .const import (
+    EVOZONE_FOLLOW,
+    EVOZONE_TEMPOVER,
+    EVOZONE_PERMOVER
+)
+
 # from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
@@ -50,6 +56,12 @@ TCS_PRESET_TO_HA = {
 HA_PRESET_TO_TCS = {v: k for k, v in TCS_PRESET_TO_HA.items()}
 HA_HVAC_TO_TCS = {HVAC_MODE_OFF: "heat_off", HVAC_MODE_HEAT: "auto"}
 
+EVOZONE_PRESET_TO_HA = {
+    EVOZONE_FOLLOW: PRESET_NONE,
+    EVOZONE_TEMPOVER: "temporary",
+    EVOZONE_PERMOVER: "permanent",
+}
+HA_PRESET_TO_EVOZONE = {v: k for k, v in EVOZONE_PRESET_TO_HA.items()}
 
 async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
@@ -87,7 +99,8 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         self._unique_id = evo_device.id
         self._icon = "mdi:radiator"
 
-        self._supported_features = SUPPORT_TARGET_TEMPERATURE  # SUPPORT_PRESET_MODE |
+        self._supported_features = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
+        self._preset_modes = list(HA_PRESET_TO_EVOZONE)
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
@@ -151,12 +164,15 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if self._evo_device.zone_config:
             return self._evo_device.zone_config["min_temp"]
 
-    # @property
-    # def preset_mode(self) -> Optional[str]:
-    #     """Return the current preset mode, e.g., home, away, temp."""
-    #     if self._evo_tcs.systemModeStatus["mode"] in [EVO_AWAY, EVO_HEATOFF]:
-    #         return TCS_PRESET_TO_HA.get(self._evo_tcs.systemModeStatus["mode"])
-    #     return EVO_PRESET_TO_HA.get(self._evo_device.setpointStatus["setpointMode"])
+    @property
+    def preset_mode(self) -> Optional[str]:
+        """Return the current preset mode, e.g., home, away, temp."""
+        return EVOZONE_PRESET_TO_HA.get(self._evo_device.mode["mode"])
+
+    @property
+    def preset_modes(self) -> Optional[List[str]]:
+        """Return a list of available preset modes."""
+        return self._preset_modes
 
     @property
     def target_temperature(self) -> Optional[float]:
