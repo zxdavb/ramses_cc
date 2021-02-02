@@ -201,6 +201,17 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         else:
             self._evo_device(mode=mode, setpoint=setpoint, until=until)
 
+    def set_preset_mode(self, preset_mode: Optional[str]) -> None:
+        """Set the preset mode; if None, then revert to following the schedule."""
+        evozone_preset_mode = HA_PRESET_TO_EVOZONE.get(preset_mode, EVOZONE_FOLLOW)
+        setpoint = self._evo_device.setpoint
+
+        if evozone_preset_mode == EVOZONE_FOLLOW:
+            self._evo_device.cancel_override()
+        elif evozone_preset_mode == EVOZONE_TEMPOVER:
+            self._evo_device.set_override(mode="temporary_override", setpoint=setpoint)
+        elif evozone_preset_mode == EVOZONE_PERMOVER:
+            self._evo_device.set_override(mode="permanent_override", setpoint=setpoint)
 
 class EvoController(EvoZoneBase, ClimateEntity):
     """Base for a Honeywell Controller/Location."""
