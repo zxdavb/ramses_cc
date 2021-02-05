@@ -46,14 +46,18 @@ CONFIG_SCHEMA = vol.Schema(
         DOMAIN: vol.Schema(
             {
                 vol.Required("serial_port"): cv.string,
-                vol.Required("packet_log"): cv.string,
-                vol.Optional(
-                    CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
-                ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
+                vol.Required("config"): vol.Schema(
+                    {
+                        vol.Optional("max_zones", default=12): vol.Any(None, int),
+                        vol.Required("packet_log"): cv.string,
+                    }
+                ),
                 vol.Optional("schema"): dict,
                 # vol.Optional("allow_list"): list,
                 vol.Optional("ignore_list"): list,
-                vol.Optional("max_zones", default=12): vol.Any(None, int),
+                vol.Optional(
+                    CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
+                ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
             },
             # extra=vol.ALLOW_EXTRA,  # TODO: remove for production
         )
