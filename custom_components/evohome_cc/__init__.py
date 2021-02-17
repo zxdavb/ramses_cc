@@ -244,7 +244,7 @@ class EvoEntity(Entity):
         #     if hasattr(self._evo_device, attr):
         #         result.update({attr: getattr(self._evo_device, attr)})
         return {
-            "controller": self._evo_device._ctl.id if self._evo_device._ctl else None,
+            "controller": self._evo_device._ctl.id if self._evo_device._ctl else None
         }
 
     async def async_added_to_hass(self) -> None:
