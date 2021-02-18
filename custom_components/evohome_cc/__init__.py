@@ -18,13 +18,22 @@ try:
 except (ImportError, ModuleNotFoundError):
     import evohome_rf
 
+from evohome_rf.const import (
+    SYSTEM_MODE_MAP,
+    SYSTEM_MODE_LOOKUP 
+)
 
-from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS
+from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS, ATTR_ENTITY_ID
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.service import verify_domain_control
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_connect,
+    async_dispatcher_send,
+)
 
 from .const import (
     __version__,
@@ -40,6 +49,32 @@ _LOGGER.setLevel(logging.DEBUG)  # TODO: remove for production
 
 SCAN_INTERVAL_DEFAULT = timedelta(seconds=300)
 SCAN_INTERVAL_MINIMUM = timedelta(seconds=10)
+
+ATTR_SYSTEM_MODE = "mode"
+ATTR_DURATION_DAYS = "period"
+ATTR_DURATION_HOURS = "duration"
+
+ATTR_ZONE_TEMP = "setpoint"
+ATTR_DURATION_UNTIL = "duration"
+
+SVC_REFRESH_SYSTEM = "refresh_system"
+SVC_SET_SYSTEM_MODE = "set_system_mode"
+SVC_RESET_SYSTEM = "reset_system"
+SVC_SET_ZONE_OVERRIDE = "set_zone_override"
+SVC_RESET_ZONE_OVERRIDE = "clear_zone_override"
+
+RESET_ZONE_OVERRIDE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
+SET_ZONE_OVERRIDE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+        vol.Required(ATTR_ZONE_TEMP): vol.All(
+            vol.Coerce(float), vol.Range(min=5.0, max=35.0)
+        ),
+        vol.Optional(ATTR_DURATION_UNTIL): vol.All(
+            cv.time_period, vol.Range(min=timedelta(days=0), max=timedelta(days=1))
+        ),
+    }
+)
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -132,7 +167,109 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         broker.update, hass_config[DOMAIN][CONF_SCAN_INTERVAL]
     )
 
+    setup_service_functions(hass, broker)
+
     return True
+
+@callback
+def setup_service_functions(hass: HomeAssistantType, broker):
+    @verify_domain_control(hass, DOMAIN)
+    async def force_refresh(call) -> None:
+        """Obtain the latest state data via the vendor's RESTful API."""
+        await broker.update()
+
+    @verify_domain_control(hass, DOMAIN)
+    async def set_system_mode(call) -> None:
+        """Set the system mode."""
+        payload = {
+            "unique_id": broker.client.evo.unique_id,
+            "service": call.service,
+            "data": call.data,
+        }
+        async_dispatcher_send(hass, DOMAIN, payload)
+
+    @verify_domain_control(hass, DOMAIN)
+    async def set_zone_override(call) -> None:
+        """Set the zone override (setpoint)."""
+
+        _LOGGER.info(
+            "set_zone_override, call=%s", call
+        )
+
+        entity_id = call.data[ATTR_ENTITY_ID]
+
+        registry = await hass.helpers.entity_registry.async_get_registry()
+        registry_entry = registry.async_get(entity_id)
+
+        if registry_entry is None or registry_entry.platform != DOMAIN:
+            raise ValueError(f"'{entity_id}' is not a known {DOMAIN} entity")
+
+        if registry_entry.domain != "climate":
+            raise ValueError(f"'{entity_id}' is not an {DOMAIN} controller/zone")
+
+        payload = {
+            "unique_id": registry_entry.unique_id,
+            "service": call.service,
+            "data": call.data,
+        }
+
+        async_dispatcher_send(hass, DOMAIN, payload)
+
+    system_mode_schemas = []
+
+    # Not all systems support "AutoWithReset": register this handler only if required
+    if [m for m in SYSTEM_MODE_LOOKUP if m == "auto_with_reset"]:
+        hass.services.async_register(DOMAIN, SVC_RESET_SYSTEM, set_system_mode)
+
+    # These modes are set for a number of hours (or indefinitely): use this schema
+    temp_modes = [m for m in SYSTEM_MODE_LOOKUP if m == "eco"]
+    if temp_modes:  # any of: "AutoWithEco", permanent or for 0-24 hours
+        schema = vol.Schema(
+            {
+                vol.Required(ATTR_SYSTEM_MODE): vol.In(temp_modes),
+                vol.Optional(ATTR_DURATION_HOURS): vol.All(
+                    cv.time_period,
+                    vol.Range(min=timedelta(hours=0), max=timedelta(hours=24)),
+                ),
+            }
+        )
+        system_mode_schemas.append(schema)
+
+    # These modes are set for a number of days (or indefinitely): use this schema
+    temp_modes = [m for m in SYSTEM_MODE_LOOKUP if m == "away" or m == "Custom" or m == "day_off"]
+    if temp_modes:  # any of: "Away", "Custom", "DayOff", permanent or for 1-99 days
+        schema = vol.Schema(
+            {
+                vol.Required(ATTR_SYSTEM_MODE): vol.In(temp_modes),
+                vol.Optional(ATTR_DURATION_DAYS): vol.All(
+                    cv.time_period,
+                    vol.Range(min=timedelta(days=1), max=timedelta(days=99)),
+                ),
+            }
+        )
+        system_mode_schemas.append(schema)
+
+    if system_mode_schemas:
+        hass.services.async_register(
+            DOMAIN,
+            SVC_SET_SYSTEM_MODE,
+            set_system_mode,
+            schema=vol.Any(*system_mode_schemas),
+        )
+
+    # The zone modes are consistent across all systems and use the same schema
+    hass.services.async_register(
+        DOMAIN,
+        SVC_RESET_ZONE_OVERRIDE,
+        set_zone_override,
+        schema=RESET_ZONE_OVERRIDE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SVC_SET_ZONE_OVERRIDE,
+        set_zone_override,
+        schema=SET_ZONE_OVERRIDE_SCHEMA,
+    )
 
 
 class EvoBroker:

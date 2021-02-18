@@ -25,6 +25,16 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
 )
 
+from . import (
+    ATTR_DURATION_DAYS,
+    ATTR_DURATION_HOURS,
+    ATTR_DURATION_UNTIL,
+    ATTR_SYSTEM_MODE,
+    ATTR_ZONE_TEMP,
+    SVC_RESET_ZONE_OVERRIDE,
+    SVC_SET_SYSTEM_MODE,
+)
+
 from .const import EVOZONE_FOLLOW, EVOZONE_TEMPOVER, EVOZONE_PERMOVER
 
 # from homeassistant.const import TEMP_CELSIUS
@@ -98,6 +108,35 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
         self._supported_features = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
         self._preset_modes = list(HA_PRESET_TO_EVOZONE)
+
+    async def async_zone_svc_request(self, service: dict, data: dict) -> None:
+        """Process a service request (setpoint override) for a zone."""
+
+        _LOGGER.info(
+            "async_zone_svc_request, service=%s, data=%s", service, data
+        )
+        
+        if service == SVC_RESET_ZONE_OVERRIDE:
+            self._evo_device.cancel_override()
+            return
+
+        # otherwise it is SVC_SET_ZONE_OVERRIDE
+        temperature = max(min(data[ATTR_ZONE_TEMP], self.max_temp), self.min_temp)
+
+        if ATTR_DURATION_UNTIL in data:
+            duration = data[ATTR_DURATION_UNTIL]
+            if duration.total_seconds() > 0:
+                until = dt_util.now() + data[ATTR_DURATION_UNTIL]
+        else:
+            until = None  # indefinitely
+
+        until = dt_util.as_utc(until) if until else None
+        if until is none:
+            self._evo_device.set_override(mode="permanent_override", setpoint=setpoint)
+        elif duration.total_seconds() == 0:
+            self._evo_device.set_override(mode="temporary_override", setpoint=setpoint)
+        else:
+            self._evo_device.set_override(mode="temporary_override", setpoint=setpoint, until=until)
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
