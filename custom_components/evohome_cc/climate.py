@@ -39,6 +39,7 @@ from .const import EVOZONE_FOLLOW, EVOZONE_TEMPOVER, EVOZONE_PERMOVER
 
 # from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+import homeassistant.util.dt as dt_util
 
 from . import DOMAIN, EvoZoneBase
 
@@ -109,19 +110,15 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         self._supported_features = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
         self._preset_modes = list(HA_PRESET_TO_EVOZONE)
 
-    async def async_zone_svc_request(self, service: dict, data: dict) -> None:
+    def zone_svc_request(self, service: dict, data: dict) -> None:
         """Process a service request (setpoint override) for a zone."""
-
-        _LOGGER.info(
-            "async_zone_svc_request, service=%s, data=%s", service, data
-        )
         
         if service == SVC_RESET_ZONE_OVERRIDE:
             self._evo_device.cancel_override()
             return
 
         # otherwise it is SVC_SET_ZONE_OVERRIDE
-        temperature = max(min(data[ATTR_ZONE_TEMP], self.max_temp), self.min_temp)
+        setpoint = max(min(data[ATTR_ZONE_TEMP], self.max_temp), self.min_temp)
 
         if ATTR_DURATION_UNTIL in data:
             duration = data[ATTR_DURATION_UNTIL]
@@ -131,7 +128,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             until = None  # indefinitely
 
         until = dt_util.as_utc(until) if until else None
-        if until is none:
+        if until is None:
             self._evo_device.set_override(mode="permanent_override", setpoint=setpoint)
         elif duration.total_seconds() == 0:
             self._evo_device.set_override(mode="temporary_override", setpoint=setpoint)
@@ -268,6 +265,27 @@ class EvoController(EvoZoneBase, ClimateEntity):
         self._icon = "mdi:thermostat"
 
         self._supported_features = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
+
+    def controller_svc_request(self, service: dict, data: dict) -> None:
+        """Process a service request (system mode) for a controller.
+        Data validation is not required, it will have been done upstream.
+        """
+        if service == SVC_SET_SYSTEM_MODE:
+            mode = data[ATTR_SYSTEM_MODE]
+        else:  # otherwise it is SVC_RESET_SYSTEM
+            mode = HA_PRESET_TO_TCS.get(preset_mode, "auto")
+
+        if ATTR_DURATION_DAYS in data:
+            until = dt_util.start_of_local_day()
+            until += data[ATTR_DURATION_DAYS]
+
+        elif ATTR_DURATION_HOURS in data:
+            until = dt_util.now() + data[ATTR_DURATION_HOURS]
+
+        else:
+            until = None
+
+        self._evo_device.set_mode(mode, until=until)
 
     @property
     def current_temperature(self) -> Optional[float]:

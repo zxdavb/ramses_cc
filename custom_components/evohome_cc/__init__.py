@@ -192,10 +192,6 @@ def setup_service_functions(hass: HomeAssistantType, broker):
     async def set_zone_override(call) -> None:
         """Set the zone override (setpoint)."""
 
-        _LOGGER.info(
-            "set_zone_override, call=%s", call
-        )
-
         entity_id = call.data[ATTR_ENTITY_ID]
 
         registry = await hass.helpers.entity_registry.async_get_registry()
@@ -355,8 +351,24 @@ class EvoEntity(Entity):
         self._device_state_attrs = {}
 
     @callback
-    def _refresh(self) -> None:
-        self.async_schedule_update_ha_state(force_refresh=True)
+    def _refresh(self, payload: Optional[dict] = None) -> None:
+        if payload is None:
+            self.async_schedule_update_ha_state(force_refresh=True)
+            return
+        if payload["unique_id"] != self._unique_id:
+            return
+        if payload["service"] in [SVC_SET_ZONE_OVERRIDE, SVC_RESET_ZONE_OVERRIDE]:
+            self.zone_svc_request(payload["service"], payload["data"])
+            return
+        self.controller_svc_request(payload["service"], payload["data"])
+
+    def controller_svc_request(self, service: dict, data: dict) -> None:
+        """Process a service request (system mode) for a controller."""
+        raise NotImplementedError
+
+    def zone_svc_request(self, service: dict, data: dict) -> None:
+        """Process a service request (setpoint override) for a zone."""
+        raise NotImplementedError
 
     @property
     def should_poll(self) -> bool:
