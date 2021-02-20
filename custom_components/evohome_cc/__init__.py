@@ -38,28 +38,43 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)  # TODO: remove for production
 
+BROKER = "broker"
+
 SCAN_INTERVAL_DEFAULT = timedelta(seconds=300)
 SCAN_INTERVAL_MINIMUM = timedelta(seconds=10)
+
+CONF_SERIAL_PORT = "serial_port"
+CONF_CONFIG = "config"
+CONF_SCHEMA = "schema"
+CONF_GATEWAY_ID = "gateway_id"
+CONF_PACKET_LOG = "packet_log"
+CONF_MAX_ZONES = "max_zones"
+
+CONF_ALLOW_LIST = "allow_list"
+CONF_BLOCK_LIST = "block_list"
+LIST_MSG = f"{CONF_ALLOW_LIST} and {CONF_BLOCK_LIST} are mutally exclusive"
 
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
             {
-                vol.Required("serial_port"): cv.string,
-                vol.Required("config"): vol.Schema(
+                # vol.Optional(CONF_GATEWAY_ID): vol.Match(r"^18:[0-9]{6}$"),
+                vol.Required(CONF_SERIAL_PORT): cv.string,
+                vol.Required(CONF_CONFIG): vol.Schema(
                     {
-                        vol.Optional("max_zones", default=12): vol.Any(None, int),
-                        vol.Required("packet_log"): cv.string,
+                        vol.Optional(CONF_MAX_ZONES, default=12): vol.Any(None, int),
+                        vol.Required(CONF_PACKET_LOG): cv.string,
+                        vol.Required("enforce_allowlist"): bool,
                     }
                 ),
-                vol.Optional("schema"): dict,
-                # vol.Optional("allow_list"): list,
-                vol.Optional("ignore_list"): list,
+                vol.Optional(CONF_SCHEMA): dict,
+                vol.Exclusive(CONF_ALLOW_LIST, "device_filter", msg=LIST_MSG): list,
+                vol.Exclusive(CONF_BLOCK_LIST, "device_filter", msg=LIST_MSG): list,
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
             },
-            # extra=vol.ALLOW_EXTRA,  # TODO: remove for production
+            extra=vol.ALLOW_EXTRA,  # TODO: remove for production
         )
     },
     extra=vol.ALLOW_EXTRA,
@@ -109,8 +124,12 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     _LOGGER.debug("Store = %s, Config =  %s", evohome_store, hass_config[DOMAIN])
 
     kwargs = dict(hass_config[DOMAIN])
-    serial_port = kwargs.pop("serial_port")
-    kwargs["blocklist"] = dict.fromkeys(kwargs.pop("ignore_list", []), {})
+    serial_port = kwargs.pop(CONF_SERIAL_PORT)
+    kwargs["allowlist"] = dict.fromkeys(kwargs.pop(CONF_ALLOW_LIST, []), {})
+    kwargs["blocklist"] = dict.fromkeys(kwargs.pop(CONF_BLOCK_LIST, []), {})
+    kwargs["config"]["log_rotate_backups"] = (
+        kwargs["config"].pop("log_rotate_backups", 7)
+    )
 
     try:  # TODO: test invalid serial_port="AA"
         client = evohome_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
@@ -119,7 +138,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         return False
 
     hass.data[DOMAIN] = {}
-    hass.data[DOMAIN]["broker"] = broker = EvoBroker(
+    hass.data[DOMAIN][BROKER] = broker = EvoBroker(
         hass, client, store, hass_config[DOMAIN]
     )
 

@@ -105,7 +105,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         return {
             **super().device_state_attributes,
             "heating_type": self._evo_device.heating_type,
-            "zone_config": self._evo_device.zone_config,
+            "config": self._evo_device.config,
             "heat_demand": self._evo_device.heat_demand,
         }
 
@@ -137,9 +137,8 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if self._evo_device.mode is None:
             return
         if (
-            self._evo_device.zone_config
-            and self._evo_device.mode["setpoint"]
-            <= self._evo_device.zone_config["min_temp"]
+            self._evo_device.config
+            and self._evo_device.mode["setpoint"] <= self._evo_device.config["min_temp"]
         ):
             return HVAC_MODE_OFF
         return HVAC_MODE_HEAT
@@ -152,14 +151,14 @@ class EvoZone(EvoZoneBase, ClimateEntity):
     @property
     def max_temp(self) -> Optional[float]:
         """Return the maximum target temperature of a Zone."""
-        if self._evo_device.zone_config:
-            return self._evo_device.zone_config["max_temp"]
+        if self._evo_device.config:
+            return self._evo_device.config["max_temp"]
 
     @property
     def min_temp(self) -> Optional[float]:
         """Return the minimum target temperature of a Zone."""
-        if self._evo_device.zone_config:
-            return self._evo_device.zone_config["min_temp"]
+        if self._evo_device.config:
+            return self._evo_device.config["min_temp"]
 
     @property
     def preset_mode(self) -> Optional[str]:
