@@ -82,20 +82,21 @@ CONFIG_SCHEMA = vol.Schema(
 
 
 def new_binary_sensors(broker) -> list:
-    return [
-        d
-        for d in broker.client.evo.devices
-        if d not in broker.binary_sensors
-        and any([hasattr(d, a) for a in BINARY_SENSOR_ATTRS])
+    sensors = [
+        s
+        for s in broker.client.evo.devices + [broker.client.evo]
+        if any([hasattr(s, a) for a in BINARY_SENSOR_ATTRS])
     ]
+    return [s for s in sensors if s not in broker.binary_sensors]
 
 
 def new_sensors(broker) -> list:
-    return [
-        d
-        for d in broker.client.evo.devices
-        if d not in broker.sensors and any([hasattr(d, a) for a in SENSOR_ATTRS])
+    sensors = [
+        s
+        for s in broker.client.evo.devices + [broker.client.evo]
+        if any([hasattr(s, a) for a in SENSOR_ATTRS])
     ]
+    return [s for s in sensors if s not in broker.sensors]
 
 
 async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
