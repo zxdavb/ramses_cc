@@ -21,3 +21,6 @@ set_system_mode:
 
 reset_system:
   description: This service call will set the operating mode of the system to AutoWithReset, and reset all the zones to FollowSchedule.
+
+refresh_system:
+  description: This service call will immediately pull the latest state data from the vendor’s servers rather than waiting for the next scan_interval.

@@ -229,6 +229,8 @@ def setup_service_functions(hass: HomeAssistantType, broker):
 
         async_dispatcher_send(hass, DOMAIN, payload)
 
+    hass.services.async_register(DOMAIN, SVC_REFRESH_SYSTEM, force_refresh)
+
     system_mode_schemas = []
 
     # Not all systems support "AutoWithReset": register this handler only if required
