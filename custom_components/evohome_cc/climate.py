@@ -243,7 +243,11 @@ class EvoController(EvoZoneBase, ClimateEntity):
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {"heat_demand": self._evo_device.heat_demand}
+        return {
+            "heat_demand": self._evo_device.heat_demand,
+            "heat_demands": self._evo_device.heat_demands,
+            "relay_demands": self._evo_device.relay_demands,
+        }
 
     @property
     def hvac_action(self) -> Optional[str]:

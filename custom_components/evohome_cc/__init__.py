@@ -60,6 +60,7 @@ CONFIG_SCHEMA = vol.Schema(
             {
                 # vol.Optional(CONF_GATEWAY_ID): vol.Match(r"^18:[0-9]{6}$"),
                 vol.Required(CONF_SERIAL_PORT): cv.string,
+                vol.Optional("serial_config"): dict,
                 vol.Required(CONF_CONFIG): vol.Schema(
                     {
                         vol.Optional(CONF_MAX_ZONES, default=12): vol.Any(None, int),
