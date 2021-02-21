@@ -97,8 +97,8 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Required(CONF_CONFIG): vol.Schema(
                     {
                         vol.Optional(CONF_MAX_ZONES, default=12): vol.Any(None, int),
-                        vol.Required(CONF_PACKET_LOG): cv.string,
-                        vol.Required("enforce_allowlist"): bool,
+                        vol.Optional(CONF_PACKET_LOG): cv.string,
+                        vol.Optional("enforce_allowlist"): bool,
                     }
                 ),
                 vol.Optional(CONF_SCHEMA): dict,
