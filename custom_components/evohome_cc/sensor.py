@@ -34,7 +34,7 @@ async def async_setup_platform(
 
     broker = hass.data[DOMAIN]["broker"]
 
-    new_devices = new_sensors(broker) + [broker.client.evo]
+    new_devices = new_sensors(broker)
     new_entities = []
 
     for device in [d for d in new_devices if hasattr(d, ATTR_HEAT_DEMAND)]:
