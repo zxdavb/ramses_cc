@@ -35,7 +35,6 @@ from . import DOMAIN, EvoZoneBase
 # from .const import ATTR_HEAT_DEMAND
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.INFO)  # TODO: remove for production
 
 PRESET_RESET = "Reset"  # reset all child zones to EVO_FOLLOW
 PRESET_CUSTOM = "Custom"
@@ -71,7 +70,7 @@ async def async_setup_platform(
     new_entities = []
 
     if broker.client.evo not in broker.climates:
-        _LOGGER.info("Found a Controller, id=%s", broker.client.evo)
+        _LOGGER.info("Found a Controller, id=%s", broker.client.evo.id)
         new_entities.append(EvoController(broker, broker.client.evo))
         broker.climates.append(broker.client.evo)
 

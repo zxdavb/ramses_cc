@@ -22,7 +22,6 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.INFO)  # TODO: remove for production
 
 
 async def async_setup_platform(

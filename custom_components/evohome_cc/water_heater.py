@@ -23,7 +23,6 @@ from . import DOMAIN, EvoZoneBase
 # from .const import
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.INFO)  # TODO: remove for production
 
 STATE_AUTO = "auto"
 
