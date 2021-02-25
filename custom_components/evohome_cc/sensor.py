@@ -6,7 +6,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from homeassistant.const import (
-    DEVICE_CLASS_BATTERY,
+    # DEVICE_CLASS_BATTERY,
     DEVICE_CLASS_TEMPERATURE,
     TEMP_CELSIUS,
 )
@@ -14,7 +14,7 @@ from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoDeviceBase, new_sensors
 from .const import (
-    ATTR_BATTERY_STATE,
+    # ATTR_BATTERY_STATE,
     ATTR_HEAT_DEMAND,
     ATTR_RELAY_DEMAND,
     ATTR_SETPOINT,
@@ -22,7 +22,6 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.INFO)  # TODO: remove for production
 
 
 async def async_setup_platform(

@@ -20,7 +20,6 @@ from . import DOMAIN, EvoDeviceBase, new_binary_sensors
 from .const import ATTR_ACTUATOR_STATE, ATTR_BATTERY_STATE, ATTR_WINDOW_STATE
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.INFO)  # TODO: remove for production
 
 
 async def async_setup_platform(
