@@ -135,6 +135,8 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         else:
             self._evo_device.set_override(mode="temporary_override", setpoint=setpoint, until=until)
 
+        self._refresh()
+
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
@@ -229,6 +231,8 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         else:  # HVAC_MODE_OFF, PermentOverride, temp = min
             self._evo_device.frost_protect()
 
+        self._refresh()
+
     def set_temperature(self, **kwargs) -> None:
         """Set a new target temperature."""
         setpoint = kwargs["temperature"]
@@ -239,6 +243,8 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             self._evo_device.setpoint = setpoint
         else:
             self._evo_device(mode=mode, setpoint=setpoint, until=until)
+
+        self._refresh()
 
     def set_preset_mode(self, preset_mode: Optional[str]) -> None:
         """Set the preset mode; if None, then revert to following the schedule."""
@@ -251,6 +257,8 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             self._evo_device.set_override(mode="temporary_override", setpoint=setpoint)
         elif evozone_preset_mode == EVOZONE_PERMOVER:
             self._evo_device.set_override(mode="permanent_override", setpoint=setpoint)
+
+        self._refresh()
 
 
 class EvoController(EvoZoneBase, ClimateEntity):
@@ -285,6 +293,8 @@ class EvoController(EvoZoneBase, ClimateEntity):
             until = None
 
         self._evo_device.set_mode(mode, until=until)
+
+        self._refresh()
 
     @property
     def current_temperature(self) -> Optional[float]:
@@ -396,6 +406,10 @@ class EvoController(EvoZoneBase, ClimateEntity):
         """Set an operating mode for a Controller."""
         await self._evo_device.set_mode(HA_HVAC_TO_TCS.get(hvac_mode))
 
+        self._refresh()
+
     async def async_set_preset_mode(self, preset_mode: Optional[str]) -> None:
         """Set the preset mode; if None, then revert to 'Auto' mode."""
         await self._evo_device.set_mode(HA_PRESET_TO_TCS.get(preset_mode, "auto"))
+
+        self._refresh()
