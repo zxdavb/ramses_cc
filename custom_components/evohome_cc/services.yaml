@@ -6,21 +6,21 @@ set_system_mode:
     which it will revert to Auto. Not all systems support all modes.
   fields:
     mode:
-      description: "One of: Auto, Auto_with_reset, Away, day_off, Off, or Custom."
+      description: "One of: Auto, Auto_with_reset, Away, day_off, Off, Eco or Custom."
       example: Away
     period:
       description: >-
-        A period of time in days; used only with Away, DayOff, or Custom. The system
+        A period of time in days; used only with Away, day_off, or Custom. The system
         will revert to Auto at midnight (up to 99 days, today is day 1).
       example: '{"days": 28}'
     duration:
-      description: The duration in hours; used only with AutoWithEco (up to 24 hours).
+      description: The duration in hours; used only with eco (up to 24 hours).
       example: '{"hours": 18}'
 
 reset_system:
   description: >-
     Set the system to Auto mode and reset all the zones to follow their schedules.
-    Not all Evohome systems support this feature (i.e. AutoWithReset mode).
+    Not all Evohome systems support this feature (i.e. Auto_with_reset mode).
 
 refresh_system:
   description: >-
