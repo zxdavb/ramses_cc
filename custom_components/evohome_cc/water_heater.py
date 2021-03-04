@@ -6,17 +6,22 @@
 Provides support for water_heater entities.
 """
 
+from datetime import datetime as dt, timedelta as td
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from homeassistant.components.water_heater import (
-    SUPPORT_AWAY_MODE,
+    ATTR_AWAY_MODE,
+    SUPPORT_TARGET_TEMPERATURE,
     SUPPORT_OPERATION_MODE,
+    SUPPORT_AWAY_MODE,
     WaterHeaterEntity,
 )
-from homeassistant.const import PRECISION_TENTHS, PRECISION_WHOLE, STATE_OFF, STATE_ON
+from homeassistant.const import ATTR_TEMPERATURE, PRECISION_TENTHS, PRECISION_WHOLE, STATE_OFF, STATE_ON
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 import homeassistant.util.dt as dt_util
+
+from evohome_rf.systems import StoredHw
 
 from . import DOMAIN, EvoZoneBase
 
@@ -25,11 +30,31 @@ from . import DOMAIN, EvoZoneBase
 _LOGGER = logging.getLogger(__name__)
 
 STATE_AUTO = "auto"
+STATE_UNKNOWN = None
 
-HA_STATE_TO_EVO = {STATE_AUTO: "", STATE_ON: "On", STATE_OFF: "Off"}
-EVO_STATE_TO_HA = {v: k for k, v in HA_STATE_TO_EVO.items() if k != ""}
+MODE_FOLLOW_SCHEDULE = "follow_schedule"
+MODE_PERMANENT_OVERRIDE = "permanent_override"
+MODE_TEMPORARY_OVERRIDE = "temporary_override"
 
-STATE_ATTRS_DHW = ["dhwId", "activeFaults", "stateStatus", "temperatureStatus"]
+STATE_EVO_TO_HA = {True: STATE_ON, False: STATE_OFF}
+STATE_HA_TO_EVO = {v: k for k, v in STATE_EVO_TO_HA.items()}
+
+MODE_EVO_TO_HA = {
+    MODE_FOLLOW_SCHEDULE: MODE_FOLLOW_SCHEDULE,
+    MODE_TEMPORARY_OVERRIDE: MODE_TEMPORARY_OVERRIDE,
+    MODE_PERMANENT_OVERRIDE: MODE_PERMANENT_OVERRIDE,
+}
+MODE_HA_TO_EVO = {v: k for k, v in MODE_EVO_TO_HA.items()}
+
+SUPPORTED_FEATURES = sum(
+    (
+        # SUPPORT_AWAY_MODE,
+        SUPPORT_OPERATION_MODE,
+        SUPPORT_TARGET_TEMPERATURE,
+    )
+)
+
+STATE_ATTRS_DHW = ("config", "mode", "status")
 
 
 async def async_setup_platform(
@@ -57,33 +82,83 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
 
         self._unique_id = evo_device.id
         # self._icon = "mdi:thermometer-lines"
-
-        self._supported_features = 0
+        self._operation_list = list(MODE_HA_TO_EVO)
 
     @property
-    def state(self):
-        """Return the current state."""
-        return
-        return EVO_STATE_TO_HA[self._evo_device.stateStatus["state"]]
+    def state(self) -> Optional[str]:
+        """Return the current state (On, or Off)."""
+        if self.is_away_mode_on:
+            return STATE_OFF
+        try:
+            return STATE_EVO_TO_HA[self._evo_device.mode["active"]]
+        except TypeError:
+            return
 
     @property
     def current_operation(self) -> str:
         """Return the current operating mode (Auto, On, or Off)."""
-        return
-        if self._evo_device.stateStatus["mode"] == "EVO_FOLLOW":
-            return STATE_AUTO
-        return EVO_STATE_TO_HA[self._evo_device.stateStatus["state"]]
-
-    @property
-    def operation_list(self) -> List[str]:
-        """Return the list of available operations."""
-        return
-        return list(HA_STATE_TO_EVO)
+        try:
+            return self._evo_device.mode["mode"]
+        except TypeError:
+            return
 
     @property
     def is_away_mode_on(self):
         """Return True if away mode is on."""
-        return
-        is_off = EVO_STATE_TO_HA[self._evo_device.stateStatus["state"]] == STATE_OFF
-        is_permanent = self._evo_device.stateStatus["mode"] == "EVO_PERMOVER"
-        return is_off and is_permanent
+        try:
+            return self._evo_device._evo.system_mode["system_mode"] == "away"
+        except TypeError:
+            return
+
+    @property
+    def current_temperature(self):
+        """Return the current temperature."""
+        return self._evo_device.temperature
+
+    @property
+    def max_temp(self):
+        """Return the maximum setpoint temperature."""
+        return StoredHw.MAX_SETPOINT
+
+    @property
+    def min_temp(self):
+        """Return the minimum setpoint temperature."""
+        return StoredHw.MIN_SETPOINT
+
+    @property
+    def operation_list(self) -> List[str]:
+        """Return the list of available operations."""
+        return self._operation_list
+
+    @property
+    def state_attributes(self) -> Dict:
+        """Return the optional state attributes."""
+        data = super().state_attributes
+        data[ATTR_AWAY_MODE] = STATE_ON if self.is_away_mode_on else STATE_OFF
+        data.update({k: getattr(self._evo_device, k) for k in STATE_ATTRS_DHW})
+        return data
+
+    @property
+    def supported_features(self) -> int:
+        """Return the bitmask of supported features."""
+        return SUPPORTED_FEATURES
+
+    @property
+    def target_temperature(self):
+        """Return the temperature we try to reach."""
+        return self._evo_device.setpoint
+
+    async def async_set_operation_mode(self, operation_mode):
+        """Set new target operation mode."""
+        active = until = None
+        if operation_mode != MODE_HA_TO_EVO[MODE_FOLLOW_SCHEDULE]:
+            active = STATE_HA_TO_EVO[self.state]
+        if operation_mode == MODE_HA_TO_EVO[MODE_TEMPORARY_OVERRIDE]:
+            until = dt.now() + td(hours=1)
+        self._evo_device.set_mode(
+            mode=MODE_HA_TO_EVO[operation_mode], active=active, until=until
+        )
+
+    async def async_set_temperature(self, **kwargs):
+        """Set new target temperature."""
+        self._evo_device.setpoint = kwargs[ATTR_TEMPERATURE]
