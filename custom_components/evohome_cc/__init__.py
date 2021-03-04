@@ -64,6 +64,8 @@ SVC_RESET_SYSTEM = "reset_system"
 SVC_SET_ZONE_OVERRIDE = "set_zone_override"
 SVC_RESET_ZONE_OVERRIDE = "clear_zone_override"
 
+from .const import EVO_AWAY, EVO_CUSTOM, EVO_ECO, EVO_DAYOFF, EVO_RESET, EVO_AUTO, EVO_HEATOFF
+
 RESET_ZONE_OVERRIDE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
 SET_ZONE_OVERRIDE_SCHEMA = vol.Schema(
     {
@@ -235,11 +237,11 @@ def setup_service_functions(hass: HomeAssistantType, broker):
     system_mode_schemas = []
 
     # Not all systems support "AutoWithReset": register this handler only if required
-    if [m for m in SYSTEM_MODE_LOOKUP if m == "auto_with_reset"]:
+    if [m for m in SYSTEM_MODE_LOOKUP if m == EVO_RESET]:
         hass.services.async_register(DOMAIN, SVC_RESET_SYSTEM, set_system_mode)
 
     # These modes are set for a number of hours (or indefinitely): use this schema
-    temp_modes = [m for m in SYSTEM_MODE_LOOKUP if m == "eco"]
+    temp_modes = [m for m in SYSTEM_MODE_LOOKUP if m == EVO_ECO]
     if temp_modes:  # any of: "AutoWithEco", permanent or for 0-24 hours
         schema = vol.Schema(
             {
@@ -253,8 +255,8 @@ def setup_service_functions(hass: HomeAssistantType, broker):
         system_mode_schemas.append(schema)
 
     # These modes are set for a number of days (or indefinitely): use this schema
-    temp_modes = [m for m in SYSTEM_MODE_LOOKUP if m == "away" or m == "Custom" or m == "day_off"]
-    if temp_modes:  # any of: "Away", "Custom", "DayOff", permanent or for 1-99 days
+    temp_modes = [m for m in SYSTEM_MODE_LOOKUP if m == EVO_AWAY or m == EVO_CUSTOM or m == EVO_DAYOFF]
+    if temp_modes:  # any of: EVO_AWAY, EVO_CUSTOM, EVO_DAYOFF, permanent or for 1-99 days
         schema = vol.Schema(
             {
                 vol.Required(ATTR_SYSTEM_MODE): vol.In(temp_modes),

@@ -36,6 +36,7 @@ from . import (
 )
 
 from .const import EVOZONE_FOLLOW, EVOZONE_TEMPOVER, EVOZONE_PERMOVER
+from .const import EVO_AWAY, EVO_CUSTOM, EVO_ECO, EVO_DAYOFF, EVO_RESET, EVO_AUTO, EVO_HEATOFF
 
 # from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
@@ -51,16 +52,16 @@ PRESET_RESET = "Reset"  # reset all child zones to EVO_FOLLOW
 PRESET_CUSTOM = "Custom"
 
 TCS_PRESET_TO_HA = {
-    "away": PRESET_AWAY,
-    "custom": PRESET_CUSTOM,
-    "eco": PRESET_ECO,
-    "day_off": PRESET_HOME,
-    "auto_with_reset": PRESET_RESET,
-    "auto": None,
+    EVO_AWAY: PRESET_AWAY,
+    EVO_CUSTOM: PRESET_CUSTOM,
+    EVO_ECO: PRESET_ECO,
+    EVO_DAYOFF: PRESET_HOME,
+    EVO_RESET: PRESET_RESET,
+    EVO_AUTO: None,
 }
 
 HA_PRESET_TO_TCS = {v: k for k, v in TCS_PRESET_TO_HA.items()}
-HA_HVAC_TO_TCS = {HVAC_MODE_OFF: "heat_off", HVAC_MODE_HEAT: "auto"}
+HA_HVAC_TO_TCS = {HVAC_MODE_OFF: EVO_HEATOFF, HVAC_MODE_HEAT: "auto"}
 
 EVOZONE_PRESET_TO_HA = {
     EVOZONE_FOLLOW: PRESET_NONE,
@@ -154,7 +155,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             return CURRENT_HVAC_HEAT
         if self._evo_device._evo.system_mode is None:
             return
-        if self._evo_device._evo.system_mode["system_mode"] == "heat_off":
+        if self._evo_device._evo.system_mode["system_mode"] == EVO_HEATOFF:
             return CURRENT_HVAC_OFF
         if self._evo_device._evo.system_mode is not None:
             return CURRENT_HVAC_IDLE
@@ -166,9 +167,9 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
         if self._evo_device._evo.system_mode is None:
             return
-        if self._evo_device._evo.system_mode["system_mode"] == "heat_off":
+        if self._evo_device._evo.system_mode["system_mode"] == EVO_HEATOFF:
             return HVAC_MODE_OFF
-        if self._evo_device._evo.system_mode["system_mode"] == "away":
+        if self._evo_device._evo.system_mode["system_mode"] == EVO_AWAY:
             return HVAC_MODE_AUTO
 
         if self._evo_device.mode is None:
@@ -203,7 +204,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if self._evo_device._evo.system_mode is None or self._evo_device.mode is None:
             return
 
-        if self._evo_device._evo.system_mode["system_mode"] in ["away", "heat_off"]:
+        if self._evo_device._evo.system_mode["system_mode"] in [EVO_AWAY, EVO_HEATOFF]:
             return TCS_PRESET_TO_HA.get(
                 self._evo_device._evo.system_mode["system_mode"]
             )
@@ -279,7 +280,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
         if service == SVC_SET_SYSTEM_MODE:
             mode = data[ATTR_SYSTEM_MODE]
         else:  # otherwise it is SVC_RESET_SYSTEM
-            mode = HA_PRESET_TO_TCS.get(preset_mode, "auto")
+            mode = HA_PRESET_TO_TCS.get(preset_mode, EVO_AUTO)
 
         if ATTR_DURATION_DAYS in data:
             until = dt_util.start_of_local_day()
@@ -323,7 +324,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
         if self._evo_device.system_mode is None:
             return
-        if self._evo_device.system_mode["system_mode"] == "heat_off":
+        if self._evo_device.system_mode["system_mode"] == EVO_HEATOFF:
             return CURRENT_HVAC_OFF
         if self._evo_device.heat_demand:  # TODO: is maybe because of DHW
             return CURRENT_HVAC_HEAT
@@ -336,9 +337,9 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
         if self._evo_device.system_mode is None:
             return
-        if self._evo_device.system_mode["system_mode"] == "heat_off":
+        if self._evo_device.system_mode["system_mode"] == EVO_HEATOFF:
             return HVAC_MODE_OFF
-        if self._evo_device.system_mode["system_mode"] == "away":
+        if self._evo_device.system_mode["system_mode"] == EVO_AWAY:
             return HVAC_MODE_AUTO  # users can't adjust setpoints in away mode
         return HVAC_MODE_HEAT
 
@@ -370,7 +371,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
             return
 
         return {
-            "away": PRESET_AWAY,
+            EVO_AWAY: PRESET_AWAY,
             "custom": "custom",
             "day_off": PRESET_HOME,
             "day_off_eco": PRESET_HOME,

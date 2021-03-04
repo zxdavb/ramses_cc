@@ -28,3 +28,11 @@ SENSOR_ATTRS = (ATTR_HEAT_DEMAND, ATTR_RELAY_DEMAND, ATTR_TEMPERATURE)
 EVOZONE_FOLLOW = "follow_schedule"
 EVOZONE_TEMPOVER = "temporary_override"
 EVOZONE_PERMOVER = "permanent_override"
+
+EVO_RESET = "auto_with_reset"
+EVO_AUTO = "auto"
+EVO_ECO = "eco"
+EVO_AWAY = "away"
+EVO_DAYOFF = "day_off"
+EVO_CUSTOM = "custom"
+EVO_HEATOFF = "heat_off"
