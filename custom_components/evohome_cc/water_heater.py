@@ -30,6 +30,7 @@ from . import DOMAIN, EvoZoneBase
 _LOGGER = logging.getLogger(__name__)
 
 STATE_AUTO = "auto"
+STATE_BOOST = "boost"
 STATE_UNKNOWN = None
 
 MODE_FOLLOW_SCHEDULE = "follow_schedule"
@@ -40,11 +41,17 @@ STATE_EVO_TO_HA = {True: STATE_ON, False: STATE_OFF}
 STATE_HA_TO_EVO = {v: k for k, v in STATE_EVO_TO_HA.items()}
 
 MODE_EVO_TO_HA = {
-    MODE_FOLLOW_SCHEDULE: MODE_FOLLOW_SCHEDULE,
+    MODE_FOLLOW_SCHEDULE: STATE_AUTO,
     MODE_TEMPORARY_OVERRIDE: MODE_TEMPORARY_OVERRIDE,
     MODE_PERMANENT_OVERRIDE: MODE_PERMANENT_OVERRIDE,
 }
-MODE_HA_TO_EVO = {v: k for k, v in MODE_EVO_TO_HA.items()}
+# MODE_HA_TO_EVO = {v: k for k, v in MODE_EVO_TO_HA.items()}
+MODE_HA_TO_EVO = {
+    STATE_AUTO: MODE_FOLLOW_SCHEDULE,
+    STATE_BOOST: MODE_TEMPORARY_OVERRIDE,
+    STATE_OFF: MODE_PERMANENT_OVERRIDE,
+    STATE_ON: MODE_PERMANENT_OVERRIDE,
+}
 
 SUPPORTED_FEATURES = sum(
     (
@@ -98,9 +105,15 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     def current_operation(self) -> str:
         """Return the current operating mode (Auto, On, or Off)."""
         try:
-            return self._evo_device.mode["mode"]
+            mode = self._evo_device.mode["mode"]
         except TypeError:
             return
+        if mode == MODE_FOLLOW_SCHEDULE:
+            return STATE_AUTO
+        elif mode == MODE_PERMANENT_OVERRIDE:
+            return STATE_ON if self._evo_device.mode["active"] else STATE_OFF
+        else:
+            return STATE_BOOST if self._evo_device.mode["active"] else STATE_OFF
 
     @property
     def is_away_mode_on(self):
@@ -150,11 +163,15 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
 
     async def async_set_operation_mode(self, operation_mode):
         """Set new target operation mode."""
-        active = until = None
-        if operation_mode != MODE_HA_TO_EVO[MODE_FOLLOW_SCHEDULE]:
-            active = STATE_HA_TO_EVO[self.state]
-        if operation_mode == MODE_HA_TO_EVO[MODE_TEMPORARY_OVERRIDE]:
+        active = until = None  # for STATE_AUTO
+        if operation_mode == STATE_BOOST:
+            active = True
             until = dt.now() + td(hours=1)
+        elif operation_mode == STATE_OFF:
+            active = False
+        elif operation_mode == STATE_ON:
+            active = True
+
         self._evo_device.set_mode(
             mode=MODE_HA_TO_EVO[operation_mode], active=active, until=until
         )
