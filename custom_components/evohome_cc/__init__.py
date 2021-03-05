@@ -31,13 +31,13 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from .const import (
-    __version__,
     DOMAIN,
     STORAGE_KEY,
     STORAGE_VERSION,
     BINARY_SENSOR_ATTRS,
     SENSOR_ATTRS,
 )
+from .version import __version__ as VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -111,17 +111,17 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         app_storage = await store.async_load()
         return dict(app_storage if app_storage else {})
 
-    if __version__ == evohome_rf.__version__:
+    if VERSION == evohome_rf.VERSION:
         _LOGGER.warning(
             "evohome_cc v%s, using evohome_rf v%s - versions match (this is good)",
-            __version__,
-            evohome_rf.__version__,
+            VERSION,
+            evohome_rf.VERSION,
         )
     else:
         _LOGGER.error(
             "evohome_cc v%s, using evohome_rf v%s - versions don't match (this is bad)",
-            __version__,
-            evohome_rf.__version__,
+            VERSION,
+            evohome_rf.VERSION,
         )
 
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)

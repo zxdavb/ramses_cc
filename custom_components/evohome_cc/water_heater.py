@@ -17,7 +17,9 @@ from homeassistant.components.water_heater import (
     SUPPORT_AWAY_MODE,
     WaterHeaterEntity,
 )
-from homeassistant.const import ATTR_TEMPERATURE, PRECISION_TENTHS, PRECISION_WHOLE, STATE_OFF, STATE_ON
+from homeassistant.const import (
+    ATTR_TEMPERATURE, PRECISION_TENTHS, PRECISION_WHOLE, STATE_OFF, STATE_ON
+)
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 import homeassistant.util.dt as dt_util
 
@@ -63,6 +65,11 @@ SUPPORTED_FEATURES = sum(
 
 STATE_ATTRS_DHW = ("config", "mode", "status")
 
+ACTIVE = "active"
+MODE = "mode"
+SYSTEM_MODE = "system_mode"
+EVO_SYS_MODE_AWAY = "away"
+
 
 async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
@@ -97,7 +104,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
         if self.is_away_mode_on:
             return STATE_OFF
         try:
-            return STATE_EVO_TO_HA[self._evo_device.mode["active"]]
+            return STATE_EVO_TO_HA[self._evo_device.mode[ACTIVE]]
         except TypeError:
             return
 
@@ -105,21 +112,21 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     def current_operation(self) -> str:
         """Return the current operating mode (Auto, On, or Off)."""
         try:
-            mode = self._evo_device.mode["mode"]
+            mode = self._evo_device.mode[MODE]
         except TypeError:
             return
         if mode == MODE_FOLLOW_SCHEDULE:
             return STATE_AUTO
         elif mode == MODE_PERMANENT_OVERRIDE:
-            return STATE_ON if self._evo_device.mode["active"] else STATE_OFF
-        else:
-            return STATE_BOOST if self._evo_device.mode["active"] else STATE_OFF
+            return STATE_ON if self._evo_device.mode[ACTIVE] else STATE_OFF
+        else:  # there are a number of temporary modes
+            return STATE_BOOST if self._evo_device.mode[ACTIVE] else STATE_OFF
 
     @property
     def is_away_mode_on(self):
         """Return True if away mode is on."""
         try:
-            return self._evo_device._evo.system_mode["system_mode"] == "away"
+            return self._evo_device._evo.system_mode[SYSTEM_MODE] == EVO_SYS_MODE_AWAY
         except TypeError:
             return
 
