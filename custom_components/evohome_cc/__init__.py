@@ -40,13 +40,13 @@ from homeassistant.helpers.dispatcher import (
 )
 
 from .const import (
-    __version__,
     DOMAIN,
     STORAGE_KEY,
     STORAGE_VERSION,
     BINARY_SENSOR_ATTRS,
     SENSOR_ATTRS,
 )
+from .version import __version__ as VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -143,21 +143,28 @@ def new_sensors(broker) -> list:
 async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     """xxx."""
 
+    async def handle_exceptions(awaitable):
+        try:
+            return await awaitable
+        except serial.SerialException as exc:
+            _LOGGER.error("Unable to open the serial port. Message is: %s", exc)
+            raise exc
+
     async def load_system_config(store) -> Optional[Dict]:
         app_storage = await store.async_load()
         return dict(app_storage if app_storage else {})
 
-    if __version__ == evohome_rf.__version__:
+    if VERSION == evohome_rf.VERSION:
         _LOGGER.warning(
             "evohome_cc v%s, using evohome_rf v%s - versions match (this is good)",
-            __version__,
-            evohome_rf.__version__,
+            VERSION,
+            evohome_rf.VERSION,
         )
     else:
         _LOGGER.error(
             "evohome_cc v%s, using evohome_rf v%s - versions don't match (this is bad)",
-            __version__,
-            evohome_rf.__version__,
+            VERSION,
+            evohome_rf.VERSION,
         )
 
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
@@ -173,11 +180,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         kwargs["config"].pop("log_rotate_backups", 7)
     )
 
-    try:  # TODO: test invalid serial_port="AA"
-        client = evohome_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
-    except serial.SerialException as exc:
-        _LOGGER.exception("Unable to open serial port. Message is: %s", exc)
-        return False
+    client = evohome_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
 
     hass.data[DOMAIN] = {}
     hass.data[DOMAIN][BROKER] = broker = EvoBroker(
@@ -186,8 +189,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
 
     broker.hass_config = hass_config
 
-    # #roker.loop_task = hass.async_create_task(client.start())
-    broker.loop_task = hass.loop.create_task(client.start())
+    broker.loop_task = hass.loop.create_task(handle_exceptions(client.start()))
 
     hass.helpers.event.async_track_time_interval(
         broker.update, hass_config[DOMAIN][CONF_SCAN_INTERVAL]

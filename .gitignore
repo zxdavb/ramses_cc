@@ -10,6 +10,7 @@ blueprints/
 home-assistant_v2.db
 
 
+*.log.*
 secrets*
 secrets*.*
 
