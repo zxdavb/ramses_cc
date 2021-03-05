@@ -23,6 +23,10 @@ from evohome_rf.const import (
     SYSTEM_MODE_LOOKUP 
 )
 
+from homeassistant.components.climate import DOMAIN as CLIMATE
+from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR
+from homeassistant.components.sensor import DOMAIN as SENSOR
+from homeassistant.components.water_heater import DOMAIN as WATER_HEATER
 from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS, ATTR_ENTITY_ID
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
@@ -46,8 +50,9 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-BROKER = "broker"
+PLATFORMS = [BINARY_SENSOR, CLIMATE, SENSOR, WATER_HEATER]
 
+BROKER = "broker"
 SCAN_INTERVAL_DEFAULT = timedelta(seconds=300)
 SCAN_INTERVAL_MINIMUM = timedelta(seconds=10)
 
@@ -120,7 +125,7 @@ CONFIG_SCHEMA = vol.Schema(
 def new_binary_sensors(broker) -> list:
     sensors = [
         s
-        for s in broker.client.evo.devices + [broker.client.evo]
+        for s in broker.client.devices + [broker.client.evo]
         if any([hasattr(s, a) for a in BINARY_SENSOR_ATTRS])
     ]
     return [s for s in sensors if s not in broker.binary_sensors]
@@ -129,7 +134,7 @@ def new_binary_sensors(broker) -> list:
 def new_sensors(broker) -> list:
     sensors = [
         s
-        for s in broker.client.evo.devices + [broker.client.evo]
+        for s in broker.client.devices + [broker.client.evo]
         if any([hasattr(s, a) for a in SENSOR_ATTRS])
     ]
     return [s for s in sensors if s not in broker.sensors]
@@ -328,6 +333,9 @@ class EvoBroker:
 
         evohome = self.client.evo
         _LOGGER.info("Schema = %s", evohome.schema if evohome is not None else None)
+        _LOGGER.info(
+            "Devices = %s", {d.id: d.status for d in sorted(self.client.devices)}
+        )
         if evohome is None:
             return
 
@@ -355,8 +363,10 @@ class EvoBroker:
                 )
             )
 
-        _LOGGER.info("Params = %s", evohome.params)
-        _LOGGER.info("Status = %s", evohome.status)
+        _LOGGER.info("Params = %s", evohome.params if evohome is not None else None)
+        _LOGGER.info(
+            "Status = %s", {k: v for k, v in evohome.status.items() if k != "devices"}
+        )
 
         # inform the evohome devices that state data has been updated
         self.hass.helpers.dispatcher.async_dispatcher_send(DOMAIN)
