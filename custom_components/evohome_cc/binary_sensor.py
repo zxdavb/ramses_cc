@@ -111,11 +111,11 @@ class EvoWindow(EvoBinarySensorBase):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return self._evo_device.window_state is not None
+        return self._evo_device.window_open is not None
 
     @property
     def is_on(self) -> bool:
         """Return the status of the window."""
-        if self._evo_device.window_state is None:
+        if self._evo_device.window_open is None:
             return False  # assume window closed (state sent 1/day if no changea)
-        return self._evo_device.window_state
+        return self._evo_device.window_open
