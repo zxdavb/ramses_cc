@@ -187,10 +187,10 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             self._evo_device.reset_mode()
 
         elif hvac_mode == HVAC_MODE_HEAT:  # TemporaryOverride
-            self._evo_device.set_override(mode="permanent_override", setpoint=25)
+            self._evo_device.set_mode(mode="permanent_override", setpoint=25)
 
         else:  # HVAC_MODE_OFF, PermentOverride, temp = min
-            self._evo_device.frost_protect()
+            self._evo_device.set_frost_mode()
 
     def set_temperature(self, **kwargs) -> None:
         """Set a new target temperature."""
@@ -211,9 +211,9 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if evozone_preset_mode == EVOZONE_FOLLOW:
             self._evo_device.reset_mode()
         elif evozone_preset_mode == EVOZONE_TEMPOVER:
-            self._evo_device.set_override(mode="temporary_override", setpoint=setpoint)
+            self._evo_device.set_mode(mode="temporary_override", setpoint=setpoint)
         elif evozone_preset_mode == EVOZONE_PERMOVER:
-            self._evo_device.set_override(mode="permanent_override", setpoint=setpoint)
+            self._evo_device.set_mode(mode="permanent_override", setpoint=setpoint)
 
 
 class EvoController(EvoZoneBase, ClimateEntity):
