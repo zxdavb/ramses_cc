@@ -223,13 +223,13 @@ class EvoZone(EvoZoneBase, ClimateEntity):
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set a Zone to one of its native operating modes."""
         if hvac_mode == HVAC_MODE_AUTO:  # FollowSchedule
-            self._evo_device.cancel_override()
+            self._evo_device.reset_mode()
 
         elif hvac_mode == HVAC_MODE_HEAT:  # TemporaryOverride
-            self._evo_device.set_override(mode="permanent_override", setpoint=25)
+            self._evo_device.set_mode(mode="permanent_override", setpoint=25)
 
         else:  # HVAC_MODE_OFF, PermentOverride, temp = min
-            self._evo_device.frost_protect()
+            self._evo_device.set_frost_mode()
 
         self._refresh()
 
@@ -252,11 +252,11 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         setpoint = self._evo_device.setpoint
 
         if evozone_preset_mode == EVOZONE_FOLLOW:
-            self._evo_device.cancel_override()
+            self._evo_device.reset_mode()
         elif evozone_preset_mode == EVOZONE_TEMPOVER:
-            self._evo_device.set_override(mode="temporary_override", setpoint=setpoint)
+            self._evo_device.set_mode(mode="temporary_override", setpoint=setpoint)
         elif evozone_preset_mode == EVOZONE_PERMOVER:
-            self._evo_device.set_override(mode="permanent_override", setpoint=setpoint)
+            self._evo_device.set_mode(mode="permanent_override", setpoint=setpoint)
 
         self._refresh()
 
