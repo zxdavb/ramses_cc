@@ -114,7 +114,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         """Process a service request (setpoint override) for a zone."""
         
         if service == SVC_RESET_ZONE_OVERRIDE:
-            self._evo_device.cancel_override()
+            self._evo_device.reset_mode()
             return
 
         # otherwise it is SVC_SET_ZONE_OVERRIDE
@@ -129,11 +129,11 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
         until = dt_util.as_utc(until) if until else None
         if until is None:
-            self._evo_device.set_override(mode="permanent_override", setpoint=setpoint)
+            self._evo_device.set_mode(mode="permanent_override", setpoint=setpoint)
         elif duration.total_seconds() == 0:
-            self._evo_device.set_override(mode="temporary_override", setpoint=setpoint)
+            self._evo_device.set_mode(mode="temporary_override", setpoint=setpoint)
         else:
-            self._evo_device.set_override(mode="temporary_override", setpoint=setpoint, until=until)
+            self._evo_device.set_mode(mode="temporary_override", setpoint=setpoint, until=until)
 
         self._refresh()
 
