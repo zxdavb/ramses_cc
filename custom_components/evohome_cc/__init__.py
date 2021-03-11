@@ -282,19 +282,26 @@ class EvoEntity(Entity):
         """Run when entity about to be added to hass."""
         self.hass.helpers.dispatcher.async_dispatcher_connect(DOMAIN, self._refresh)
 
-
 class EvoDeviceBase(EvoEntity):
     """Base for any evohome II-compatible entity (e.g. Climate, Sensor)."""
+    DEVICE_CLASS = None
+    STATE_ATTR = "enabled"
+
+    def __init__(self, evo_broker, evo_device) -> None:
+        """Initialize the sensor."""
+        super().__init__(evo_broker, evo_device)
+
+        self._name = f"{evo_device.id} {self.device_class}"
 
     @property
     def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._evo_device._is_present
+        """Return True if the entity is available."""
+        return getattr(self._evo_device, self.STATE_ATTR) is not None
 
     @property
     def device_class(self) -> str:
         """Return the device class of the sensor."""
-        return self._device_class
+        return self.DEVICE_CLASS
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
@@ -308,6 +315,11 @@ class EvoDeviceBase(EvoEntity):
 
 class EvoZoneBase(EvoEntity):
     """Base for any evohome RF-compatible entity (e.g. Climate, Sensor)."""
+
+    def __init__(self, evo_broker, evo_device) -> None:
+        """Initialize the sensor."""
+        super().__init__(evo_broker, evo_device)
+        self._supported_features = None
 
     @property
     def current_temperature(self) -> Optional[float]:

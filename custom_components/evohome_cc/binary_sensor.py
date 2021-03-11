@@ -30,27 +30,12 @@ async def async_setup_platform(
         return
 
     broker = hass.data[DOMAIN]["broker"]
-
     new_devices = new_binary_sensors(broker)
     new_entities = []
 
-    for device in [d for d in new_devices if hasattr(d, ATTR_ACTUATOR_STATE)]:
-        _LOGGER.info(
-            "Found a Binary Sensor (actuator), id=%s, zone=%s", device.id, device.zone
-        )
-        new_entities.append(EvoActuator(broker, device, "actuator"))
-
-    for device in [d for d in new_devices if hasattr(d, ATTR_BATTERY_STATE)]:
-        _LOGGER.info(
-            "Found a Binary Sensor (battery), id=%s, zone=%s", device.id, device.zone
-        )
-        new_entities.append(EvoBattery(broker, device, DEVICE_CLASS_BATTERY))
-
-    for device in [d for d in new_devices if hasattr(d, ATTR_WINDOW_STATE)]:
-        _LOGGER.info(
-            "Found a Binary Sensor (window), id=%s, zone=%s", device.id, device.zone
-        )
-        new_entities.append(EvoWindow(broker, device, DEVICE_CLASS_WINDOW))
+    for klass in (EvoActuator, EvoBattery, EvoWindow):
+        for device in [d for d in new_devices if hasattr(d, klass.STATE_ATTR)]:
+            new_entities.append(klass(broker, device))
 
     if new_entities:
         broker.binary_sensors += new_devices
@@ -60,41 +45,34 @@ async def async_setup_platform(
 class EvoBinarySensorBase(EvoDeviceBase, BinarySensorEntity):
     """Representation of a generic binary sensor."""
 
-    def __init__(self, evo_broker, evo_device, device_class) -> None:
-        """Initialize the sensor."""
+    def __init__(self, evo_broker, evo_device) -> None:
+        """Initialize the binary sensor."""
+        _LOGGER.info("Found a Binary Sensor (%s), id=%s", self.STATE_ATTR, evo_device.id)
+
         super().__init__(evo_broker, evo_device)
 
-        self._unique_id = f"{evo_device.id}-{device_class}_state"
-        self._device_class = device_class
-        self._name = f"{evo_device.id} {device_class}"
-
-
-class EvoActuator(EvoBinarySensorBase):
-    """Representation of an actuator."""
+        self._unique_id = f"{evo_device.id}-{self.STATE_ATTR}_state"
 
     @property
     def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._evo_device.enabled is not None
+        """Return True if the binary sensor is available."""
+        return getattr(self._evo_device, self.STATE_ATTR) is not None
 
     @property
     def is_on(self) -> bool:
-        """Return the status of the window."""
-        return self._evo_device.enabled
+        """Return the state of the binary sensor."""
+        return getattr(self._evo_device, self.STATE_ATTR)
+
+class EvoActuator(EvoBinarySensorBase):
+    """Representation of an actuator sensor."""
+    DEVICE_CLASS = "actuator"
+    STATE_ATTR = "enabled"  # on means active
 
 
 class EvoBattery(EvoBinarySensorBase):
     """Representation of a low battery sensor."""
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._evo_device.battery_low is not None
-
-    @property
-    def is_on(self) -> bool:
-        """Return the status of the battery: on means low."""
-        return self._evo_device.battery_low
+    DEVICE_CLASS = DEVICE_CLASS_BATTERY
+    STATE_ATTR = "battery_low"  #  on means low
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
@@ -107,15 +85,5 @@ class EvoBattery(EvoBinarySensorBase):
 
 class EvoWindow(EvoBinarySensorBase):
     """Representation of an open window sensor."""
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._evo_device.window_open is not None
-
-    @property
-    def is_on(self) -> bool:
-        """Return the status of the window."""
-        if self._evo_device.window_open is None:
-            return False  # assume window closed (state sent 1/day if no changea)
-        return self._evo_device.window_open
+    DEVICE_CLASS = DEVICE_CLASS_WINDOW
+    STATE_ATTR = "window_open"  #  on means open
