@@ -140,7 +140,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     kwargs["allowlist"] = dict.fromkeys(kwargs.pop(CONF_ALLOW_LIST, []), {})
     kwargs["blocklist"] = dict.fromkeys(kwargs.pop(CONF_BLOCK_LIST, []), {})
     kwargs["config"]["log_rotate_backups"] = (
-        kwargs["config"].pop("log_rotate_backups", 7),
+        kwargs["config"].pop("log_rotate_backups", 7)
     )
 
     client = evohome_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
