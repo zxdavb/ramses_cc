@@ -7,5 +7,6 @@
     ],
     "dependencies": [],
     "issue_tracker": "https://github.com/zxdavb/evohome_cc/issues",
-    "codeowners": ["@zxdavb"]
+    "codeowners": ["@zxdavb"],
+    "version": "0.0.1"
   }

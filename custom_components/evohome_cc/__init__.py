@@ -31,6 +31,7 @@ from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from .const import (
     BINARY_SENSOR_ATTRS,
+    BROKER,
     DOMAIN,
     SENSOR_ATTRS,
     STORAGE_KEY,
@@ -42,7 +43,6 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [BINARY_SENSOR, CLIMATE, SENSOR, WATER_HEATER]
 
-BROKER = "broker"
 SCAN_INTERVAL_DEFAULT = timedelta(seconds=300)
 SCAN_INTERVAL_MINIMUM = timedelta(seconds=10)
 
@@ -140,7 +140,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     kwargs["allowlist"] = dict.fromkeys(kwargs.pop(CONF_ALLOW_LIST, []), {})
     kwargs["blocklist"] = dict.fromkeys(kwargs.pop(CONF_BLOCK_LIST, []), {})
     kwargs["config"]["log_rotate_backups"] = (
-        kwargs["config"].pop("log_rotate_backups", 7)
+        kwargs["config"].pop("log_rotate_backups", 7),
     )
 
     client = evohome_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
@@ -263,11 +263,6 @@ class EvoEntity(Entity):
         return self._unique_id
 
     @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return self._name
-
-    @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         # result = {}
@@ -282,16 +277,19 @@ class EvoEntity(Entity):
         """Run when entity about to be added to hass."""
         self.hass.helpers.dispatcher.async_dispatcher_connect(DOMAIN, self._refresh)
 
+
 class EvoDeviceBase(EvoEntity):
     """Base for any evohome II-compatible entity (e.g. Climate, Sensor)."""
+
     DEVICE_CLASS = None
     STATE_ATTR = "enabled"
 
-    def __init__(self, evo_broker, evo_device) -> None:
+    def __init__(self, broker, device) -> None:
         """Initialize the sensor."""
-        super().__init__(evo_broker, evo_device)
+        super().__init__(broker, device)
 
-        self._name = f"{evo_device.id} {self.device_class}"
+        klass = self.DEVICE_CLASS if self.DEVICE_CLASS else self.STATE_ATTR
+        self._name = f"{device.id} ({klass})"
 
     @property
     def available(self) -> bool:
@@ -308,9 +306,14 @@ class EvoDeviceBase(EvoEntity):
         """Return the integration-specific state attributes."""
         return {
             **super().device_state_attributes,
-            # "domain_id": self._evo_device. self._domain_id,
+            # "domain_id": self._evo_device.self._domain_id,
             # "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
         }
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return self._name
 
 
 class EvoZoneBase(EvoEntity):

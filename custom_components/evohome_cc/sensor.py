@@ -5,14 +5,22 @@ Provides support for sensors.
 import logging
 from typing import Any, Dict, Optional
 
-from homeassistant.const import (  # DEVICE_CLASS_BATTERY,
+from homeassistant.const import (  # DEVICE_CLASS_BATTERY,; DEVICE_CLASS_PROBLEM,
     DEVICE_CLASS_TEMPERATURE,
     TEMP_CELSIUS,
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoDeviceBase, new_sensors
-from .const import ATTR_SETPOINT
+from .const import (
+    ATTR_FAULT_LOG,
+    ATTR_HEAT_DEMAND,
+    ATTR_RELAY_DEMAND,
+    ATTR_SETPOINT,
+    ATTR_TEMPERATURE,
+    BROKER,
+    PERCENTAGE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,66 +32,69 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
-    broker = hass.data[DOMAIN]["broker"]
+    broker = hass.data[DOMAIN][BROKER]
     new_devices = new_sensors(broker)
-    new_entities = []
+    broker.sensors += new_devices
 
-    for klass in (EvoHeatDemand, EvoRelayDemand, EvoTemperature, EvoFaultLog):
-        for device in [d for d in new_devices if hasattr(d, klass.STATE_ATTR)]:
-            new_entities.append(klass(broker, device))
-
+    new_entities = [
+        klass(broker, device)
+        for klass in (EvoHeatDemand, EvoRelayDemand, EvoTemperature, EvoFaultLog)
+        for device in new_devices
+        if hasattr(device, klass.STATE_ATTR)
+    ]
     if new_entities:
-        broker.sensors += new_devices
         async_add_entities(new_entities, update_before_add=True)
 
 
 class EvoSensorBase(EvoDeviceBase):
     """Representation of a generic sensor."""
 
-    def __init__(self, evo_broker, evo_device) -> None:
+    DEVICE_UNITS = PERCENTAGE
+
+    def __init__(self, broker, device) -> None:
         """Initialize the sensor."""
-        _LOGGER.info("Found a Sensor (%s), id=%s", self.STATE_ATTR, evo_device.id)
+        _LOGGER.info("Found a Sensor (%s), id=%s", self.STATE_ATTR, device.id)
+        super().__init__(broker, device)
 
-        super().__init__(evo_broker, evo_device)
-
-        self._unique_id = f"{evo_device.id}-{self.STATE_ATTR}"
-        self._unit_of_measurement = DEVICE_UNITS_BY_CLASS.get(self.__class__, "%")
+        self._unique_id = f"{device.id}-{self.STATE_ATTR}"
 
     @property
     def available(self) -> bool:
-        """Return True if the binary sensor is available."""
+        """Return True if the sensor is available."""
         return getattr(self._evo_device, self.STATE_ATTR) is not None
 
     @property
     def state(self) -> Optional[int]:
-        """Return the heat demand of the actuator."""
-        return int(getattr(self._evo_device, self.STATE_ATTR) * 100)
+        """Return the state of the sensor."""
+        state = getattr(self._evo_device, self.STATE_ATTR)
+        if self.unit_of_measurement == PERCENTAGE:
+            return int(state * 100) if state is not None else None
+        return state
 
     @property
     def unit_of_measurement(self) -> str:
         """Return the unit of measurement of the sensor."""
-        return self._unit_of_measurement
+        return self.DEVICE_UNITS
 
 
 class EvoHeatDemand(EvoSensorBase):
     """Representation of a heat demand sensor."""
-    STATE_ATTR = "heat_demand"
+
+    STATE_ATTR = ATTR_HEAT_DEMAND
 
 
 class EvoRelayDemand(EvoSensorBase):
     """Representation of a relay demand sensor."""
-    STATE_ATTR = "relay_demand"
+
+    STATE_ATTR = ATTR_RELAY_DEMAND
 
 
 class EvoTemperature(EvoSensorBase):
     """Representation of a temperature sensor (incl. DHW sensor)."""
-    DEVICE_CLASS = DEVICE_CLASS_TEMPERATURE
-    STATE_ATTR = "temperature"
 
-    @property
-    def state(self) -> Optional[str]:
-        """Return the temperature of the sensor."""
-        return self._evo_device.temperature
+    DEVICE_CLASS = DEVICE_CLASS_TEMPERATURE
+    DEVICE_UNITS = TEMP_CELSIUS
+    STATE_ATTR = ATTR_TEMPERATURE
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
@@ -98,11 +109,14 @@ class EvoTemperature(EvoSensorBase):
 
 class EvoFaultLog(EvoDeviceBase):
     """Representation of a system's fault log."""
-    STATE_ATTR = "fault_log"
 
-    def __init__(self, evo_broker, evo_device) -> None:
+    # DEVICE_CLASS = DEVICE_CLASS_PROBLEM
+    DEVICE_UNITS = "entries"
+    STATE_ATTR = ATTR_FAULT_LOG
+
+    def __init__(self, broker, device) -> None:
         """Initialize the sensor."""
-        super().__init__(evo_broker, evo_device)
+        super().__init__(broker, device)
 
         self._fault_log = None
 
@@ -123,14 +137,4 @@ class EvoFaultLog(EvoDeviceBase):
 
     async def async_update(self) -> None:
         """Process the sensor's state data."""
-        self._fault_log = self._evo_device.fault_log()  # TODO: needs sorting
-
-
-DEVICE_UNITS_BY_CLASS = {
-    EvoSensorBase.STATE_ATTR: None,
-    EvoHeatDemand.STATE_ATTR: "%",
-    EvoRelayDemand.STATE_ATTR: "%",
-    EvoTemperature.STATE_ATTR: TEMP_CELSIUS,
-    EvoFaultLog.STATE_ATTR: "entries",
-}
-
+        self._fault_log = self._evo_device.fault_log()  # TODO: needs sorting out

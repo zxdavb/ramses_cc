@@ -28,7 +28,7 @@ from homeassistant.components.climate.const import (  # PRESET_BOOST,
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
-from .const import EVOZONE_FOLLOW, EVOZONE_PERMOVER, EVOZONE_TEMPOVER
+from .const import BROKER, EVOZONE_FOLLOW, EVOZONE_PERMOVER, EVOZONE_TEMPOVER
 
 # from .const import ATTR_HEAT_DEMAND
 
@@ -64,7 +64,7 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
-    broker = hass.data[DOMAIN]["broker"]
+    broker = hass.data[DOMAIN][BROKER]
     new_entities = []
 
     if broker.client.evo not in broker.climates:

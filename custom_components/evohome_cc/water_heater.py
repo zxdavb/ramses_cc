@@ -30,8 +30,7 @@ from homeassistant.const import (
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
-
-# from .const import
+from .const import BROKER
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,7 +81,7 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
-    broker = hass.data[DOMAIN]["broker"]
+    broker = hass.data[DOMAIN][BROKER]
 
     dhw = broker.water_heater = broker.client.evo.dhw
 
