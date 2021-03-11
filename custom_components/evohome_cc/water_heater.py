@@ -30,7 +30,7 @@ from homeassistant.const import (
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
-from .const import BROKER
+from .const import BROKER, ZONE_MODE_FOLLOW, ZONE_MODE_PERM, ZONE_MODE_TEMP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,24 +38,21 @@ STATE_AUTO = "auto"
 STATE_BOOST = "boost"
 STATE_UNKNOWN = None
 
-MODE_FOLLOW_SCHEDULE = "follow_schedule"
-MODE_PERMANENT_OVERRIDE = "permanent_override"
-MODE_TEMPORARY_OVERRIDE = "temporary_override"
 
 STATE_EVO_TO_HA = {True: STATE_ON, False: STATE_OFF}
 STATE_HA_TO_EVO = {v: k for k, v in STATE_EVO_TO_HA.items()}
 
 MODE_EVO_TO_HA = {
-    MODE_FOLLOW_SCHEDULE: STATE_AUTO,
-    MODE_TEMPORARY_OVERRIDE: MODE_TEMPORARY_OVERRIDE,
-    MODE_PERMANENT_OVERRIDE: MODE_PERMANENT_OVERRIDE,
+    ZONE_MODE_FOLLOW: STATE_AUTO,
+    ZONE_MODE_TEMP: ZONE_MODE_TEMP,
+    ZONE_MODE_PERM: ZONE_MODE_PERM,
 }
 # MODE_HA_TO_EVO = {v: k for k, v in MODE_EVO_TO_HA.items()}
 MODE_HA_TO_EVO = {
-    STATE_AUTO: MODE_FOLLOW_SCHEDULE,
-    STATE_BOOST: MODE_TEMPORARY_OVERRIDE,
-    STATE_OFF: MODE_PERMANENT_OVERRIDE,
-    STATE_ON: MODE_PERMANENT_OVERRIDE,
+    STATE_AUTO: ZONE_MODE_FOLLOW,
+    STATE_BOOST: ZONE_MODE_TEMP,
+    STATE_OFF: ZONE_MODE_PERM,
+    STATE_ON: ZONE_MODE_PERM,
 }
 
 SUPPORTED_FEATURES = sum(
@@ -118,9 +115,9 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
             mode = self._evo_device.mode[MODE]
         except TypeError:
             return
-        if mode == MODE_FOLLOW_SCHEDULE:
+        if mode == ZONE_MODE_FOLLOW:
             return STATE_AUTO
-        elif mode == MODE_PERMANENT_OVERRIDE:
+        elif mode == ZONE_MODE_PERM:
             return STATE_ON if self._evo_device.mode[ACTIVE] else STATE_OFF
         else:  # there are a number of temporary modes
             return STATE_BOOST if self._evo_device.mode[ACTIVE] else STATE_OFF

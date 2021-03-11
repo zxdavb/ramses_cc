@@ -28,7 +28,20 @@ from homeassistant.components.climate.const import (  # PRESET_BOOST,
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
-from .const import BROKER, EVOZONE_FOLLOW, EVOZONE_PERMOVER, EVOZONE_TEMPOVER
+from .const import (
+    BROKER,
+    EVO_MODE_AUTO,
+    EVO_MODE_AWAY,
+    EVO_MODE_CUSTOM,
+    EVO_MODE_DAY_OFF,
+    EVO_MODE_DAY_OFF_ECO,
+    EVO_MODE_ECO,
+    EVO_MODE_HEAT_OFF,
+    EVO_MODE_RESET,
+    ZONE_MODE_FOLLOW,
+    ZONE_MODE_PERM,
+    ZONE_MODE_TEMP,
+)
 
 # from .const import ATTR_HEAT_DEMAND
 
@@ -38,21 +51,21 @@ PRESET_RESET = "Reset"  # reset all child zones to EVO_FOLLOW
 PRESET_CUSTOM = "Custom"
 
 TCS_PRESET_TO_HA = {
-    "away": PRESET_AWAY,
-    "custom": PRESET_CUSTOM,
-    "eco": PRESET_ECO,
-    "day_off": PRESET_HOME,
-    "auto_with_reset": PRESET_RESET,
-    "auto": None,
+    EVO_MODE_AUTO: None,
+    EVO_MODE_AWAY: PRESET_AWAY,
+    EVO_MODE_CUSTOM: PRESET_CUSTOM,
+    EVO_MODE_DAY_OFF: PRESET_HOME,
+    EVO_MODE_ECO: PRESET_ECO,
+    EVO_MODE_RESET: PRESET_RESET,
 }
 
 HA_PRESET_TO_TCS = {v: k for k, v in TCS_PRESET_TO_HA.items()}
-HA_HVAC_TO_TCS = {HVAC_MODE_OFF: "heat_off", HVAC_MODE_HEAT: "auto"}
+HA_HVAC_TO_TCS = {HVAC_MODE_OFF: EVO_MODE_HEAT_OFF, HVAC_MODE_HEAT: EVO_MODE_AUTO}
 
 EVOZONE_PRESET_TO_HA = {
-    EVOZONE_FOLLOW: PRESET_NONE,
-    EVOZONE_TEMPOVER: "temporary",
-    EVOZONE_PERMOVER: "permanent",
+    ZONE_MODE_FOLLOW: PRESET_NONE,
+    ZONE_MODE_TEMP: "temporary",
+    ZONE_MODE_PERM: "permanent",
 }
 HA_PRESET_TO_EVOZONE = {v: k for k, v in EVOZONE_PRESET_TO_HA.items()}
 
@@ -114,7 +127,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             return CURRENT_HVAC_HEAT
         if self._evo_device._evo.system_mode is None:
             return
-        if self._evo_device._evo.system_mode["system_mode"] == "heat_off":
+        if self._evo_device._evo.system_mode["system_mode"] == EVO_MODE_HEAT_OFF:
             return CURRENT_HVAC_OFF
         if self._evo_device._evo.system_mode is not None:
             return CURRENT_HVAC_IDLE
@@ -126,9 +139,9 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
         if self._evo_device._evo.system_mode is None:
             return
-        if self._evo_device._evo.system_mode["system_mode"] == "heat_off":
+        if self._evo_device._evo.system_mode["system_mode"] == EVO_MODE_HEAT_OFF:
             return HVAC_MODE_OFF
-        if self._evo_device._evo.system_mode["system_mode"] == "away":
+        if self._evo_device._evo.system_mode["system_mode"] == EVO_MODE_AWAY:
             return HVAC_MODE_AUTO
 
         if self._evo_device.mode is None:
@@ -163,7 +176,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if self._evo_device._evo.system_mode is None or self._evo_device.mode is None:
             return
 
-        if self._evo_device._evo.system_mode["system_mode"] in ["away", "heat_off"]:
+        if self._evo_device._evo.system_mode["system_mode"] in [EVO_MODE_AWAY, EVO_MODE_HEAT_OFF]:
             return TCS_PRESET_TO_HA.get(
                 self._evo_device._evo.system_mode["system_mode"]
             )
@@ -185,7 +198,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             self._evo_device.reset_mode()
 
         elif hvac_mode == HVAC_MODE_HEAT:  # TemporaryOverride
-            self._evo_device.set_mode(mode="permanent_override", setpoint=25)
+            self._evo_device.set_mode(mode=ZONE_MODE_PERM, setpoint=25)
 
         else:  # HVAC_MODE_OFF, PermentOverride, temp = min
             self._evo_device.set_frost_mode()
@@ -203,15 +216,15 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     def set_preset_mode(self, preset_mode: Optional[str]) -> None:
         """Set the preset mode; if None, then revert to following the schedule."""
-        evozone_preset_mode = HA_PRESET_TO_EVOZONE.get(preset_mode, EVOZONE_FOLLOW)
+        evozone_preset_mode = HA_PRESET_TO_EVOZONE.get(preset_mode, ZONE_MODE_FOLLOW)
         setpoint = self._evo_device.setpoint
 
-        if evozone_preset_mode == EVOZONE_FOLLOW:
+        if evozone_preset_mode == ZONE_MODE_FOLLOW:
             self._evo_device.reset_mode()
-        elif evozone_preset_mode == EVOZONE_TEMPOVER:
-            self._evo_device.set_mode(mode="temporary_override", setpoint=setpoint)
-        elif evozone_preset_mode == EVOZONE_PERMOVER:
-            self._evo_device.set_mode(mode="permanent_override", setpoint=setpoint)
+        elif evozone_preset_mode == ZONE_MODE_TEMP:
+            self._evo_device.set_mode(mode=ZONE_MODE_TEMP, setpoint=setpoint)
+        elif evozone_preset_mode == ZONE_MODE_PERM:
+            self._evo_device.set_mode(mode=ZONE_MODE_PERM, setpoint=setpoint)
 
 
 class EvoController(EvoZoneBase, ClimateEntity):
@@ -254,7 +267,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
         if self._evo_device.system_mode is None:
             return
-        if self._evo_device.system_mode["system_mode"] == "heat_off":
+        if self._evo_device.system_mode["system_mode"] == EVO_MODE_HEAT_OFF:
             return CURRENT_HVAC_OFF
         if self._evo_device.heat_demand:  # TODO: is maybe because of DHW
             return CURRENT_HVAC_HEAT
@@ -267,9 +280,9 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
         if self._evo_device.system_mode is None:
             return
-        if self._evo_device.system_mode["system_mode"] == "heat_off":
+        if self._evo_device.system_mode["system_mode"] == EVO_MODE_HEAT_OFF:
             return HVAC_MODE_OFF
-        if self._evo_device.system_mode["system_mode"] == "away":
+        if self._evo_device.system_mode["system_mode"] == EVO_MODE_AWAY:
             return HVAC_MODE_AUTO  # users can't adjust setpoints in away mode
         return HVAC_MODE_HEAT
 
@@ -301,11 +314,11 @@ class EvoController(EvoZoneBase, ClimateEntity):
             return
 
         return {
-            "away": PRESET_AWAY,
-            "custom": "custom",
-            "day_off": PRESET_HOME,
-            "day_off_eco": PRESET_HOME,
-            "eco": PRESET_ECO,
+            EVO_MODE_AWAY: PRESET_AWAY,
+            EVO_MODE_CUSTOM: "custom",
+            EVO_MODE_DAY_OFF: PRESET_HOME,
+            EVO_MODE_DAY_OFF_ECO: PRESET_HOME,
+            EVO_MODE_ECO: PRESET_ECO,
         }.get(self._evo_device.system_mode["system_mode"], PRESET_NONE)
 
     @property
@@ -338,4 +351,4 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
     async def async_set_preset_mode(self, preset_mode: Optional[str]) -> None:
         """Set the preset mode; if None, then revert to 'Auto' mode."""
-        await self._evo_device.set_mode(HA_PRESET_TO_TCS.get(preset_mode, "auto"))
+        await self._evo_device.set_mode(HA_PRESET_TO_TCS.get(preset_mode, EVO_MODE_AWAY))
