@@ -77,6 +77,12 @@ class EvoActuator(EvoBinarySensorBase):
     DEVICE_CLASS = DEVICE_CLASS_ACTUATOR
     STATE_ATTR = ATTR_ACTUATOR
 
+    @property
+    def icon(self) -> str:
+        """Return the icon to use in the frontend, if any."""
+        return "mdi:electric-switch-closed" if self.is_on else "mdi:electric-switch"
+        # return "mdi:valve" if self.is_on else "mdi:valve-closed"  # "mdi:valve-open"
+
 
 class EvoBattery(EvoBinarySensorBase):
     """Representation of a low battery sensor; on means low."""
