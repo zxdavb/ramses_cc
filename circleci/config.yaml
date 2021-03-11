@@ -1,0 +1,40 @@
+# CircleCI 2.1 configuration file for https://github.com/zxdavb/geniushub-client
+# Check https://circleci.com/docs/2.0/language-python/ for more details
+
+version: 2.1
+
+
+jobs:
+  check_lint:
+    docker:
+      - image: circleci/python:3.7.5
+    steps:
+      - checkout
+      - run:
+          command: |
+            sudo pip install black isort
+            mkdir test-results
+      - run:
+          name: "Check formatting 1: black"
+          command: |
+            black --diff --check *client.py
+            black --diff --check incomfort*
+      - run:
+          name: "Check formatting 2: isort"
+          command: |
+            isort --check --diff *client.py
+            isort --check --diff incomfort*
+      - store_test_results: # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
+          path: test-results
+      - store_artifacts: # Upload test summary for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
+          path: artifacts
+          destination: coverage
+
+workflows:
+  version: 2
+
+  build-and-deploy:
+    jobs:
+      - check_lint:
+          requires:
+            - build

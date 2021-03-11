@@ -9,7 +9,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from homeassistant.components.climate import ClimateEntity
-from homeassistant.components.climate.const import (
+from homeassistant.components.climate.const import (  # PRESET_BOOST,
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_IDLE,
     CURRENT_HVAC_OFF,
@@ -17,7 +17,6 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
     PRESET_AWAY,
-    # PRESET_BOOST,
     PRESET_ECO,
     PRESET_HOME,
     PRESET_NONE,
@@ -25,12 +24,11 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
 )
 
-from .const import EVOZONE_FOLLOW, EVOZONE_TEMPOVER, EVOZONE_PERMOVER
-
 # from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
+from .const import EVOZONE_FOLLOW, EVOZONE_PERMOVER, EVOZONE_TEMPOVER
 
 # from .const import ATTR_HEAT_DEMAND
 

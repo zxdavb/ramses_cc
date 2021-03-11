@@ -9,12 +9,12 @@ Provides support for binary sensors.
 import logging
 from typing import Any, Dict
 
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
     DEVICE_CLASS_BATTERY,
     DEVICE_CLASS_WINDOW,
+    BinarySensorEntity,
 )
+from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoDeviceBase, new_binary_sensors
 from .const import ATTR_ACTUATOR_STATE, ATTR_BATTERY_STATE, ATTR_WINDOW_STATE

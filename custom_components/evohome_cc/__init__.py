@@ -6,8 +6,8 @@
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any, Dict, Optional
 
 import serial
@@ -18,24 +18,23 @@ try:
 except (ImportError, ModuleNotFoundError):
     import evohome_rf
 
-
-from homeassistant.components.climate import DOMAIN as CLIMATE
+import homeassistant.helpers.config_validation as cv
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR
+from homeassistant.components.climate import DOMAIN as CLIMATE
 from homeassistant.components.sensor import DOMAIN as SENSOR
 from homeassistant.components.water_heater import DOMAIN as WATER_HEATER
 from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS
 from homeassistant.core import callback
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from .const import (
+    BINARY_SENSOR_ATTRS,
     DOMAIN,
+    SENSOR_ATTRS,
     STORAGE_KEY,
     STORAGE_VERSION,
-    BINARY_SENSOR_ATTRS,
-    SENSOR_ATTRS,
 )
 from .version import __version__ as VERSION
 

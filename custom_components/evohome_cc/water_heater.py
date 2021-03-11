@@ -6,24 +6,28 @@
 Provides support for water_heater entities.
 """
 
-from datetime import datetime as dt, timedelta as td
 import logging
+from datetime import datetime as dt
+from datetime import timedelta as td
 from typing import Dict, List, Optional
 
+import homeassistant.util.dt as dt_util
+from evohome_rf.systems import StoredHw
 from homeassistant.components.water_heater import (
     ATTR_AWAY_MODE,
-    SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_OPERATION_MODE,
     SUPPORT_AWAY_MODE,
+    SUPPORT_OPERATION_MODE,
+    SUPPORT_TARGET_TEMPERATURE,
     WaterHeaterEntity,
 )
 from homeassistant.const import (
-    ATTR_TEMPERATURE, PRECISION_TENTHS, PRECISION_WHOLE, STATE_OFF, STATE_ON
+    ATTR_TEMPERATURE,
+    PRECISION_TENTHS,
+    PRECISION_WHOLE,
+    STATE_OFF,
+    STATE_ON,
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
-import homeassistant.util.dt as dt_util
-
-from evohome_rf.systems import StoredHw
 
 from . import DOMAIN, EvoZoneBase
 

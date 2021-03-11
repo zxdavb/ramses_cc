@@ -5,16 +5,14 @@ Provides support for sensors.
 import logging
 from typing import Any, Dict, Optional
 
-from homeassistant.const import (
-    # DEVICE_CLASS_BATTERY,
+from homeassistant.const import (  # DEVICE_CLASS_BATTERY,
     DEVICE_CLASS_TEMPERATURE,
     TEMP_CELSIUS,
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoDeviceBase, new_sensors
-from .const import (
-    # ATTR_BATTERY_STATE,
+from .const import (  # ATTR_BATTERY_STATE,
     ATTR_HEAT_DEMAND,
     ATTR_RELAY_DEMAND,
     ATTR_SETPOINT,
