@@ -306,8 +306,8 @@ class EvoDeviceBase(EvoEntity):
         """Return the integration-specific state attributes."""
         return {
             **super().device_state_attributes,
-            # "domain_id": self._evo_device.self._domain_id,
-            # "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
+            "domain_id": self._evo_device.self._domain_id,
+            "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
         }
 
     @property

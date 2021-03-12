@@ -83,7 +83,7 @@ class EvoHeatDemand(EvoSensorBase):
     STATE_ATTR = ATTR_HEAT_DEMAND
 
     @property
-    def icon(self) -> Optional[str]:
+    def icon(self) -> str:
         """Return the icon to use in the frontend, if any."""
         return "mdi:radiator-off" if self.state == 0 else "mdi:radiator"
 
@@ -94,7 +94,7 @@ class EvoRelayDemand(EvoSensorBase):
     STATE_ATTR = ATTR_RELAY_DEMAND
 
     @property
-    def icon(self) -> Optional[str]:
+    def icon(self) -> str:
         """Return the icon to use in the frontend, if any."""
         return "mdi:power-plug-off" if self.state == 0 else "mdi:power-plug"
         # return "mdi:flash-off" if self.state == 0 else "mdi:flash"
