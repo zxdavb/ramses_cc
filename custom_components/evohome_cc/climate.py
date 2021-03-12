@@ -139,11 +139,11 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
         until = dt_util.as_utc(until) if until else None
         if until is None:
-            self._evo_device.set_mode(mode="permanent_override", setpoint=setpoint)
+            self._evo_device.set_mode(mode=ZONE_MODE_PERM, setpoint=setpoint)
         elif duration.total_seconds() == 0:
-            self._evo_device.set_mode(mode="temporary_override", setpoint=setpoint)
+            self._evo_device.set_mode(mode=ZONE_MODE_TEMP, setpoint=setpoint)
         else:
-            self._evo_device.set_mode(mode="temporary_override", setpoint=setpoint, until=until)
+            self._evo_device.set_mode(mode=ZONE_MODE_TEMP, setpoint=setpoint, until=until)
 
         self._refresh()
 
@@ -214,7 +214,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if self._evo_device._evo.system_mode is None or self._evo_device.mode is None:
             return
 
-        if self._evo_device._evo.system_mode["system_mode"] in [EVO_MODE_AWAY, EVO_MODE_HEAT_OFF]:
+        if self._evo_device._evo.system_mode["system_mode"] in (EVO_MODE_AWAY, EVO_MODE_HEAT_OFF):
             return TCS_PRESET_TO_HA.get(
                 self._evo_device._evo.system_mode["system_mode"]
             )
@@ -290,19 +290,13 @@ class EvoController(EvoZoneBase, ClimateEntity):
         if service == SVC_SET_SYSTEM_MODE:
             mode = data[ATTR_SYSTEM_MODE]
         else:  # otherwise it is SVC_RESET_SYSTEM
-            mode = HA_PRESET_TO_TCS.get(preset_mode, EVO_AUTO)
+            mode = HA_PRESET_TO_TCS.get(preset_mode, EVO_MODE_AUTO)
 
-        if ATTR_DURATION_DAYS in data:
-            until = dt_util.start_of_local_day()
-            until += data[ATTR_DURATION_DAYS]
-
-        elif ATTR_DURATION_HOURS in data:
-            until = dt_util.now() + data[ATTR_DURATION_HOURS]
-
-        else:
-            until = None
-
-        self._evo_device.set_mode(mode, until=until)
+        self._evo_device.set_mode(
+            mode=mode,
+            setpoint=data[ATTR_ZONE_TEMP],
+            until=data[ATTR_DURATION_UNTIL]
+)
 
         self._refresh()
 

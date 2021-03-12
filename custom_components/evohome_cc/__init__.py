@@ -28,7 +28,7 @@ from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR
 from homeassistant.components.climate import DOMAIN as CLIMATE
 from homeassistant.components.sensor import DOMAIN as SENSOR
 from homeassistant.components.water_heater import DOMAIN as WATER_HEATER
-from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS, ATTR_ENTITY_ID
+from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS, ATTR_ENTITY_ID, CONF_UNIQUE_ID 
 from homeassistant.core import callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.entity import Entity
@@ -69,7 +69,7 @@ SVC_RESET_SYSTEM = "reset_system"
 SVC_SET_ZONE_OVERRIDE = "set_zone_override"
 SVC_RESET_ZONE_OVERRIDE = "clear_zone_override"
 
-from .const import EVO_AWAY, EVO_CUSTOM, EVO_ECO, EVO_DAYOFF, EVO_RESET, EVO_AUTO, EVO_HEATOFF
+from .const import EVO_MODE_AWAY, EVO_MODE_CUSTOM, EVO_MODE_ECO, EVO_MODE_DAY_OFF, EVO_MODE_RESET, EVO_MODE_AUTO, EVO_MODE_HEAT_OFF
 
 RESET_ZONE_OVERRIDE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
 SET_ZONE_OVERRIDE_SCHEMA = vol.Schema(
@@ -210,7 +210,7 @@ def setup_service_functions(hass: HomeAssistantType, broker):
     async def set_system_mode(call) -> None:
         """Set the system mode."""
         payload = {
-            "unique_id": broker.client.evo.unique_id,
+            CONF_UNIQUE_ID: broker.client.evo.unique_id,
             "service": call.service,
             "data": call.data,
         }
@@ -232,7 +232,7 @@ def setup_service_functions(hass: HomeAssistantType, broker):
             raise ValueError(f"'{entity_id}' is not an {DOMAIN} controller/zone")
 
         payload = {
-            "unique_id": registry_entry.unique_id,
+            CONF_UNIQUE_ID: registry_entry.unique_id,
             "service": call.service,
             "data": call.data,
         }
@@ -244,11 +244,11 @@ def setup_service_functions(hass: HomeAssistantType, broker):
     system_mode_schemas = []
 
     # Not all systems support "AutoWithReset": register this handler only if required
-    if [m for m in SYSTEM_MODE_LOOKUP if m == EVO_RESET]:
+    if [m for m in SYSTEM_MODE_LOOKUP if m == EVO_MODE_RESET]:
         hass.services.async_register(DOMAIN, SVC_RESET_SYSTEM, set_system_mode)
 
     # These modes are set for a number of hours (or indefinitely): use this schema
-    temp_modes = [m for m in SYSTEM_MODE_LOOKUP if m == EVO_ECO]
+    temp_modes = [m for m in SYSTEM_MODE_LOOKUP if m == EVO_MODE_ECO]
     if temp_modes:  # any of: "AutoWithEco", permanent or for 0-24 hours
         schema = vol.Schema(
             {
@@ -262,8 +262,8 @@ def setup_service_functions(hass: HomeAssistantType, broker):
         system_mode_schemas.append(schema)
 
     # These modes are set for a number of days (or indefinitely): use this schema
-    temp_modes = [m for m in SYSTEM_MODE_LOOKUP if m == EVO_AWAY or m == EVO_CUSTOM or m == EVO_DAYOFF]
-    if temp_modes:  # any of: EVO_AWAY, EVO_CUSTOM, EVO_DAYOFF, permanent or for 1-99 days
+    temp_modes = [m for m in SYSTEM_MODE_LOOKUP if m == EVO_MODE_AWAY or m == EVO_MODE_CUSTOM or m == EVO_MODE_DAY_OFF]
+    if temp_modes:  # any of: EVO_MODE_AWAY, EVO_MODE_CUSTOM, EVO_MODE_DAY_OFF, permanent or for 1-99 days
         schema = vol.Schema(
             {
                 vol.Required(ATTR_SYSTEM_MODE): vol.In(temp_modes),
@@ -390,7 +390,7 @@ class EvoEntity(Entity):
         if payload is None:
             self.async_schedule_update_ha_state(force_refresh=True)
             return
-        if payload["unique_id"] != self._unique_id:
+        if payload[CONF_UNIQUE_ID] != self._unique_id:
             return
         if payload["service"] in [SVC_SET_ZONE_OVERRIDE, SVC_RESET_ZONE_OVERRIDE]:
             self.zone_svc_request(payload["service"], payload["data"])
