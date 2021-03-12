@@ -6,6 +6,8 @@
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
 
+from types import SimpleNamespace
+
 DOMAIN = "evohome_cc"
 
 STORAGE_VERSION = 1
@@ -32,15 +34,24 @@ PERCENTAGE = "%"
 BINARY_SENSOR_ATTRS = (ATTR_ACTUATOR, ATTR_BATTERY, ATTR_WINDOW)
 SENSOR_ATTRS = (ATTR_HEAT_DEMAND, ATTR_RELAY_DEMAND, ATTR_TEMPERATURE)  # ATTR_FAULT_LOG
 
-EVO_MODE_AWAY = "away",
-EVO_MODE_CUSTOM = "custom",
-EVO_MODE_ECO = "eco",
-EVO_MODE_DAY_OFF = "day_off",
-EVO_MODE_DAY_OFF_ECO = "day_off_eco",
-EVO_MODE_HEAT_OFF = "heat_off",
-EVO_MODE_RESET = "auto_with_reset",
-EVO_MODE_AUTO = "auto",
+MODE = "mode"
+SYSTEM_MODE = "system_mode"
 
-ZONE_MODE_FOLLOW = "follow_schedule"
-ZONE_MODE_TEMP = "temporary_override"
-ZONE_MODE_PERM = "permanent_override"
+SystemMode = SimpleNamespace(
+    AUTO="auto",
+    AWAY="away",
+    CUSTOM="custom",
+    DAY_OFF="day_off",
+    DAY_OFF_ECO="day_off_eco",
+    ECO="eco",
+    HEAT_OFF="heat_off",
+    RESET="auto_with_reset",
+)
+
+ZoneMode = SimpleNamespace(
+    SCHEDULE="follow_schedule",
+    ADVANCED="advanced_override",
+    PERMANENT="permanent_override",
+    _UNKNOWN="day_override",
+    TEMPORARY="temporary_override",
+)

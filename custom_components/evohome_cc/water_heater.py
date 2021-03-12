@@ -11,26 +11,23 @@ from datetime import datetime as dt
 from datetime import timedelta as td
 from typing import Dict, List, Optional
 
-import homeassistant.util.dt as dt_util
+# import homeassistant.util.dt as dt_util
 from evohome_rf.systems import StoredHw
-from homeassistant.components.water_heater import (
+from homeassistant.components.water_heater import (  # SUPPORT_AWAY_MODE,
     ATTR_AWAY_MODE,
-    SUPPORT_AWAY_MODE,
     SUPPORT_OPERATION_MODE,
     SUPPORT_TARGET_TEMPERATURE,
     WaterHeaterEntity,
 )
-from homeassistant.const import (
+from homeassistant.const import (  # PRECISION_TENTHS,; PRECISION_WHOLE,
     ATTR_TEMPERATURE,
-    PRECISION_TENTHS,
-    PRECISION_WHOLE,
     STATE_OFF,
     STATE_ON,
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
-from .const import BROKER, ZONE_MODE_FOLLOW, ZONE_MODE_PERM, ZONE_MODE_TEMP
+from .const import BROKER, MODE, SYSTEM_MODE, SystemMode, ZoneMode
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,32 +40,27 @@ STATE_EVO_TO_HA = {True: STATE_ON, False: STATE_OFF}
 STATE_HA_TO_EVO = {v: k for k, v in STATE_EVO_TO_HA.items()}
 
 MODE_EVO_TO_HA = {
-    ZONE_MODE_FOLLOW: STATE_AUTO,
-    ZONE_MODE_TEMP: ZONE_MODE_TEMP,
-    ZONE_MODE_PERM: ZONE_MODE_PERM,
+    ZoneMode.FOLLOW: STATE_AUTO,
+    ZoneMode.TEMPORARY: "temporary",
+    ZoneMode.PERMANENT: "permanent",
 }
 # MODE_HA_TO_EVO = {v: k for k, v in MODE_EVO_TO_HA.items()}
 MODE_HA_TO_EVO = {
-    STATE_AUTO: ZONE_MODE_FOLLOW,
-    STATE_BOOST: ZONE_MODE_TEMP,
-    STATE_OFF: ZONE_MODE_PERM,
-    STATE_ON: ZONE_MODE_PERM,
+    STATE_AUTO: ZoneMode.FOLLOW,
+    STATE_BOOST: ZoneMode.TEMPORARY,
+    STATE_OFF: ZoneMode.PERMANENT,
+    STATE_ON: ZoneMode.PERMANENT,
 }
 
 SUPPORTED_FEATURES = sum(
     (
-        # SUPPORT_AWAY_MODE,
         SUPPORT_OPERATION_MODE,
         SUPPORT_TARGET_TEMPERATURE,
     )
-)
+)  # SUPPORT_AWAY_MODE,
 
 STATE_ATTRS_DHW = ("config", "mode", "status")
-
 ACTIVE = "active"
-MODE = "mode"
-SYSTEM_MODE = "system_mode"
-EVO_SYS_MODE_AWAY = "away"
 
 
 async def async_setup_platform(
@@ -115,9 +107,9 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
             mode = self._evo_device.mode[MODE]
         except TypeError:
             return
-        if mode == ZONE_MODE_FOLLOW:
+        if mode == ZoneMode.FOLLOW:
             return STATE_AUTO
-        elif mode == ZONE_MODE_PERM:
+        elif mode == ZoneMode.PERMANENT:
             return STATE_ON if self._evo_device.mode[ACTIVE] else STATE_OFF
         else:  # there are a number of temporary modes
             return STATE_BOOST if self._evo_device.mode[ACTIVE] else STATE_OFF
@@ -126,7 +118,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     def is_away_mode_on(self):
         """Return True if away mode is on."""
         try:
-            return self._evo_device._evo.system_mode[SYSTEM_MODE] == EVO_SYS_MODE_AWAY
+            return self._evo_device._evo.system_mode[SYSTEM_MODE] == SystemMode.AWAY
         except TypeError:
             return
 
