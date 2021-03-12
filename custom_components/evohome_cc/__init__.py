@@ -6,8 +6,8 @@
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any, Dict, Optional
 
 import serial
@@ -23,13 +23,13 @@ from evohome_rf.const import (
     SYSTEM_MODE_LOOKUP 
 )
 
-from homeassistant.components.climate import DOMAIN as CLIMATE
+import homeassistant.helpers.config_validation as cv
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR
+from homeassistant.components.climate import DOMAIN as CLIMATE
 from homeassistant.components.sensor import DOMAIN as SENSOR
 from homeassistant.components.water_heater import DOMAIN as WATER_HEATER
 from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS, ATTR_ENTITY_ID
 from homeassistant.core import callback
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
@@ -40,11 +40,12 @@ from homeassistant.helpers.dispatcher import (
 )
 
 from .const import (
+    BINARY_SENSOR_ATTRS,
+    BROKER,
     DOMAIN,
+    SENSOR_ATTRS,
     STORAGE_KEY,
     STORAGE_VERSION,
-    BINARY_SENSOR_ATTRS,
-    SENSOR_ATTRS,
 )
 from .version import __version__ as VERSION
 
@@ -52,7 +53,6 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [BINARY_SENSOR, CLIMATE, SENSOR, WATER_HEATER]
 
-BROKER = "broker"
 SCAN_INTERVAL_DEFAULT = timedelta(seconds=300)
 SCAN_INTERVAL_MINIMUM = timedelta(seconds=10)
 
@@ -416,11 +416,6 @@ class EvoEntity(Entity):
         return self._unique_id
 
     @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return self._name
-
-    @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         # result = {}
@@ -439,28 +434,48 @@ class EvoEntity(Entity):
 class EvoDeviceBase(EvoEntity):
     """Base for any evohome II-compatible entity (e.g. Climate, Sensor)."""
 
+    DEVICE_CLASS = None
+    STATE_ATTR = "enabled"
+
+    def __init__(self, broker, device) -> None:
+        """Initialize the sensor."""
+        super().__init__(broker, device)
+
+        klass = self.DEVICE_CLASS if self.DEVICE_CLASS else self.STATE_ATTR
+        self._name = f"{device.id} ({klass})"
+
     @property
     def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._evo_device._is_present
+        """Return True if the entity is available."""
+        return getattr(self._evo_device, self.STATE_ATTR) is not None
 
     @property
     def device_class(self) -> str:
         """Return the device class of the sensor."""
-        return self._device_class
+        return self.DEVICE_CLASS
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
             **super().device_state_attributes,
-            # "domain_id": self._evo_device. self._domain_id,
+            # "domain_id": self._evo_device.self._domain_id,
             # "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
         }
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return self._name
 
 
 class EvoZoneBase(EvoEntity):
     """Base for any evohome RF-compatible entity (e.g. Climate, Sensor)."""
+
+    def __init__(self, evo_broker, evo_device) -> None:
+        """Initialize the sensor."""
+        super().__init__(evo_broker, evo_device)
+        self._supported_features = None
 
     @property
     def current_temperature(self) -> Optional[float]:
