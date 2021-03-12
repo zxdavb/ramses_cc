@@ -1,8 +1,6 @@
 ### local .gitignore file use by https://github.com/zxdavb
 
-!.gitignore
-
-# HACS-specific ignores
+## HACS-specific ignores
 .HA_VERSION
 .storage/
 *.yaml
@@ -10,6 +8,7 @@ blueprints/
 home-assistant_v2.db
 
 
+## repo ignores
 *.log.*
 secrets*
 secrets*.*
@@ -19,8 +18,14 @@ secrets*.*
 *.txt
 .vscode/*
 
+!.flake8
+!.gitignore
+!.pre-commit-config.yaml
+!pyproject.toml
+!requirements*.txt
 
-### github's default .gitignore file
+
+## github's default .gitignore file
 # https://raw.githubusercontent.com/github/gitignore/master/Python.gitignore
 
 # Byte-compiled / optimized / DLL files
