@@ -11,6 +11,8 @@ from datetime import datetime as dt
 from datetime import timedelta as td
 from typing import Dict, List, Optional
 
+import voluptuous as vol
+
 # import homeassistant.util.dt as dt_util
 from evohome_rf.systems import StoredHw
 from homeassistant.components.water_heater import (  # SUPPORT_AWAY_MODE,
@@ -20,16 +22,64 @@ from homeassistant.components.water_heater import (  # SUPPORT_AWAY_MODE,
     WaterHeaterEntity,
 )
 from homeassistant.const import (  # PRECISION_TENTHS,; PRECISION_WHOLE,
+    ATTR_ENTITY_ID,
     ATTR_TEMPERATURE,
     STATE_OFF,
     STATE_ON,
 )
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
 from .const import BROKER, MODE, SYSTEM_MODE, SystemMode, ZoneMode
 
+PLATFORM = "water_heater"
 _LOGGER = logging.getLogger(__name__)
+
+CONF_MODE = "mode"
+CONF_ACTIVE = "active"
+CONF_DURATION = "duration"
+CONF_UNTIL = "until"
+CONF_SETPOINT = "setpoint"
+CONF_OVERRUN = "overrun"
+CONF_DIFFERENTIAL = "differential"
+
+DHW_MODES = (ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY)
+SET_DHW_BASE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
+SET_DHW_MODE_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
+    {
+        vol.Optional(CONF_MODE): vol.In(DHW_MODES),
+        vol.Optional(CONF_ACTIVE): cv.boolean,
+        vol.Exclusive(CONF_UNTIL, "until"): cv.datetime,
+        vol.Exclusive(CONF_DURATION, "until"): vol.All(
+            cv.time_period,
+            vol.Range(min=td(minutes=5), max=td(days=1)),
+        ),
+    }
+)
+SET_DHW_PARAMS_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
+    {
+        vol.Optional(CONF_SETPOINT, default=50): vol.All(
+            cv.positive_float,
+            vol.Range(min=30, max=85),
+        ),
+        vol.Optional(CONF_OVERRUN, default=5): vol.All(
+            cv.positive_int, vol.Range(max=10)
+        ),
+        vol.Optional(CONF_DIFFERENTIAL, default=1): vol.All(
+            cv.positive_float, vol.Range(max=10)
+        ),
+    }
+)
+PLATFORM_SERVICES = {
+    "reset_dhw_mode": SET_DHW_BASE_SCHEMA,
+    "set_dhw_boost": SET_DHW_BASE_SCHEMA,
+    "set_dhw_mode": SET_DHW_MODE_SCHEMA,
+    "reset_dhw_params": SET_DHW_BASE_SCHEMA,
+    "set_dhw_params": SET_DHW_PARAMS_SCHEMA,
+}
+
 
 STATE_AUTO = "auto"
 STATE_BOOST = "boost"
@@ -71,22 +121,27 @@ async def async_setup_platform(
         return
 
     broker = hass.data[DOMAIN][BROKER]
-
     dhw = broker.water_heater = broker.client.evo.dhw
 
-    _LOGGER.info("Found a Water Heater (stored DHW), id=%s, name=%s", dhw.idx, dhw.name)
-
     async_add_entities([EvoDHW(broker, dhw)], update_before_add=True)
+
+    if broker.services.get(PLATFORM):
+        return
+    broker.services[PLATFORM] = True
+
+    register_svc = entity_platform.current_platform.get().async_register_entity_service
+    [register_svc(k, v, f"svc_{k}") for k, v in PLATFORM_SERVICES.items()]
 
 
 class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     """Base for a DHW controller (aka boiler)."""
 
-    def __init__(self, evo_broker, evo_device) -> None:
+    def __init__(self, broker, device) -> None:
         """Initialize an evohome DHW controller."""
-        super().__init__(evo_broker, evo_device)
+        _LOGGER.info("Found a Water Heater, id=%s, name=%s", device.idx, device.name)
+        super().__init__(broker, device)
 
-        self._unique_id = evo_device.id
+        self._unique_id = device.id
         # self._icon = "mdi:thermometer-lines"
         self._operation_list = list(MODE_HA_TO_EVO)
 
@@ -160,8 +215,8 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
         """Return the temperature we try to reach."""
         return self._evo_device.setpoint
 
-    async def async_set_operation_mode(self, operation_mode):
-        """Set new target operation mode."""
+    def set_operation_mode(self, operation_mode):
+        """Set the operating mode of the water heater."""
         active = until = None  # for STATE_AUTO
         if operation_mode == STATE_BOOST:
             active = True
@@ -175,6 +230,30 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
             mode=MODE_HA_TO_EVO[operation_mode], active=active, until=until
         )
 
-    async def async_set_temperature(self, **kwargs):
-        """Set new target temperature."""
+    def set_temperature(self, **kwargs):
+        """Set the target temperature of the water heater."""
         self._evo_device.setpoint = kwargs[ATTR_TEMPERATURE]
+
+    def svc_reset_dhw_mode(self):
+        """Reset the operating mode of the water heater."""
+        self._evo_device.reset_mode()
+
+    def svc_set_dhw_boost(self):
+        """Enable the water heater for an hour."""
+        self._evo_device.set_boost_mode()
+
+    def svc_set_dhw_mode(self, mode=None, active=None, duration=None, until=None):
+        """Set the (native) operating mode of the water heater."""
+        if until is None and duration is not None:
+            until = dt.now() + duration
+        self._evo_device.set_mode(mode=mode, active=active, until=until)
+
+    def svc_reset_dhw_params(self):
+        """Reset the configuration of the water heater."""
+        self._evo_device.reset_config()
+
+    def svc_set_dhw_params(self, setpoint=None, overrun=None, differential=None):
+        """Set the configuration of the water heater."""
+        self._evo_device.set_config(
+            setpoint=setpoint, overrun=overrun, differential=differential
+        )

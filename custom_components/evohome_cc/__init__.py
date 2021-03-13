@@ -178,6 +178,7 @@ class EvoBroker:
         self.climates = []
         self.water_heater = None
         self.sensors = []
+        self.services = {}
 
         self.hass_config = None
         self.loop_task = None
