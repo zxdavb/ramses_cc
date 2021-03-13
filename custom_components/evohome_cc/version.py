@@ -6,4 +6,4 @@
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
 
-__version__ = "0.6.0"
+__version__ = "0.6.5"
