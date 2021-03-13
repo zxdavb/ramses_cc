@@ -138,7 +138,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
 
     def __init__(self, broker, device) -> None:
         """Initialize an evohome DHW controller."""
-        _LOGGER.info("Found a Water Heater, id=%s, name=%s", device.idx, device.name)
+        _LOGGER.info("Found a DHW controller, id=%s", device.idx)
         super().__init__(broker, device)
 
         self._unique_id = device.id
@@ -151,7 +151,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
         if self.is_away_mode_on:
             return STATE_OFF
         try:
-            return STATE_EVO_TO_HA[self._evo_device.mode[ACTIVE]]
+            return STATE_EVO_TO_HA[self._device.mode[ACTIVE]]
         except TypeError:
             return
 
@@ -159,28 +159,28 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     def current_operation(self) -> str:
         """Return the current operating mode (Auto, On, or Off)."""
         try:
-            mode = self._evo_device.mode[MODE]
+            mode = self._device.mode[MODE]
         except TypeError:
             return
         if mode == ZoneMode.SCHEDULE:
             return STATE_AUTO
         elif mode == ZoneMode.PERMANENT:
-            return STATE_ON if self._evo_device.mode[ACTIVE] else STATE_OFF
+            return STATE_ON if self._device.mode[ACTIVE] else STATE_OFF
         else:  # there are a number of temporary modes
-            return STATE_BOOST if self._evo_device.mode[ACTIVE] else STATE_OFF
+            return STATE_BOOST if self._device.mode[ACTIVE] else STATE_OFF
 
     @property
     def is_away_mode_on(self):
         """Return True if away mode is on."""
         try:
-            return self._evo_device._evo.system_mode[SYSTEM_MODE] == SystemMode.AWAY
+            return self._device._evo.system_mode[SYSTEM_MODE] == SystemMode.AWAY
         except TypeError:
             return
 
     @property
     def current_temperature(self):
         """Return the current temperature."""
-        return self._evo_device.temperature
+        return self._device.temperature
 
     @property
     def max_temp(self):
@@ -202,7 +202,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
         """Return the optional state attributes."""
         data = super().state_attributes
         data[ATTR_AWAY_MODE] = STATE_ON if self.is_away_mode_on else STATE_OFF
-        data.update({k: getattr(self._evo_device, k) for k in STATE_ATTRS_DHW})
+        data.update({k: getattr(self._device, k) for k in STATE_ATTRS_DHW})
         return data
 
     @property
@@ -213,7 +213,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     @property
     def target_temperature(self):
         """Return the temperature we try to reach."""
-        return self._evo_device.setpoint
+        return self._device.setpoint
 
     def set_operation_mode(self, operation_mode):
         """Set the operating mode of the water heater."""
@@ -226,34 +226,34 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
         elif operation_mode == STATE_ON:
             active = True
 
-        self._evo_device.set_mode(
+        self._device.set_mode(
             mode=MODE_HA_TO_EVO[operation_mode], active=active, until=until
         )
 
     def set_temperature(self, **kwargs):
         """Set the target temperature of the water heater."""
-        self._evo_device.setpoint = kwargs[ATTR_TEMPERATURE]
+        self._device.setpoint = kwargs[ATTR_TEMPERATURE]
 
     def svc_reset_dhw_mode(self):
         """Reset the operating mode of the water heater."""
-        self._evo_device.reset_mode()
+        self._device.reset_mode()
 
     def svc_set_dhw_boost(self):
         """Enable the water heater for an hour."""
-        self._evo_device.set_boost_mode()
+        self._device.set_boost_mode()
 
     def svc_set_dhw_mode(self, mode=None, active=None, duration=None, until=None):
         """Set the (native) operating mode of the water heater."""
         if until is None and duration is not None:
             until = dt.now() + duration
-        self._evo_device.set_mode(mode=mode, active=active, until=until)
+        self._device.set_mode(mode=mode, active=active, until=until)
 
     def svc_reset_dhw_params(self):
         """Reset the configuration of the water heater."""
-        self._evo_device.reset_config()
+        self._device.reset_config()
 
     def svc_set_dhw_params(self, setpoint=None, overrun=None, differential=None):
         """Set the configuration of the water heater."""
-        self._evo_device.set_config(
+        self._device.set_config(
             setpoint=setpoint, overrun=overrun, differential=differential
         )

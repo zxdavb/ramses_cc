@@ -66,3 +66,52 @@ set_dhw_params:
       description: >-
         The differential in degrees Celsius.  Default is 1.
       example: 1
+
+# reset_system:
+#   description: >-
+#     Reset the System.
+#   fields:
+#     entity_id:
+#       description: The entity_id of the Controller.
+#       example: climate.controller
+
+reset_zone_config:
+  description: >-
+    Reset the configuration of the Zone.
+  fields:
+    entity_id:
+      description: The entity_id of the Zone.
+      example: climate.bedroom
+
+reset_zone_mode:
+  description: >-
+    Reset the operating mode of the Zone.
+  fields:
+    entity_id:
+      description: The entity_id of the Zone.
+      example: climate.bedroom
+
+set_zone_mode:
+  description: >-
+    Set the operating mode of the Zone, either indefinitely or for a given duration.
+  fields:
+    entity_id:
+      description: The entity_id of the Zone.
+      example: climate.bedroom
+    mode:
+      description: >-
+        The duration of the override. Optional, one of: follow_schedule,
+        advanced_override, temporary_override or permanent_override.
+      example: temporary_override
+    setpoint:
+      description: >-
+        The target temperature in degrees Celsius. Default is 21.0.
+      example: 21.0
+    duration:
+      description: >-
+        The duration of the override. Mutually exclusive with until.
+      example: '{"minutes": 135}'
+    until:
+      description: >-
+        The end of the override. Mutually exclusive with duration.
+      # example: '{"minutes": 135}'

@@ -241,10 +241,10 @@ class EvoBroker:
 class EvoEntity(Entity):
     """Base for any evohome II-compatible entity (e.g. Climate, Sensor)."""
 
-    def __init__(self, evo_broker, evo_device) -> None:
+    def __init__(self, broker, device) -> None:
         """Initialize the entity."""
-        self._evo_device = evo_device
-        self._evo_broker = evo_broker
+        self._device = device
+        self._broker = broker
 
         self._unique_id = self._name = None
         self._entity_state_attrs = ()
@@ -267,13 +267,11 @@ class EvoEntity(Entity):
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         attrs = {
-            a: getattr(self._evo_device, a)
+            a: getattr(self._device, a)
             for a in self._entity_state_attrs
-            if hasattr(self._evo_device, a)
+            if hasattr(self._device, a)
         }
-        attrs["controller"] = (
-            self._evo_device._ctl.id if self._evo_device._ctl else None
-        )
+        attrs["controller"] = self._device._ctl.id if self._device._ctl else None
         return attrs
 
     async def async_added_to_hass(self) -> None:
@@ -297,7 +295,7 @@ class EvoDeviceBase(EvoEntity):
     @property
     def available(self) -> bool:
         """Return True if the entity is available."""
-        return getattr(self._evo_device, self.STATE_ATTR) is not None
+        return getattr(self._device, self.STATE_ATTR) is not None
 
     @property
     def device_class(self) -> str:
@@ -308,7 +306,7 @@ class EvoDeviceBase(EvoEntity):
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         attrs = super().device_state_attributes
-        attrs["domain_id"] = self._evo_device._domain_id
+        attrs["domain_id"] = self._device._domain_id
         return attrs
 
     @property
@@ -320,19 +318,19 @@ class EvoDeviceBase(EvoEntity):
 class EvoZoneBase(EvoEntity):
     """Base for any evohome RF-compatible entity (e.g. Climate, Sensor)."""
 
-    def __init__(self, evo_broker, evo_device) -> None:
+    def __init__(self, broker, device) -> None:
         """Initialize the sensor."""
-        super().__init__(evo_broker, evo_device)
+        super().__init__(broker, device)
         self._supported_features = None
 
     @property
     def current_temperature(self) -> Optional[float]:
         """Return the current temperature."""
-        return self._evo_device.temperature
+        return self._device.temperature
 
     @property
     def name(self) -> str:
-        return self._evo_device.name
+        return self._device.name
 
     @property
     def supported_features(self) -> int:
@@ -348,5 +346,5 @@ class EvoZoneBase(EvoEntity):
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         attrs = super().device_state_attributes
-        attrs["zone_idx"] = self._evo_device.idx
+        attrs["zone_idx"] = self._device.idx
         return attrs

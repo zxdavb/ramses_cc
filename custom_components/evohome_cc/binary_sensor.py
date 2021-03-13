@@ -63,12 +63,12 @@ class EvoBinarySensorBase(EvoDeviceBase, BinarySensorEntity):
     @property
     def available(self) -> bool:
         """Return True if the binary sensor is available."""
-        return getattr(self._evo_device, self.STATE_ATTR) is not None
+        return getattr(self._device, self.STATE_ATTR) is not None
 
     @property
     def is_on(self) -> bool:
         """Return the state of the binary sensor."""
-        return getattr(self._evo_device, self.STATE_ATTR)
+        return getattr(self._device, self.STATE_ATTR)
 
 
 class EvoActuator(EvoBinarySensorBase):
@@ -94,7 +94,7 @@ class EvoBattery(EvoBinarySensorBase):
         """Return the integration-specific state attributes."""
         return {
             **super().device_state_attributes,
-            ATTR_BATTERY_LEVEL: self._evo_device.battery_state.get(ATTR_BATTERY_LEVEL),
+            ATTR_BATTERY_LEVEL: self._device.battery_state.get(ATTR_BATTERY_LEVEL),
         }
 
 

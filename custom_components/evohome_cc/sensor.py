@@ -61,12 +61,12 @@ class EvoSensorBase(EvoDeviceBase):
     @property
     def available(self) -> bool:
         """Return True if the sensor is available."""
-        return getattr(self._evo_device, self.STATE_ATTR) is not None
+        return getattr(self._device, self.STATE_ATTR) is not None
 
     @property
     def state(self) -> Optional[int]:
         """Return the state of the sensor."""
-        state = getattr(self._evo_device, self.STATE_ATTR)
+        state = getattr(self._device, self.STATE_ATTR)
         if self.unit_of_measurement == PERCENTAGE:
             return int(state * 100) if state is not None else None
         return state
@@ -114,8 +114,8 @@ class EvoTemperature(EvoSensorBase):
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         attrs = super().device_state_attributes
-        if hasattr(self._evo_device, ATTR_SETPOINT):
-            attrs[ATTR_SETPOINT] = self._evo_device.setpoint
+        if hasattr(self._device, ATTR_SETPOINT):
+            attrs[ATTR_SETPOINT] = self._device.setpoint
         return attrs
 
 
@@ -135,7 +135,7 @@ class EvoFaultLog(EvoDeviceBase):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return self._evo_device._fault_log._fault_log_done
+        return self._device._fault_log._fault_log_done
 
     @property
     def state(self) -> int:
@@ -147,10 +147,10 @@ class EvoFaultLog(EvoDeviceBase):
         """Return the device state attributes."""
         return {
             **super().device_state_attributes,
-            "fault_log": self._evo_device._fault_log,
+            "fault_log": self._device._fault_log,
         }
 
     async def async_update(self) -> None:
         """Process the sensor's state data."""
-        # self._fault_log = self._evo_device.fault_log()  # TODO: needs sorting out
+        # self._fault_log = self._device.fault_log()  # TODO: needs sorting out
         pass
