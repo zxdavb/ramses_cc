@@ -3,13 +3,14 @@
 *.log.*
 *.db
 
-
 ### HACS-specific ignores
 .HA_VERSION
 .storage/
 *.yaml
 blueprints/
 home-assistant_v2.db
+
+!services.yaml
 
 ### generic .gitignore used by https://github.com/zxdavb
 
@@ -29,7 +30,6 @@ home-assistant_v2.db
 !.pre-commit-config.yaml
 !pyproject.toml
 !requirements*.txt
-
 
 ### github's default .gitignore for Python - Latest commit 14f8a8b on Apr 11, 2020
 # https://raw.githubusercontent.com/github/gitignore/master/Python.gitignore

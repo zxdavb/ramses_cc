@@ -1,0 +1,68 @@
+reset_dhw_mode:
+  description: >-
+    Reset the operating mode of the DHW controller.
+  fields:
+    entity_id:
+      description: The entity_id of the water_heater.
+      example: water_heater.stored_hw
+
+set_dhw_boost:
+  description: >-
+    Enable the DHW controller for an hour.
+  fields:
+    entity_id:
+      description: The entity_id of the water_heater.
+      example: water_heater.stored_hw
+
+set_dhw_mode:
+  description: >-
+    Set the operating mode of the DHW controller, optionally for a given duration.
+  fields:
+    entity_id:
+      description: The entity_id of the water_heater.
+      example: water_heater.stored_hw
+    mode:
+      description: >-
+        The duration of the override. Optional, one of: follow_schedule,
+        temporary_override or permanent_override.
+      example: temporary_override
+    active:
+      description: >-
+        The state of the water heater.
+      example: true
+    duration:
+      description: >-
+        The duration of the override. Mutually exclusive with until.
+      example: '{"minutes": 135}'
+    until:
+      description: >-
+        The end of the override. Mutually exclusive with duration.
+      # example: '{"minutes": 135}'
+
+reset_dhw_params:
+  description: >-
+    Reset the configuration of the DHW controller.
+  fields:
+    entity_id:
+      description: The entity_id of the water_heater.
+      example: water_heater.stored_hw
+
+set_dhw_params:
+  description: >-
+    Set the configuration of the DHW controller.
+  fields:
+    entity_id:
+      description: The entity_id of the water_heater.
+      example: water_heater.stored_hw
+    setpoint:
+      description: >-
+        The target temperature in Celsius. Default is 50.0.
+      example: 50.0
+    overrun:
+      description: >-
+        The overrun in minutes. Default is 5.
+      example: 5
+    differential:
+      description: >-
+        The differential in Celsius.  Default is 1.
+      example: 1
