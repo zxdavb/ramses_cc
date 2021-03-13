@@ -198,10 +198,10 @@ class EvoBroker:
         #     """Retrieve the latest state data..."""
 
         evohome = self.client.evo
-        # _LOGGER.info("Schema = %s", evohome.schema if evohome is not None else None)
-        # _LOGGER.info(
-        #     "Devices = %s", {d.id: d.status for d in sorted(self.client.devices)}
-        # )
+        _LOGGER.info("Schema = %s", evohome.schema if evohome is not None else None)
+        _LOGGER.info(
+            "Devices = %s", {d.id: d.status for d in sorted(self.client.devices)}
+        )
         if evohome is None:
             return
 
@@ -229,10 +229,10 @@ class EvoBroker:
                 )
             )
 
-        # _LOGGER.info("Params = %s", evohome.params if evohome is not None else None)
-        # _LOGGER.info(
-        #     "Status = %s", {k: v for k, v in evohome.status.items() if k != "devices"}
-        # )
+        _LOGGER.info("Params = %s", evohome.params if evohome is not None else None)
+        _LOGGER.info(
+            "Status = %s", {k: v for k, v in evohome.status.items() if k != "devices"}
+        )
 
         # inform the evohome devices that state data has been updated
         self.hass.helpers.dispatcher.async_dispatcher_send(DOMAIN)

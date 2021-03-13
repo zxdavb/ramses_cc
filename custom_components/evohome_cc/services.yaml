@@ -56,7 +56,7 @@ set_dhw_params:
       example: water_heater.stored_hw
     setpoint:
       description: >-
-        The target temperature in Celsius. Default is 50.0.
+        The target temperature in degrees Celsius. Default is 50.0.
       example: 50.0
     overrun:
       description: >-
@@ -64,5 +64,5 @@ set_dhw_params:
       example: 5
     differential:
       description: >-
-        The differential in Celsius.  Default is 1.
+        The differential in degrees Celsius.  Default is 1.
       example: 1
