@@ -44,6 +44,12 @@ CONF_SETPOINT = "setpoint"
 CONF_DURATION = "duration"
 CONF_UNTIL = "until"
 
+CONF_MAX_TEMP = "max_temp"
+CONF_MIN_TEMP = "min_temp"
+CONF_LOCAL_OVERRIDE = ("local_override",)
+CONF_OPENWINDOW = ("openwindow_function",)
+CONF_MULTIROOM = ("multiroom_mode",)
+
 ZONE_MODES = (
     ZoneMode.SCHEDULE,
     ZoneMode.ADVANCED,
@@ -51,6 +57,21 @@ ZONE_MODES = (
     ZoneMode.TEMPORARY,
 )
 SET_ZONE_BASE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
+SET_ZONE_CONFIG_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
+    {
+        vol.Optional(CONF_MAX_TEMP, default=35): vol.All(
+            cv.positive_float,
+            vol.Range(min=21, max=35),
+        ),
+        vol.Optional(CONF_MIN_TEMP, default=5): vol.All(
+            cv.positive_float,
+            vol.Range(min=5, max=21),
+        ),
+        vol.Optional(CONF_LOCAL_OVERRIDE, default=True): cv.boolean,
+        vol.Optional(CONF_OPENWINDOW, default=True): cv.boolean,
+        vol.Optional(CONF_MULTIROOM, default=True): cv.boolean,
+    }
+)
 SET_ZONE_MODE_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
     {
         vol.Optional(CONF_MODE): vol.In(ZONE_MODES),
@@ -67,6 +88,7 @@ SET_ZONE_MODE_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
 )
 PLATFORM_SERVICES = {
     "reset_zone_config": SET_ZONE_BASE_SCHEMA,
+    "set_zone_config": SET_ZONE_CONFIG_SCHEMA,
     "reset_zone_mode": SET_ZONE_BASE_SCHEMA,
     "set_zone_mode": SET_ZONE_MODE_SCHEMA,
 }
@@ -265,6 +287,10 @@ class EvoZone(EvoZoneBase, ClimateEntity):
     def svc_reset_zone_config(self):
         """Reset the configuration of the Zone."""
         self._device.reset_config()
+
+    def svc_set_zone_config(self, **kwargs):
+        """Set the configuration of the Zone (min/max temp, etc.)."""
+        self._device.set_mode(**kwargs)
 
     def svc_reset_zone_mode(self):
         """Reset the operating mode of the Zone."""
