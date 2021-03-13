@@ -40,13 +40,13 @@ STATE_EVO_TO_HA = {True: STATE_ON, False: STATE_OFF}
 STATE_HA_TO_EVO = {v: k for k, v in STATE_EVO_TO_HA.items()}
 
 MODE_EVO_TO_HA = {
-    ZoneMode.FOLLOW: STATE_AUTO,
+    ZoneMode.SCHEDULE: STATE_AUTO,
     ZoneMode.TEMPORARY: "temporary",
     ZoneMode.PERMANENT: "permanent",
 }
 # MODE_HA_TO_EVO = {v: k for k, v in MODE_EVO_TO_HA.items()}
 MODE_HA_TO_EVO = {
-    STATE_AUTO: ZoneMode.FOLLOW,
+    STATE_AUTO: ZoneMode.SCHEDULE,
     STATE_BOOST: ZoneMode.TEMPORARY,
     STATE_OFF: ZoneMode.PERMANENT,
     STATE_ON: ZoneMode.PERMANENT,
@@ -107,7 +107,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
             mode = self._evo_device.mode[MODE]
         except TypeError:
             return
-        if mode == ZoneMode.FOLLOW:
+        if mode == ZoneMode.SCHEDULE:
             return STATE_AUTO
         elif mode == ZoneMode.PERMANENT:
             return STATE_ON if self._evo_device.mode[ACTIVE] else STATE_OFF

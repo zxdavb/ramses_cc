@@ -58,7 +58,7 @@ TCS_MODE_TO_HA_PRESET = {
 }
 
 EVOZONE_PRESET_TO_HA = {
-    ZoneMode.FOLLOW: PRESET_NONE,
+    ZoneMode.SCHEDULE: PRESET_NONE,
     ZoneMode.TEMPORARY: "temporary",
     ZoneMode.PERMANENT: "permanent",
 }
@@ -213,10 +213,10 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     def set_preset_mode(self, preset_mode: Optional[str]) -> None:
         """Set the preset mode; if None, then revert to following the schedule."""
-        evozone_preset_mode = HA_PRESET_TO_EVOZONE.get(preset_mode, ZoneMode.FOLLOW)
+        evozone_preset_mode = HA_PRESET_TO_EVOZONE.get(preset_mode, ZoneMode.SCHEDULE)
         setpoint = self._evo_device.setpoint
 
-        if evozone_preset_mode == ZoneMode.FOLLOW:
+        if evozone_preset_mode == ZoneMode.SCHEDULE:
             self._evo_device.reset_mode()
         elif evozone_preset_mode == ZoneMode.TEMPORARY:
             self._evo_device.set_mode(mode=ZoneMode.TEMPORARY, setpoint=setpoint)

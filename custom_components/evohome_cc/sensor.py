@@ -96,8 +96,11 @@ class EvoRelayDemand(EvoSensorBase):
     @property
     def icon(self) -> str:
         """Return the icon to use in the frontend, if any."""
-        return "mdi:power-plug-off" if self.state == 0 else "mdi:power-plug"
+        # return "mdi:power-plug-off" if self.state == 0 else "mdi:power-plug"
         # return "mdi:flash-off" if self.state == 0 else "mdi:flash"
+        return (
+            "mdi:electric-switch-closed" if self.state == 0 else "mdi:electric-switch"
+        )
 
 
 class EvoTemperature(EvoSensorBase):
@@ -110,12 +113,10 @@ class EvoTemperature(EvoSensorBase):
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
+        attrs = super().device_state_attributes
         if hasattr(self._evo_device, ATTR_SETPOINT):
-            return {
-                **super().device_state_attributes,
-                ATTR_SETPOINT: self._evo_device.setpoint,
-            }
-        return super().device_state_attributes
+            attrs[ATTR_SETPOINT] = self._evo_device.setpoint
+        return attrs
 
 
 class EvoFaultLog(EvoDeviceBase):
@@ -144,8 +145,12 @@ class EvoFaultLog(EvoDeviceBase):
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the device state attributes."""
-        return self._fault_log
+        return {
+            **super().device_state_attributes,
+            "fault_log": self._evo_device._fault_log,
+        }
 
     async def async_update(self) -> None:
         """Process the sensor's state data."""
-        self._fault_log = self._evo_device.fault_log()  # TODO: needs sorting out
+        # self._fault_log = self._evo_device.fault_log()  # TODO: needs sorting out
+        pass

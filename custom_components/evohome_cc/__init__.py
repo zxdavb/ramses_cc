@@ -139,8 +139,8 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     serial_port = kwargs.pop(CONF_SERIAL_PORT)
     kwargs["allowlist"] = dict.fromkeys(kwargs.pop(CONF_ALLOW_LIST, []), {})
     kwargs["blocklist"] = dict.fromkeys(kwargs.pop(CONF_BLOCK_LIST, []), {})
-    kwargs["config"]["log_rotate_backups"] = (
-        kwargs["config"].pop("log_rotate_backups", 7)
+    kwargs["config"]["log_rotate_backups"] = kwargs["config"].pop(
+        "log_rotate_backups", 7
     )
 
     client = evohome_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
@@ -246,7 +246,7 @@ class EvoEntity(Entity):
         self._evo_broker = evo_broker
 
         self._unique_id = self._name = None
-        self._device_state_attrs = {}
+        self._entity_state_attrs = ()
 
     @callback
     def _refresh(self) -> None:
@@ -265,13 +265,15 @@ class EvoEntity(Entity):
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        # result = {}
-        # for attr in ("schema", "config", "status"):
-        #     if hasattr(self._evo_device, attr):
-        #         result.update({attr: getattr(self._evo_device, attr)})
-        return {
-            "controller": self._evo_device._ctl.id if self._evo_device._ctl else None
+        attrs = {
+            a: getattr(self._evo_device, a)
+            for a in self._entity_state_attrs
+            if hasattr(self._evo_device, a)
         }
+        attrs["controller"] = (
+            self._evo_device._ctl.id if self._evo_device._ctl else None
+        )
+        return attrs
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
@@ -304,11 +306,9 @@ class EvoDeviceBase(EvoEntity):
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
-            **super().device_state_attributes,
-            "domain_id": self._evo_device.self._domain_id,
-            "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
-        }
+        attrs = super().device_state_attributes
+        attrs["domain_id"] = self._evo_device._domain_id
+        return attrs
 
     @property
     def name(self) -> str:
@@ -346,8 +346,6 @@ class EvoZoneBase(EvoEntity):
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
-            **super().device_state_attributes,
-            # "zone_idx": self._evo_device.idx,
-            # "zone_name": self._evo_device.zone.name if self._evo_device.zone else None,
-        }
+        attrs = super().device_state_attributes
+        attrs["zone_idx"] = self._evo_device.idx
+        return attrs
