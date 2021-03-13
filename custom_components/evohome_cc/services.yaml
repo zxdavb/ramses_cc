@@ -67,13 +67,30 @@ set_dhw_params:
         The differential in degrees Celsius.  Default is 1.
       example: 1
 
-# reset_system:
-#   description: >-
-#     Reset the System.
-#   fields:
-#     entity_id:
-#       description: The entity_id of the Controller.
-#       example: climate.controller
+refresh_system:
+  description: >-
+    Update the system now, rather than waiting for the next scheduled update.
+
+reset_system:
+  description: >-
+    Hard reset the System. The Controller will be in auto mode, and all Zones will
+    be in follow_schedule mode (including those in permanent_override mode).
+
+set_system_mode:
+  description: >-
+    Reset the System. The Controller will be in Auto mode.
+  fields:
+    mode:
+      description: "One of: auto, eco_boost, away, day_off, heating_off, or custom."
+      example: away
+    period:
+      description: >-
+        A period of time in days; used only with away, day_off, or custom. The system
+        will revert to auto at midnight (up to 99 days, today is day 1).
+      example: '{"days": 28}'
+    duration:
+      description: The duration in hours; used only with eco_boost (up to 24 hours).
+      example: '{"hours": 18}'
 
 reset_zone_config:
   description: >-
