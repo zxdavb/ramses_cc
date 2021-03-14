@@ -466,4 +466,4 @@ class EvoController(EvoZoneBase, ClimateEntity):
             until = dt.now() + period
         else:
             until = None
-        self._device.set_mode(mode=mode, until=until)
+        self._device.set_mode(system_mode=mode, until=until)
