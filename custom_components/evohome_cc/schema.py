@@ -6,8 +6,8 @@
 from datetime import timedelta as td
 
 import voluptuous as vol
-from evohome_rf.const import SYSTEM_SCHEMA as EVOHOME_RF_SCHEMA
 from evohome_rf.const import SystemMode, ZoneMode
+from evohome_rf.schema import SYSTEM_SCHEMA
 from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers import config_validation as cv
@@ -48,7 +48,7 @@ CONFIG_SCHEMA = vol.Schema(
                         vol.Optional(CONF_ENFORCE_ALLOWLIST): cv.boolean,
                     }
                 ),
-                vol.Optional(CONF_SCHEMA): EVOHOME_RF_SCHEMA,
+                vol.Optional(CONF_SCHEMA): SYSTEM_SCHEMA,
                 vol.Exclusive(CONF_ALLOW_LIST, CONF_ALLOW_LIST, msg=LIST_MSG): list,
                 vol.Exclusive(CONF_BLOCK_LIST, CONF_ALLOW_LIST, msg=LIST_MSG): list,
                 vol.Optional(
