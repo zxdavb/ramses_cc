@@ -101,7 +101,7 @@ SET_SYSTEM_MODE_SCHEMA = vol.Schema(
 )
 SET_SYSTEM_MODE_SCHEMA_HOURS = vol.Schema(
     {
-        vol.Required(CONF_MODE): vol.In([SystemMode.ECO]),
+        vol.Required(CONF_MODE): vol.In([SystemMode.ECO_BOOST]),
         vol.Optional(CONF_DURATION_HOURS, default=td(hours=1)): vol.All(
             cv.time_period, vol.Range(min=td(hours=1), max=td(hours=24))
         ),

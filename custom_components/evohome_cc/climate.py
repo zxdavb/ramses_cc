@@ -43,7 +43,7 @@ TCS_PRESET_TO_HA = {
     SystemMode.AWAY: PRESET_AWAY,
     SystemMode.CUSTOM: PRESET_CUSTOM,
     SystemMode.DAY_OFF: PRESET_HOME,
-    SystemMode.ECO: PRESET_ECO,
+    SystemMode.ECO_BOOST: PRESET_ECO,
     SystemMode.RESET: PRESET_RESET,
 }
 
@@ -55,7 +55,7 @@ TCS_MODE_TO_HA_PRESET = {
     SystemMode.CUSTOM: "custom",
     SystemMode.DAY_OFF: PRESET_HOME,
     SystemMode.DAY_OFF_ECO: PRESET_HOME,
-    SystemMode.ECO: PRESET_ECO,
+    SystemMode.ECO_BOOST: PRESET_ECO,
 }
 
 EVOZONE_PRESET_TO_HA = {

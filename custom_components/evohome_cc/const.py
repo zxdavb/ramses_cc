@@ -43,7 +43,7 @@ SystemMode = SimpleNamespace(
     CUSTOM="custom",
     DAY_OFF="day_off",
     DAY_OFF_ECO="day_off_eco",
-    ECO="eco",
+    ECO_BOOST="eco_boost",
     HEAT_OFF="heat_off",
     RESET="auto_with_reset",
 )
