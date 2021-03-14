@@ -10,57 +10,30 @@ from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers import config_validation as cv
 
-from .const import (  # CONF_MODE,; CONF_SETPOINT,; CONF_DURATION,; CONF_UNTIL,; CONF_MAX_TEMP,; CONF_MIN_TEMP,; CONF_LOCAL_OVERRIDE,; CONF_OPENWINDOW,; CONF_MULTIROOM,; CONF_DURATION_DAYS,; CONF_DURATION_HOURS,
-    DOMAIN,
-    SystemMode,
-    ZoneMode,
-)
+try:
+    from evohome_rf.schema import SYSTEM_SCHEMA as EVOHOME_RF_SCHEMA
+except ModuleNotFoundError:
+    EVOHOME_RF_SCHEMA = dict
 
-CONF_MODE = "mode"
-CONF_SETPOINT = "setpoint"
-CONF_DURATION = "duration"
-CONF_UNTIL = "until"
-
-CONF_MAX_TEMP = "max_temp"
-CONF_MIN_TEMP = "min_temp"
-CONF_LOCAL_OVERRIDE = "local_override"
-CONF_OPENWINDOW = "openwindow_function"
-CONF_MULTIROOM = "multiroom_mode"
-CONF_DURATION_DAYS = "period"
-CONF_DURATION_HOURS = "days"
-
-CONF_ACTIVE = "active"
-CONF_OVERRUN = "overrun"
-CONF_DIFFERENTIAL = "differential"
-
-CONF_SYSTEM_MODES = (
-    SystemMode.AUTO,
-    SystemMode.AWAY,
-    SystemMode.HEAT_OFF,
-    SystemMode.RESET,
-)
-CONF_DHW_MODES = (ZoneMode.PERMANENT, ZoneMode.ADVANCED, ZoneMode.TEMPORARY)
-CONF_ZONE_MODES = (
-    ZoneMode.SCHEDULE,
-    ZoneMode.PERMANENT,
-    ZoneMode.ADVANCED,
-    ZoneMode.TEMPORARY,
-)
+from .const import DOMAIN, SystemMode, ZoneMode
 
 # Configuration schema
-SCAN_INTERVAL_DEFAULT = td(seconds=300)
-SCAN_INTERVAL_MINIMUM = td(seconds=10)
-
-CONF_SERIAL_PORT = "serial_port"
-CONF_CONFIG = "config"
-CONF_SCHEMA = "schema"
-CONF_GATEWAY_ID = "gateway_id"
-CONF_PACKET_LOG = "packet_log"
-CONF_MAX_ZONES = "max_zones"
-
 CONF_ALLOW_LIST = "allow_list"
 CONF_BLOCK_LIST = "block_list"
+CONF_CONFIG = "config"
+CONF_ENFORCE_ALLOWLIST = "enforce_allowlist"
+CONF_GATEWAY_ID = "gateway_id"
+CONF_MAX_ZONES = "max_zones"
+CONF_PACKET_LOG = "packet_log"
+# import CONF_SCAN_INTERVAL
+CONF_SCHEMA = "schema"
+CONF_SERIAL_CONFIG = "serial_config"
+CONF_SERIAL_PORT = "serial_port"
+
 LIST_MSG = f"{CONF_ALLOW_LIST} and {CONF_BLOCK_LIST} are mutally exclusive"
+
+SCAN_INTERVAL_DEFAULT = td(seconds=300)
+SCAN_INTERVAL_MINIMUM = td(seconds=10)
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -68,17 +41,19 @@ CONFIG_SCHEMA = vol.Schema(
             {
                 # vol.Optional(CONF_GATEWAY_ID): vol.Match(r"^18:[0-9]{6}$"),
                 vol.Required(CONF_SERIAL_PORT): cv.string,
-                vol.Optional("serial_config"): dict,
+                vol.Optional(CONF_SERIAL_CONFIG): dict,
                 vol.Required(CONF_CONFIG): vol.Schema(
                     {
-                        vol.Optional(CONF_MAX_ZONES, default=12): vol.Any(None, int),
+                        vol.Optional(CONF_MAX_ZONES, default=12): vol.All(
+                            cv.positive_int, vol.Range(min=1, max=16)
+                        ),
                         vol.Optional(CONF_PACKET_LOG): cv.string,
-                        vol.Optional("enforce_allowlist"): bool,
+                        vol.Optional(CONF_ENFORCE_ALLOWLIST): cv.boolean,
                     }
                 ),
-                vol.Optional(CONF_SCHEMA): dict,
-                vol.Exclusive(CONF_ALLOW_LIST, "device_filter", msg=LIST_MSG): list,
-                vol.Exclusive(CONF_BLOCK_LIST, "device_filter", msg=LIST_MSG): list,
+                vol.Optional(CONF_SCHEMA): EVOHOME_RF_SCHEMA,
+                vol.Exclusive(CONF_ALLOW_LIST, CONF_ALLOW_LIST, msg=LIST_MSG): list,
+                vol.Exclusive(CONF_BLOCK_LIST, CONF_ALLOW_LIST, msg=LIST_MSG): list,
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
@@ -93,6 +68,20 @@ CONFIG_SCHEMA = vol.Schema(
 SVC_REFRESH_SYSTEM = "force_refresh"
 SVC_RESET_SYSTEM = "reset_system"
 SVC_SET_SYSTEM_MODE = "set_system_mode"
+
+CONF_MODE = "mode"
+CONF_DURATION_DAYS = "period"
+CONF_DURATION_HOURS = "hours"
+
+CONF_SYSTEM_MODES = (
+    SystemMode.AUTO,
+    SystemMode.AWAY,
+    SystemMode.CUSTOM,
+    SystemMode.DAY_OFF,
+    SystemMode.ECO_BOOST,
+    SystemMode.HEAT_OFF,
+    SystemMode.RESET,
+)
 
 SET_SYSTEM_MODE_SCHEMA = vol.Schema(
     {
@@ -133,6 +122,23 @@ SVC_RESET_ZONE_MODE = "reset_zone_mode"
 SVC_SET_ZONE_CONFIG = "set_zone_config"
 SVC_SET_ZONE_MODE = "set_zone_mode"
 
+# CONF_MODE = "mode"  # import CONF_ENTITY_ID = "entity_id"
+CONF_DURATION = "duration"
+CONF_LOCAL_OVERRIDE = "local_override"
+CONF_MAX_TEMP = "max_temp"
+CONF_MIN_TEMP = "min_temp"
+CONF_MULTIROOM = "multiroom_mode"
+CONF_OPENWINDOW = "openwindow_function"
+CONF_SETPOINT = "setpoint"
+CONF_UNTIL = "until"
+
+CONF_ZONE_MODES = (
+    ZoneMode.SCHEDULE,
+    ZoneMode.PERMANENT,
+    ZoneMode.ADVANCED,
+    ZoneMode.TEMPORARY,
+)
+
 SET_ZONE_BASE_SCHEMA = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
 
 SET_ZONE_CONFIG_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
@@ -172,8 +178,8 @@ SET_ZONE_MODE_SCHEMA_UNTIL = SET_ZONE_BASE_SCHEMA.extend(
             cv.positive_float,
             vol.Range(min=5, max=30),
         ),
-        vol.Exclusive(CONF_UNTIL, "until"): cv.datetime,
-        vol.Exclusive(CONF_DURATION, "until"): vol.All(
+        vol.Exclusive(CONF_UNTIL, CONF_UNTIL): cv.datetime,
+        vol.Exclusive(CONF_DURATION, CONF_UNTIL): vol.All(
             cv.time_period,
             vol.Range(min=td(minutes=5), max=td(days=1)),
         ),
@@ -199,6 +205,20 @@ SVC_SET_DHW_BOOST = "set_dhw_boost"
 SVC_SET_DHW_MODE = "set_dhw_mode"
 SVC_SET_DHW_PARAMS = "set_dhw_params"
 
+# CONF_MODE = "mode"  # import CONF_ENTITY_ID = "entity_id"
+CONF_ACTIVE = "active"
+CONF_DIFFERENTIAL = "differential"
+# CONF_DURATION = "duration"
+CONF_OVERRUN = "overrun"
+# CONF_SETPOINT = "setpoint"
+# CONF_UNTIL = "until"
+
+CONF_DHW_MODES = (
+    ZoneMode.PERMANENT,
+    ZoneMode.ADVANCED,
+    ZoneMode.TEMPORARY,
+)
+
 SET_DHW_BASE_SCHEMA = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
 
 SET_DHW_MODE_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
@@ -207,8 +227,8 @@ SET_DHW_MODE_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
             [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
         ),
         vol.Optional(CONF_ACTIVE): cv.boolean,
-        vol.Exclusive(CONF_UNTIL, "until"): cv.datetime,
-        vol.Exclusive(CONF_DURATION, "until"): vol.All(
+        vol.Exclusive(CONF_UNTIL, CONF_UNTIL): cv.datetime,
+        vol.Exclusive(CONF_DURATION, CONF_UNTIL): vol.All(
             cv.time_period,
             vol.Range(min=td(minutes=5), max=td(days=1)),
         ),
