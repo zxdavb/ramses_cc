@@ -380,7 +380,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
     def set_preset_mode(self, preset_mode: Optional[str]) -> None:
         """Set the preset mode; if None, then revert to 'Auto' mode."""
-        self.svc_set_system_mode(HA_PRESET_TO_TCS.get(preset_mode, SystemMode.AWAY))
+        self.svc_set_system_mode(HA_PRESET_TO_TCS.get(preset_mode, SystemMode.AUTO))
 
     def svc_reset_system(self) -> None:
         """Reset the operating mode of the Controller."""
