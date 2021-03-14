@@ -232,7 +232,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     def svc_set_zone_config(self, **kwargs) -> None:
         """Set the configuration of the Zone (min/max temp, etc.)."""
-        self._device.set_mode(**kwargs)
+        self.svc_set_zone_mode(**kwargs)
 
     def svc_reset_zone_mode(self) -> None:
         """Reset the operating mode of the Zone."""
@@ -376,11 +376,11 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set an operating mode for a Controller."""
-        self.svc_set_zone_mode(HA_HVAC_TO_TCS.get(hvac_mode))
+        self.svc_set_system_mode(HA_HVAC_TO_TCS.get(hvac_mode))
 
     def set_preset_mode(self, preset_mode: Optional[str]) -> None:
         """Set the preset mode; if None, then revert to 'Auto' mode."""
-        self.svc_set_zone_mode(HA_PRESET_TO_TCS.get(preset_mode, SystemMode.AWAY))
+        self.svc_set_system_mode(HA_PRESET_TO_TCS.get(preset_mode, SystemMode.AWAY))
 
     def svc_reset_system(self) -> None:
         """Reset the operating mode of the Controller."""
