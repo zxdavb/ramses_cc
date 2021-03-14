@@ -99,7 +99,7 @@ class EvoRelayDemand(EvoSensorBase):
         # return "mdi:power-plug-off" if self.state == 0 else "mdi:power-plug"
         # return "mdi:flash-off" if self.state == 0 else "mdi:flash"
         return (
-            "mdi:electric-switch-closed" if self.state == 0 else "mdi:electric-switch"
+            "mdi:electric-switch" if self.state == 0 else "mdi:electric-switch-closed"
         )
 
 
