@@ -11,80 +11,32 @@ from datetime import datetime as dt
 from datetime import timedelta as td
 from typing import Dict, List, Optional
 
-import voluptuous as vol
-
-# import homeassistant.util.dt as dt_util
 from evohome_rf.systems import StoredHw
-from homeassistant.components.water_heater import (  # SUPPORT_AWAY_MODE,
-    ATTR_AWAY_MODE,
+from homeassistant.components.water_heater import ATTR_AWAY_MODE
+from homeassistant.components.water_heater import DOMAIN as PLATFORM
+from homeassistant.components.water_heater import (
     SUPPORT_OPERATION_MODE,
     SUPPORT_TARGET_TEMPERATURE,
     WaterHeaterEntity,
 )
 from homeassistant.const import (  # PRECISION_TENTHS,; PRECISION_WHOLE,
-    ATTR_ENTITY_ID,
     ATTR_TEMPERATURE,
     STATE_OFF,
     STATE_ON,
 )
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
 from .const import BROKER, MODE, SYSTEM_MODE, SystemMode, ZoneMode
+from .schema import CONF_ACTIVE, WATER_HEATER_SERVICES
 
-PLATFORM = "water_heater"
 _LOGGER = logging.getLogger(__name__)
-
-CONF_MODE = "mode"
-CONF_ACTIVE = "active"
-CONF_DURATION = "duration"
-CONF_UNTIL = "until"
-CONF_SETPOINT = "setpoint"
-CONF_OVERRUN = "overrun"
-CONF_DIFFERENTIAL = "differential"
-
-DHW_MODES = (ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY)
-SET_DHW_BASE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
-SET_DHW_MODE_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
-    {
-        vol.Optional(CONF_MODE): vol.In(DHW_MODES),
-        vol.Optional(CONF_ACTIVE): cv.boolean,
-        vol.Exclusive(CONF_UNTIL, "until"): cv.datetime,
-        vol.Exclusive(CONF_DURATION, "until"): vol.All(
-            cv.time_period,
-            vol.Range(min=td(minutes=5), max=td(days=1)),
-        ),
-    }
-)
-SET_DHW_PARAMS_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
-    {
-        vol.Optional(CONF_SETPOINT, default=50): vol.All(
-            cv.positive_float,
-            vol.Range(min=30, max=85),
-        ),
-        vol.Optional(CONF_OVERRUN, default=5): vol.All(
-            cv.positive_int, vol.Range(max=10)
-        ),
-        vol.Optional(CONF_DIFFERENTIAL, default=1): vol.All(
-            cv.positive_float, vol.Range(max=10)
-        ),
-    }
-)
-PLATFORM_SERVICES = {
-    "reset_dhw_mode": SET_DHW_BASE_SCHEMA,
-    "set_dhw_boost": SET_DHW_BASE_SCHEMA,
-    "set_dhw_mode": SET_DHW_MODE_SCHEMA,
-    "reset_dhw_params": SET_DHW_BASE_SCHEMA,
-    "set_dhw_params": SET_DHW_PARAMS_SCHEMA,
-}
 
 
 STATE_AUTO = "auto"
 STATE_BOOST = "boost"
 STATE_UNKNOWN = None
-
 
 STATE_EVO_TO_HA = {True: STATE_ON, False: STATE_OFF}
 STATE_HA_TO_EVO = {v: k for k, v in STATE_EVO_TO_HA.items()}
@@ -110,7 +62,6 @@ SUPPORTED_FEATURES = sum(
 )  # SUPPORT_AWAY_MODE,
 
 STATE_ATTRS_DHW = ("config", "mode", "status")
-ACTIVE = "active"
 
 
 async def async_setup_platform(
@@ -130,7 +81,7 @@ async def async_setup_platform(
     broker.services[PLATFORM] = True
 
     register_svc = entity_platform.current_platform.get().async_register_entity_service
-    [register_svc(k, v, f"svc_{k}") for k, v in PLATFORM_SERVICES.items()]
+    [register_svc(k, v, f"svc_{k}") for k, v in WATER_HEATER_SERVICES.items()]
 
 
 class EvoDHW(EvoZoneBase, WaterHeaterEntity):
@@ -151,7 +102,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
         if self.is_away_mode_on:
             return STATE_OFF
         try:
-            return STATE_EVO_TO_HA[self._device.mode[ACTIVE]]
+            return STATE_EVO_TO_HA[self._device.mode[CONF_ACTIVE]]
         except TypeError:
             return
 
@@ -165,9 +116,9 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
         if mode == ZoneMode.SCHEDULE:
             return STATE_AUTO
         elif mode == ZoneMode.PERMANENT:
-            return STATE_ON if self._device.mode[ACTIVE] else STATE_OFF
+            return STATE_ON if self._device.mode[CONF_ACTIVE] else STATE_OFF
         else:  # there are a number of temporary modes
-            return STATE_BOOST if self._device.mode[ACTIVE] else STATE_OFF
+            return STATE_BOOST if self._device.mode[CONF_ACTIVE] else STATE_OFF
 
     @property
     def is_away_mode_on(self):

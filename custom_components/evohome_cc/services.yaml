@@ -15,26 +15,50 @@ set_dhw_boost:
       example: water_heater.stored_hw
 
 set_dhw_mode:
+  name: Set DHW mode
   description: >-
     Set the operating mode of the DHW controller, optionally for a given duration.
+  target:
+    integration: evohome_cc
+    domain: water_heater
   fields:
-    entity_id:
-      description: The entity_id of the water_heater.
-      example: water_heater.stored_hw
+    # entity_id:
+    #   name: Entity ID
+    #   description: The entity_id of the water_heater.
+    #   example: water_heater.stored_hw
     mode:
+      name: DHW mode
       description: >-
         The duration of the override. Optional, one of: follow_schedule,
         temporary_override or permanent_override.
       example: temporary_override
+      selector:
+        select:
+          options:
+            - follow_schedule
+            - permanent_override
+            - tmporary_override
     active:
+      name: DHW state
       description: >-
         The state of the water heater.
+      selector:
+        boolean:
       example: true
     duration:
+      name: Override duration
       description: >-
         The duration of the override. Mutually exclusive with until.
       example: '{"minutes": 135}'
+      selector:
+        number:
+          min: 15
+          max: 1440
+          step: 15
+          unit_of_measurement: mins
+          mode: slider
     until:
+      name: Override end time
       description: >-
         The end of the override. Mutually exclusive with duration.
       # example: '{"minutes": 135}'

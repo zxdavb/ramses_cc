@@ -7,10 +7,9 @@ Provides support for climate entities.
 """
 import logging
 from datetime import datetime as dt
-from datetime import timedelta as td
 from typing import Any, Dict, List, Optional
 
-import voluptuous as vol
+from homeassistant.components.climate import DOMAIN as PLATFORM
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (  # PRESET_BOOST,
     CURRENT_HVAC_HEAT,
@@ -26,104 +25,15 @@ from homeassistant.components.climate.const import (  # PRESET_BOOST,
     SUPPORT_PRESET_MODE,
     SUPPORT_TARGET_TEMPERATURE,
 )
-from homeassistant.const import ATTR_ENTITY_ID
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import DOMAIN, EvoZoneBase
 from .const import ATTR_SETPOINT, BROKER, MODE, SYSTEM_MODE, SystemMode, ZoneMode
+from .schema import CLIMATE_SERVICES, SVC_RESET_SYSTEM, SVC_SET_SYSTEM_MODE
 
-# from .const import ATTR_HEAT_DEMAND
-
-PLATFORM = "climate"
 _LOGGER = logging.getLogger(__name__)
 
-CONF_MODE = "mode"
-CONF_SETPOINT = "setpoint"
-CONF_DURATION = "duration"
-CONF_UNTIL = "until"
-
-CONF_MAX_TEMP = "max_temp"
-CONF_MIN_TEMP = "min_temp"
-CONF_LOCAL_OVERRIDE = "local_override"
-CONF_OPENWINDOW = "openwindow_function"
-CONF_MULTIROOM = "multiroom_mode"
-CONF_DURATION_DAYS = "period"
-CONF_DURATION_HOURS = "days"
-
-SET_SYSTEM_MODE_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_MODE): vol.In([SystemMode.AUTO, SystemMode.RESET]),
-    }
-)
-SET_SYSTEM_MODE_SCHEMA_HOURS = vol.Schema(
-    {
-        vol.Required(CONF_MODE): vol.In([SystemMode.ECO]),
-        vol.Optional(CONF_DURATION_HOURS, default=td(hours=0)): vol.All(
-            cv.time_period, vol.Range(min=td(hours=0), max=td(hours=24))
-        ),
-    }
-)
-SET_SYSTEM_MODE_SCHEMA_DAYS = vol.Schema(
-    {
-        vol.Required(CONF_MODE): vol.In(
-            [SystemMode.AWAY, SystemMode.CUSTOM, SystemMode.DAY_OFF]
-        ),
-        vol.Optional(CONF_DURATION_DAYS, default=td(days=1)): vol.All(
-            cv.time_period, vol.Range(min=td(days=1), max=td(days=99))
-        ),
-    }
-)
-SET_SYSTEM_MODE_SCHEMA = vol.Any(
-    SET_SYSTEM_MODE_SCHEMA, SET_SYSTEM_MODE_SCHEMA_HOURS, SET_SYSTEM_MODE_SCHEMA_DAYS
-)
-SET_ZONE_BASE_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
-SET_ZONE_CONFIG_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
-    {
-        vol.Optional(CONF_MAX_TEMP, default=35): vol.All(
-            cv.positive_float,
-            vol.Range(min=21, max=35),
-        ),
-        vol.Optional(CONF_MIN_TEMP, default=5): vol.All(
-            cv.positive_float,
-            vol.Range(min=5, max=21),
-        ),
-        vol.Optional(CONF_LOCAL_OVERRIDE, default=True): cv.boolean,
-        vol.Optional(CONF_OPENWINDOW, default=True): cv.boolean,
-        vol.Optional(CONF_MULTIROOM, default=True): cv.boolean,
-    }
-)
-SET_ZONE_MODE_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
-    {
-        vol.Optional(CONF_MODE): vol.In([ZoneMode.SCHEDULE]),
-    }
-)
-SET_ZONE_MODE_SCHEMA_UNTIL = SET_ZONE_BASE_SCHEMA.extend(
-    {
-        vol.Optional(CONF_MODE): vol.In(
-            [ZoneMode.ADVANCED, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
-        ),
-        vol.Optional(CONF_SETPOINT, default=21): vol.All(
-            cv.positive_float,
-            vol.Range(min=5, max=30),
-        ),
-        vol.Exclusive(CONF_UNTIL, "until"): cv.datetime,
-        vol.Exclusive(CONF_DURATION, "until"): vol.All(
-            cv.time_period,
-            vol.Range(min=td(minutes=5), max=td(days=1)),
-        ),
-    }
-)
-SET_ZONE_MODE_SCHEMA = vol.Any(SET_ZONE_MODE_SCHEMA, SET_ZONE_MODE_SCHEMA_UNTIL)
-PLATFORM_SERVICES = {
-    "reset_system": vol.Schema({}),
-    "set_system_mode": SET_SYSTEM_MODE_SCHEMA,
-    "reset_zone_config": SET_ZONE_BASE_SCHEMA,
-    "set_zone_config": SET_ZONE_CONFIG_SCHEMA,
-    "reset_zone_mode": SET_ZONE_BASE_SCHEMA,
-    "set_zone_mode": SET_ZONE_MODE_SCHEMA,
-}
 
 PRESET_RESET = "Reset"  # reset all child zones to EVO_FOLLOW
 PRESET_CUSTOM = "Custom"
@@ -182,7 +92,7 @@ async def async_setup_platform(
     broker.services[PLATFORM] = True
 
     register_svc = entity_platform.current_platform.get().async_register_entity_service
-    [register_svc(k, v, f"svc_{k}") for k, v in PLATFORM_SERVICES.items()]
+    [register_svc(k, v, f"svc_{k}") for k, v in CLIMATE_SERVICES.items()]
 
 
 class EvoZone(EvoZoneBase, ClimateEntity):
@@ -350,6 +260,23 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
         self._supported_features = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
 
+    def _handle_dispatch(self, *args) -> None:
+        """Process a service request (system mode) for a controller.
+
+        Data validation is not required, it will have been done upstream.
+        """
+        if not args:
+            self.async_schedule_update_ha_state(force_refresh=True)
+            return
+
+        payload = args[0]
+        if payload.get("unique_id") != self._device.id:
+            return
+        elif payload["service"] == SVC_RESET_SYSTEM:
+            self.svc_reset_system()
+        elif payload["service"] == SVC_SET_SYSTEM_MODE:
+            self.svc_set_system_mode(**payload["data"])
+
     @property
     def current_temperature(self) -> Optional[float]:
         """Return the average current temperature of the heating Zones.
@@ -413,6 +340,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
     @property
     def name(self) -> str:
+        """Return the name of the Controller."""
         return "Controller"
 
     @property
@@ -454,11 +382,11 @@ class EvoController(EvoZoneBase, ClimateEntity):
         """Set the preset mode; if None, then revert to 'Auto' mode."""
         self.svc_set_zone_mode(HA_PRESET_TO_TCS.get(preset_mode, SystemMode.AWAY))
 
-    def svc_reset_zone_mode(self) -> None:
+    def svc_reset_system(self) -> None:
         """Reset the operating mode of the Controller."""
         self._device.reset_mode()
 
-    def svc_set_zone_mode(self, mode, period=None, days=None) -> None:
+    def svc_set_system_mode(self, mode, period=None, days=None) -> None:
         """Set the (native) operating mode of the Controller."""
         if period is not None:
             until = dt.now() + period
