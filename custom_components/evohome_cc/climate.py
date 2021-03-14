@@ -9,6 +9,7 @@ import logging
 from datetime import datetime as dt
 from typing import Any, Dict, List, Optional
 
+from evohome_rf.const import SystemMode, ZoneMode
 from homeassistant.components.climate import DOMAIN as PLATFORM
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (  # PRESET_BOOST,
@@ -28,8 +29,8 @@ from homeassistant.components.climate.const import (  # PRESET_BOOST,
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from . import DOMAIN, EvoZoneBase
-from .const import ATTR_SETPOINT, BROKER, MODE, SYSTEM_MODE, SystemMode, ZoneMode
+from . import EvoZoneBase
+from .const import ATTR_SETPOINT, BROKER, DOMAIN, MODE, SYSTEM_MODE
 from .schema import CLIMATE_SERVICES, SVC_RESET_SYSTEM, SVC_SET_SYSTEM_MODE
 
 _LOGGER = logging.getLogger(__name__)

@@ -16,7 +16,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from . import DOMAIN, EvoDeviceBase, new_binary_sensors
+from . import EvoDeviceBase, new_binary_sensors
 from .const import (
     ATTR_ACTUATOR,
     ATTR_BATTERY,
@@ -24,6 +24,7 @@ from .const import (
     ATTR_WINDOW,
     BROKER,
     DEVICE_CLASS_ACTUATOR,
+    DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)

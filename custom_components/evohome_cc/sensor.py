@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
 """Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
 
 Provides support for sensors.
@@ -11,7 +14,7 @@ from homeassistant.const import (  # DEVICE_CLASS_BATTERY,; DEVICE_CLASS_PROBLEM
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from . import DOMAIN, EvoDeviceBase, new_sensors
+from . import EvoDeviceBase, new_sensors
 from .const import (
     ATTR_FAULT_LOG,
     ATTR_HEAT_DEMAND,
@@ -19,6 +22,7 @@ from .const import (
     ATTR_SETPOINT,
     ATTR_TEMPERATURE,
     BROKER,
+    DOMAIN,
     PERCENTAGE,
 )
 

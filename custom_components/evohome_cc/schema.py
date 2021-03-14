@@ -6,16 +6,13 @@
 from datetime import timedelta as td
 
 import voluptuous as vol
+from evohome_rf.const import SYSTEM_SCHEMA as EVOHOME_RF_SCHEMA
+from evohome_rf.const import SystemMode, ZoneMode
 from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers import config_validation as cv
 
-try:
-    from evohome_rf.schema import SYSTEM_SCHEMA as EVOHOME_RF_SCHEMA
-except ModuleNotFoundError:
-    EVOHOME_RF_SCHEMA = dict
-
-from .const import DOMAIN, SystemMode, ZoneMode
+from .const import DOMAIN
 
 # Configuration schema
 CONF_ALLOW_LIST = "allow_list"

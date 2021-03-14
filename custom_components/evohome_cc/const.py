@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
-
-Requires a Honeywell HGI80 (or compatible) gateway.
-"""
-
-from types import SimpleNamespace
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome."""
 
 DOMAIN = "evohome_cc"
 
@@ -36,22 +31,3 @@ SENSOR_ATTRS = (ATTR_HEAT_DEMAND, ATTR_RELAY_DEMAND, ATTR_TEMPERATURE)  # ATTR_F
 
 MODE = "mode"
 SYSTEM_MODE = "system_mode"
-
-SystemMode = SimpleNamespace(
-    AUTO="auto",
-    AWAY="away",
-    CUSTOM="custom",
-    DAY_OFF="day_off",
-    DAY_OFF_ECO="day_off_eco",
-    ECO_BOOST="eco_boost",
-    HEAT_OFF="heat_off",
-    RESET="auto_with_reset",
-)
-
-ZoneMode = SimpleNamespace(
-    SCHEDULE="follow_schedule",
-    ADVANCED="advanced_override",
-    PERMANENT="permanent_override",
-    _UNKNOWN="day_override",
-    TEMPORARY="temporary_override",
-)

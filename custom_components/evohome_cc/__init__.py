@@ -9,13 +9,8 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 import logging
 from typing import Any, Dict, Optional
 
+import evohome_rf
 import serial
-
-try:
-    from . import evohome_rf
-except (ImportError, ModuleNotFoundError):
-    import evohome_rf
-
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR
 from homeassistant.components.climate import DOMAIN as CLIMATE
 from homeassistant.components.sensor import DOMAIN as SENSOR
