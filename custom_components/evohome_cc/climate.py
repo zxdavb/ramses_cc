@@ -51,9 +51,6 @@ from .schema import (
 _LOGGER = logging.getLogger(__name__)
 
 
-PRESET_RESET = "Reset"  # reset all child zones to EVO_FOLLOW
-PRESET_CUSTOM = "Custom"
-
 MODE_TCS_TO_HA = {
     SystemMode.AUTO: HVAC_MODE_AUTO,  # or: HVAC_MODE_HEAT?
     SystemMode.HEAT_OFF: HVAC_MODE_OFF,
@@ -65,7 +62,7 @@ MODE_TO_TCS = {v: k for k, v in MODE_TCS_TO_HA.items()}
 PRESET_TCS_TO_HA = {
     SystemMode.AUTO: PRESET_NONE,
     SystemMode.AWAY: PRESET_AWAY,
-    SystemMode.CUSTOM: PRESET_CUSTOM,  # NOTE: not an offical PRESET
+    SystemMode.CUSTOM: "custom",  # NOTE: not an offical PRESET
     SystemMode.DAY_OFF: PRESET_HOME,
     SystemMode.ECO_BOOST: PRESET_ECO,  # or: PRESET_BOOST
     SystemMode.HEAT_OFF: PRESET_NONE,
@@ -80,7 +77,6 @@ PRESET_TO_TCS = {
     in (
         SystemMode.AUTO,
         SystemMode.AWAY,
-        SystemMode.CUSTOM,
         SystemMode.DAY_OFF,
         SystemMode.ECO_BOOST,
     )
