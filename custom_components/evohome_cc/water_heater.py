@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome & others.
 
 Provides support for water_heater entities.
 """
@@ -29,8 +29,8 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import EvoZoneBase
-from .const import BROKER, DOMAIN, MODE, SYSTEM_MODE
-from .schema import CONF_ACTIVE, WATER_HEATER_SERVICES
+from .const import BROKER, DOMAIN
+from .schema import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE, WATER_HEATER_SERVICES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ async def async_setup_platform(
     broker = hass.data[DOMAIN][BROKER]
     dhw = broker.water_heater = broker.client.evo.dhw
 
-    async_add_entities([EvoDHW(broker, dhw)], update_before_add=True)
+    async_add_entities([EvoDHW(broker, dhw)])  # TODO: , update_before_add=True)
 
     if broker.services.get(PLATFORM):
         return
@@ -111,7 +111,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     def current_operation(self) -> str:
         """Return the current operating mode (Auto, On, or Off)."""
         try:
-            mode = self._device.mode[MODE]
+            mode = self._device.mode[CONF_MODE]
         except TypeError:
             return
         if mode == ZoneMode.SCHEDULE:
@@ -125,9 +125,14 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     def is_away_mode_on(self):
         """Return True if away mode is on."""
         try:
-            return self._device._evo.system_mode[SYSTEM_MODE] == SystemMode.AWAY
+            return self._device._evo.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY
         except TypeError:
             return
+
+    @property
+    def operation_list(self) -> List[str]:
+        """Return the list of available operations."""
+        return self._operation_list
 
     @property
     def current_temperature(self):
@@ -143,11 +148,6 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     def min_temp(self):
         """Return the minimum setpoint temperature."""
         return StoredHw.MIN_SETPOINT
-
-    @property
-    def operation_list(self) -> List[str]:
-        """Return the list of available operations."""
-        return self._operation_list
 
     @property
     def state_attributes(self) -> Dict:

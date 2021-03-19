@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome."""
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome & others."""
 
 from datetime import timedelta as td
 
 import voluptuous as vol
-from evohome_rf.const import SystemMode, ZoneMode
+from evohome_rf.const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
+from evohome_rf.schema import ALLOW_LIST as CONF_ALLOW_LIST
+from evohome_rf.schema import BLOCK_LIST as CONF_BLOCK_LIST
+from evohome_rf.schema import CONFIG as CONF_CONFIG
+from evohome_rf.schema import ENFORCE_ALLOWLIST as CONF_ENFORCE_ALLOWLIST
+from evohome_rf.schema import MAX_ZONES as CONF_MAX_ZONES
+from evohome_rf.schema import PACKET_LOG as CONF_PACKET_LOG
+from evohome_rf.schema import SCHEMA as CONF_SCHEMA
+from evohome_rf.schema import SERIAL_CONFIG as CONF_SERIAL_CONFIG
+from evohome_rf.schema import SERIAL_PORT as CONF_SERIAL_PORT
 from evohome_rf.schema import SYSTEM_SCHEMA
 from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID
 from homeassistant.const import CONF_SCAN_INTERVAL
@@ -14,18 +23,26 @@ from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN
 
+CONF_MODE = "mode"
+CONF_SYSTEM_MODE = "system_mode"
+CONF_DURATION_DAYS = "period"
+CONF_DURATION_HOURS = "hours"
+
+CONF_DURATION = "duration"
+CONF_LOCAL_OVERRIDE = "local_override"
+CONF_MAX_TEMP = "max_temp"
+CONF_MIN_TEMP = "min_temp"
+CONF_MULTIROOM = "multiroom_mode"
+CONF_OPENWINDOW = "openwindow_function"
+CONF_SETPOINT = "setpoint"
+CONF_UNTIL = "until"
+
+CONF_ACTIVE = "active"
+CONF_DIFFERENTIAL = "differential"
+CONF_OVERRUN = "overrun"
+
 # Configuration schema
-CONF_ALLOW_LIST = "allow_list"
-CONF_BLOCK_LIST = "block_list"
-CONF_CONFIG = "config"
-CONF_ENFORCE_ALLOWLIST = "enforce_allowlist"
 CONF_GATEWAY_ID = "gateway_id"
-CONF_MAX_ZONES = "max_zones"
-CONF_PACKET_LOG = "packet_log"
-# import CONF_SCAN_INTERVAL
-CONF_SCHEMA = "schema"
-CONF_SERIAL_CONFIG = "serial_config"
-CONF_SERIAL_PORT = "serial_port"
 
 LIST_MSG = f"{CONF_ALLOW_LIST} and {CONF_BLOCK_LIST} are mutally exclusive"
 
@@ -66,23 +83,9 @@ SVC_REFRESH_SYSTEM = "force_refresh"
 SVC_RESET_SYSTEM = "reset_system"
 SVC_SET_SYSTEM_MODE = "set_system_mode"
 
-CONF_MODE = "mode"
-CONF_DURATION_DAYS = "period"
-CONF_DURATION_HOURS = "hours"
-
-CONF_SYSTEM_MODES = (
-    SystemMode.AUTO,
-    SystemMode.AWAY,
-    SystemMode.CUSTOM,
-    SystemMode.DAY_OFF,
-    SystemMode.ECO_BOOST,
-    SystemMode.HEAT_OFF,
-    SystemMode.RESET,
-)
-
 SET_SYSTEM_MODE_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_MODE): vol.In(CONF_SYSTEM_MODES),
+        vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),  # incl. DAY_OFF_ECO
     }
 )
 SET_SYSTEM_MODE_SCHEMA_HOURS = vol.Schema(
@@ -118,16 +121,6 @@ SVC_RESET_ZONE_CONFIG = "reset_zone_config"
 SVC_RESET_ZONE_MODE = "reset_zone_mode"
 SVC_SET_ZONE_CONFIG = "set_zone_config"
 SVC_SET_ZONE_MODE = "set_zone_mode"
-
-# CONF_MODE = "mode"  # import CONF_ENTITY_ID = "entity_id"
-CONF_DURATION = "duration"
-CONF_LOCAL_OVERRIDE = "local_override"
-CONF_MAX_TEMP = "max_temp"
-CONF_MIN_TEMP = "min_temp"
-CONF_MULTIROOM = "multiroom_mode"
-CONF_OPENWINDOW = "openwindow_function"
-CONF_SETPOINT = "setpoint"
-CONF_UNTIL = "until"
 
 CONF_ZONE_MODES = (
     ZoneMode.SCHEDULE,
@@ -201,14 +194,6 @@ SVC_RESET_DHW_CONFIG = "reset_dhw_params"
 SVC_SET_DHW_BOOST = "set_dhw_boost"
 SVC_SET_DHW_MODE = "set_dhw_mode"
 SVC_SET_DHW_PARAMS = "set_dhw_params"
-
-# CONF_MODE = "mode"  # import CONF_ENTITY_ID = "entity_id"
-CONF_ACTIVE = "active"
-CONF_DIFFERENTIAL = "differential"
-# CONF_DURATION = "duration"
-CONF_OVERRUN = "overrun"
-# CONF_SETPOINT = "setpoint"
-# CONF_UNTIL = "until"
 
 CONF_DHW_MODES = (
     ZoneMode.PERMANENT,

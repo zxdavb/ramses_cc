@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome & others.
 
 Provides support for sensors.
 """
+
 import logging
 from typing import Any, Dict, Optional
 
@@ -14,7 +15,7 @@ from homeassistant.const import (  # DEVICE_CLASS_BATTERY,; DEVICE_CLASS_PROBLEM
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from . import EvoDeviceBase, new_sensors
+from . import EvoDeviceBase
 from .const import (
     ATTR_FAULT_LOG,
     ATTR_HEAT_DEMAND,
@@ -37,7 +38,7 @@ async def async_setup_platform(
         return
 
     broker = hass.data[DOMAIN][BROKER]
-    new_devices = new_sensors(broker)
+    new_devices = broker.find_new_sensors()
     broker.sensors += new_devices
 
     new_entities = [
@@ -47,7 +48,7 @@ async def async_setup_platform(
         if hasattr(device, klass.STATE_ATTR)
     ]
     if new_entities:
-        async_add_entities(new_entities, update_before_add=True)
+        async_add_entities(new_entities)  # TODO: , update_before_add=True)
 
 
 class EvoSensorBase(EvoDeviceBase):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome.
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome & others.
 
 Provides support for binary sensors.
 """
@@ -16,7 +16,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from . import EvoDeviceBase, new_binary_sensors
+from . import EvoDeviceBase
 from .const import (
     ATTR_ACTUATOR,
     ATTR_BATTERY,
@@ -38,7 +38,7 @@ async def async_setup_platform(
         return
 
     broker = hass.data[DOMAIN][BROKER]
-    new_devices = new_binary_sensors(broker)
+    new_devices = broker.find_new_binary_sensors()
     broker.binary_sensors += new_devices
 
     new_entities = [
@@ -48,7 +48,7 @@ async def async_setup_platform(
         if hasattr(device, klass.STATE_ATTR)
     ]
     if new_entities:
-        async_add_entities(new_entities, update_before_add=True)
+        async_add_entities(new_entities)  # TODO: , update_before_add=True)
 
 
 class EvoBinarySensorBase(EvoDeviceBase, BinarySensorEntity):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome."""
+"""Support for Honeywell's RAMSES-II RF protocol, as used by evohome & others."""
 
 DOMAIN = "evohome_cc"
 
@@ -28,6 +28,3 @@ PERCENTAGE = "%"
 
 BINARY_SENSOR_ATTRS = (ATTR_ACTUATOR, ATTR_BATTERY, ATTR_WINDOW)
 SENSOR_ATTRS = (ATTR_HEAT_DEMAND, ATTR_RELAY_DEMAND, ATTR_TEMPERATURE)  # ATTR_FAULT_LOG
-
-MODE = "mode"
-SYSTEM_MODE = "system_mode"
