@@ -52,7 +52,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 MODE_TCS_TO_HA = {
-    SystemMode.AUTO: HVAC_MODE_AUTO,  # or: HVAC_MODE_HEAT?
+    SystemMode.AUTO: HVAC_MODE_HEAT,  # NOTE: don't use _AUTO
     SystemMode.HEAT_OFF: HVAC_MODE_OFF,
 }
 MODE_TCS_TO_HA[SystemMode.RESET] = MODE_TCS_TO_HA[SystemMode.AUTO]
