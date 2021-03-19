@@ -57,7 +57,11 @@ MODE_TCS_TO_HA = {
 }
 MODE_TCS_TO_HA[SystemMode.RESET] = MODE_TCS_TO_HA[SystemMode.AUTO]
 
-MODE_TO_TCS = {v: k for k, v in MODE_TCS_TO_HA.items()}
+MODE_TO_TCS = {
+    HVAC_MODE_HEAT: SystemMode.AUTO,
+    HVAC_MODE_OFF: SystemMode.HEAT_OFF,
+}
+MODE_TO_TCS[HVAC_MODE_AUTO] = SystemMode.RESET  # not all systems support this
 
 PRESET_TCS_TO_HA = {
     SystemMode.AUTO: PRESET_NONE,
@@ -151,7 +155,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     @property
     def hvac_action(self) -> Optional[str]:
-        """Done. Return the current running hvac operation if supported."""
+        """Return the Zone's current running hvac operation."""
 
         if self._device._evo.system_mode is None:
             return  # unable to determine
@@ -165,7 +169,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     @property
     def hvac_mode(self) -> Optional[str]:
-        """Return hvac operation ie. heat, cool mode."""
+        """Return the Zone's hvac operation ie. heat, cool mode."""
 
         if self._device._evo.system_mode is None:
             return  # unable to determine
@@ -185,7 +189,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     @property
     def preset_mode(self) -> Optional[str]:
-        """Return the current preset mode, e.g., home, away, temp."""
+        """Return the Zone's current preset mode, e.g., home, away, temp."""
 
         if self._device._evo.system_mode is None:
             return  # unable to determine
@@ -322,7 +326,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
     @property
     def hvac_action(self) -> Optional[str]:
-        """Done. Return the current running hvac operation if supported."""
+        """Return the Controller's current running hvac operation."""
 
         if self._device.system_mode is None:
             return  # unable to determine
@@ -336,7 +340,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
     @property
     def hvac_mode(self) -> Optional[str]:
-        """Done. Return the current operating mode of a Controller."""
+        """Return the Controller's current operating mode of a Controller."""
 
         if self._device.system_mode is None:
             return  # unable to determine
@@ -348,7 +352,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
     @property
     def preset_mode(self) -> Optional[str]:
-        """Done. Return the current preset mode, e.g., home, away, temp."""
+        """Return the Controller's current preset mode, e.g., home, away, temp."""
 
         if self._device.system_mode is None:
             return  # unable to determine
