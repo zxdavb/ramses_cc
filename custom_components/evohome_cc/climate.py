@@ -70,17 +70,13 @@ PRESET_TCS_TO_HA = {
 PRESET_TCS_TO_HA[SystemMode.DAY_OFF_ECO] = PRESET_TCS_TO_HA[SystemMode.DAY_OFF]
 PRESET_TCS_TO_HA[SystemMode.RESET] = PRESET_TCS_TO_HA[SystemMode.AUTO]
 
-PRESET_TO_TCS = {
-    v: k
-    for k, v in PRESET_TCS_TO_HA.items()
-    if k
-    in (
-        SystemMode.AUTO,
-        SystemMode.AWAY,
-        SystemMode.DAY_OFF,
-        SystemMode.ECO_BOOST,
-    )
-}
+PRESET_TO_TCS = (
+    SystemMode.AUTO,
+    SystemMode.AWAY,
+    SystemMode.DAY_OFF,
+    SystemMode.ECO_BOOST,
+)
+PRESET_TO_TCS = {v: k for k, v in PRESET_TCS_TO_HA.items() if k in PRESET_TO_TCS}
 #
 MODE_ZONE_TO_HA = {
     ZoneMode.ADVANCED: HVAC_MODE_HEAT,
@@ -89,15 +85,8 @@ MODE_ZONE_TO_HA = {
 MODE_ZONE_TO_HA[ZoneMode.PERMANENT] = MODE_ZONE_TO_HA[ZoneMode.ADVANCED]
 MODE_ZONE_TO_HA[ZoneMode.TEMPORARY] = MODE_ZONE_TO_HA[ZoneMode.ADVANCED]
 
-MODE_TO_ZONE = {
-    v: k
-    for k, v in PRESET_TCS_TO_HA.items()
-    if k
-    in (
-        ZoneMode.SCHEDULE,
-        ZoneMode.PERMANENT,
-    )
-}
+MODE_TO_ZONE = (ZoneMode.SCHEDULE, ZoneMode.PERMANENT)
+MODE_TO_ZONE = {v: k for k, v in PRESET_TCS_TO_HA.items() if k in MODE_TO_ZONE}
 PRESET_ZONE_TO_HA = {
     ZoneMode.SCHEDULE: PRESET_NONE,
     ZoneMode.TEMPORARY: "temporary",
