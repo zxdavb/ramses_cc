@@ -180,9 +180,10 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
         if self._device._evo.system_mode is None:
             return  # unable to determine
-        system_mode = self._device._evo.system_mode[CONF_SYSTEM_MODE]
-        if system_mode in MODE_TCS_TO_HA:
-            return MODE_TCS_TO_HA[system_mode]
+        if self._device._evo.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY:
+            return HVAC_MODE_AUTO
+        if self._device._evo.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+            return HVAC_MODE_OFF
 
         if self._device.mode is None:
             return  # unable to determine
