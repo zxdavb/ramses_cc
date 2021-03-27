@@ -4,19 +4,26 @@
 """Support for Honeywell's RAMSES-II RF protocol, as used by evohome & others."""
 
 from datetime import timedelta as td
+from typing import Tuple
 
 import voluptuous as vol
 from evohome_rf.const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
-from evohome_rf.schema import ALLOW_LIST as CONF_ALLOW_LIST
-from evohome_rf.schema import BLOCK_LIST as CONF_BLOCK_LIST
-from evohome_rf.schema import CONFIG as CONF_CONFIG
-from evohome_rf.schema import ENFORCE_ALLOWLIST as CONF_ENFORCE_ALLOWLIST
-from evohome_rf.schema import MAX_ZONES as CONF_MAX_ZONES
-from evohome_rf.schema import PACKET_LOG as CONF_PACKET_LOG
-from evohome_rf.schema import SCHEMA as CONF_SCHEMA
-from evohome_rf.schema import SERIAL_CONFIG as CONF_SERIAL_CONFIG
-from evohome_rf.schema import SERIAL_PORT as CONF_SERIAL_PORT
-from evohome_rf.schema import SYSTEM_SCHEMA
+from evohome_rf.schema import (
+    ALLOW_LIST,
+    BLOCK_LIST,
+    CONFIG,
+    CONFIG_SCHEMA,
+    EVOFW_FLAG,
+    FILTER_SCHEMA,
+    LOG_FILE_NAME,
+    LOG_ROTATE_BYTES,
+    LOG_ROTATE_COUNT,
+    PACKET_LOG,
+    PORT_NAME,
+    SERIAL_CONFIG,
+    SERIAL_CONFIG_SCHEMA,
+    SERIAL_PORT,
+)
 from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers import config_validation as cv
@@ -42,37 +49,37 @@ CONF_DIFFERENTIAL = "differential"
 CONF_OVERRUN = "overrun"
 
 # Configuration schema
-CONF_GATEWAY_ID = "gateway_id"
-
-LIST_MSG = f"{CONF_ALLOW_LIST} and {CONF_BLOCK_LIST} are mutally exclusive"
-
 SCAN_INTERVAL_DEFAULT = td(seconds=300)
 SCAN_INTERVAL_MINIMUM = td(seconds=10)
+
+PACKET_LOG_SCHEMA = vol.Schema(
+    {
+        vol.Required(LOG_FILE_NAME): str,
+        vol.Optional(LOG_ROTATE_BYTES, default=None): vol.Any(None, int),
+        vol.Optional(LOG_ROTATE_COUNT, default=7): vol.All(
+            int, vol.Range(min=0, max=7)
+        ),
+    },
+    extra=vol.PREVENT_EXTRA,
+)  # unlike evohome_rf, evohome_cc requires a packet_log
 
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
             {
-                # vol.Optional(CONF_GATEWAY_ID): vol.Match(r"^18:[0-9]{6}$"),
-                vol.Required(CONF_SERIAL_PORT): cv.string,
-                vol.Optional(CONF_SERIAL_CONFIG): dict,
-                vol.Required(CONF_CONFIG): vol.Schema(
-                    {
-                        vol.Optional(CONF_MAX_ZONES, default=12): vol.All(
-                            cv.positive_int, vol.Range(min=1, max=16)
-                        ),
-                        vol.Optional(CONF_PACKET_LOG): cv.string,
-                        vol.Optional(CONF_ENFORCE_ALLOWLIST): cv.boolean,
-                    }
+                vol.Required(SERIAL_PORT): vol.Any(
+                    cv.string,
+                    SERIAL_CONFIG_SCHEMA.extend({vol.Required(PORT_NAME): cv.string}),
                 ),
-                vol.Optional(CONF_SCHEMA): SYSTEM_SCHEMA,
-                vol.Exclusive(CONF_ALLOW_LIST, CONF_ALLOW_LIST, msg=LIST_MSG): list,
-                vol.Exclusive(CONF_BLOCK_LIST, CONF_ALLOW_LIST, msg=LIST_MSG): list,
-                vol.Optional(
+                vol.Optional(CONFIG, default={}): CONFIG_SCHEMA,
+                vol.Required(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
+                vol.Optional(ALLOW_LIST, default=[]): FILTER_SCHEMA,
+                vol.Optional(BLOCK_LIST, default=[]): FILTER_SCHEMA,
+                vol.Required(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
             },
-            extra=vol.ALLOW_EXTRA,  # TODO: remove for production
+            extra=vol.ALLOW_EXTRA,  # will be system schemas
         )
     },
     extra=vol.ALLOW_EXTRA,
@@ -241,3 +248,29 @@ WATER_HEATER_SERVICES = {
     SVC_SET_DHW_MODE: SET_DHW_MODE_SCHEMA,
     SVC_SET_DHW_PARAMS: SET_DHW_CONFIG_SCHEMA,
 }
+
+
+def normalise_config_schema(config) -> Tuple[str, dict]:
+    """Convert a HA config dict into the client library's own format."""
+
+    del config[CONF_SCAN_INTERVAL]
+
+    if isinstance(config[SERIAL_PORT], dict):
+        serial_port = config[SERIAL_PORT].pop(PORT_NAME)
+        config[CONFIG][EVOFW_FLAG] = config[SERIAL_PORT].pop(EVOFW_FLAG, None)
+        config[CONFIG][SERIAL_CONFIG] = config.pop(SERIAL_PORT)
+
+    else:
+        serial_port = config.pop(SERIAL_PORT)
+
+    if isinstance(config[PACKET_LOG], dict):
+        config[CONFIG][PACKET_LOG] = config.pop(PACKET_LOG)
+    else:
+        config[CONFIG][PACKET_LOG] = PACKET_LOG_SCHEMA(
+            {LOG_FILE_NAME: config.pop(PACKET_LOG)}
+        )
+
+    config[ALLOW_LIST] = {k: None for k in config[ALLOW_LIST]}
+    config[BLOCK_LIST] = {k: None for k in config[BLOCK_LIST]}
+
+    return serial_port, config

@@ -35,7 +35,7 @@ from .const import (
     STORAGE_VERSION,
 )
 from .schema import CONFIG_SCHEMA  # noqa: F401
-from .schema import CONF_ALLOW_LIST, CONF_BLOCK_LIST, CONF_SERIAL_PORT, DOMAIN_SERVICES
+from .schema import DOMAIN_SERVICES, normalise_config_schema
 from .version import __version__ as VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,16 +74,9 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
     evohome_store = await load_system_config(store)
 
-    _LOGGER.debug("Store = %s, Config =  %s", evohome_store, hass_config[DOMAIN])
+    _LOGGER.error("Store = %s, Config =  %s", evohome_store, hass_config[DOMAIN])
 
-    kwargs = dict(hass_config[DOMAIN])
-    serial_port = kwargs.pop(CONF_SERIAL_PORT)
-    kwargs["allowlist"] = dict.fromkeys(kwargs.pop(CONF_ALLOW_LIST, []), {})
-    kwargs["blocklist"] = dict.fromkeys(kwargs.pop(CONF_BLOCK_LIST, []), {})
-    kwargs["config"]["log_rotate_backups"] = kwargs["config"].pop(
-        "log_rotate_backups", 7
-    )
-
+    serial_port, kwargs = normalise_config_schema(dict(hass_config[DOMAIN]))
     client = evohome_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
 
     hass.data[DOMAIN] = {}
@@ -91,8 +84,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         hass, client, store, hass_config[DOMAIN]
     )
 
-    broker.hass_config = hass_config
-
+    broker.hass_config = hass_config  # TODO: don't think this is needed
     broker.loop_task = hass.loop.create_task(handle_exceptions(client.start()))
 
     hass.helpers.event.async_track_time_interval(
