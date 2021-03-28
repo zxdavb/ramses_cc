@@ -35,7 +35,7 @@ from .const import (
     STORAGE_VERSION,
 )
 from .schema import CONFIG_SCHEMA  # noqa: F401
-from .schema import DOMAIN_SERVICES, normalise_config_schema
+from .schema import DOMAIN_SERVICES, SVC_SEND_PACKET, normalise_config_schema
 from .version import __version__ as VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -129,6 +129,10 @@ def setup_service_functions(hass: HomeAssistantType, broker):
     async def svc_send_packet(call) -> None:
         """Set the system mode."""
         broker.client.send_cmd(broker.client.make_cmd(**call.data))
+
+    domain_service = DOMAIN_SERVICES
+    if not broker.hass_config[DOMAIN].get(SVC_SEND_PACKET):
+        del domain_service[SVC_SEND_PACKET]
 
     services = {k: v for k, v in locals().items() if k.startswith("svc")}
     [

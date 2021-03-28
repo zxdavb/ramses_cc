@@ -63,28 +63,6 @@ PACKET_LOG_SCHEMA = vol.Schema(
     extra=vol.PREVENT_EXTRA,
 )  # unlike evohome_rf, evohome_cc requires a packet_log
 
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(SERIAL_PORT): vol.Any(
-                    cv.string,
-                    SERIAL_CONFIG_SCHEMA.extend({vol.Required(PORT_NAME): cv.string}),
-                ),
-                vol.Optional(CONFIG, default={}): CONFIG_SCHEMA,
-                vol.Required(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
-                vol.Optional(ALLOW_LIST, default=[]): FILTER_SCHEMA,
-                vol.Optional(BLOCK_LIST, default=[]): FILTER_SCHEMA,
-                vol.Required(
-                    CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
-                ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
-            },
-            extra=vol.ALLOW_EXTRA,  # will be system schemas
-        )
-    },
-    extra=vol.ALLOW_EXTRA,
-)
-
 # Integration domain services for System/Controller
 SVC_REFRESH_SYSTEM = "force_refresh"
 SVC_RESET_SYSTEM = "reset_system"
@@ -130,7 +108,7 @@ SET_SYSTEM_MODE_SCHEMA = vol.Any(
 DOMAIN_SERVICES = {
     SVC_REFRESH_SYSTEM: None,
     SVC_RESET_SYSTEM: None,
-    # SVC_SEND_PACKET: SEND_PACKET_SCHEMA,
+    SVC_SEND_PACKET: SEND_PACKET_SCHEMA,
     SVC_SET_SYSTEM_MODE: SET_SYSTEM_MODE_SCHEMA,
 }
 
@@ -261,10 +239,35 @@ WATER_HEATER_SERVICES = {
 }
 
 
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.Schema(
+            {
+                vol.Required(SERIAL_PORT): vol.Any(
+                    cv.string,
+                    SERIAL_CONFIG_SCHEMA.extend({vol.Required(PORT_NAME): cv.string}),
+                ),
+                vol.Optional(CONFIG, default={}): CONFIG_SCHEMA,
+                vol.Required(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
+                vol.Optional(ALLOW_LIST, default=[]): FILTER_SCHEMA,
+                vol.Optional(BLOCK_LIST, default=[]): FILTER_SCHEMA,
+                vol.Required(
+                    CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
+                ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
+                vol.Optional(SVC_SEND_PACKET): bool,
+            },
+            extra=vol.ALLOW_EXTRA,  # will be system schemas
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
+
 def normalise_config_schema(config) -> Tuple[str, dict]:
     """Convert a HA config dict into the client library's own format."""
 
     del config[CONF_SCAN_INTERVAL]
+    config.pop(SVC_SEND_PACKET, None)
 
     if isinstance(config[SERIAL_PORT], dict):
         serial_port = config[SERIAL_PORT].pop(PORT_NAME)
