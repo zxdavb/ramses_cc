@@ -88,7 +88,17 @@ CONFIG_SCHEMA = vol.Schema(
 # Integration domain services for System/Controller
 SVC_REFRESH_SYSTEM = "force_refresh"
 SVC_RESET_SYSTEM = "reset_system"
+SVC_SEND_PACKET = "send_packet"
 SVC_SET_SYSTEM_MODE = "set_system_mode"
+
+SEND_PACKET_SCHEMA = vol.Schema(
+    {
+        vol.Required("device_id"): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
+        vol.Required("verb"): vol.In((" I", "RQ", "RP", " W")),
+        vol.Required("code"): vol.Match(r"^[0-9A-F]{4}$"),
+        vol.Required("payload"): vol.Match(r"^[0-9A-F]{1,48}$"),
+    }
+)
 
 SET_SYSTEM_MODE_SCHEMA = vol.Schema(
     {
@@ -120,6 +130,7 @@ SET_SYSTEM_MODE_SCHEMA = vol.Any(
 DOMAIN_SERVICES = {
     SVC_REFRESH_SYSTEM: None,
     SVC_RESET_SYSTEM: None,
+    # SVC_SEND_PACKET: SEND_PACKET_SCHEMA,
     SVC_SET_SYSTEM_MODE: SET_SYSTEM_MODE_SCHEMA,
 }
 

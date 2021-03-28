@@ -156,3 +156,20 @@ set_zone_mode:
       description: >-
         The end of the override. Mutually exclusive with duration.
       # example: '{"minutes": 135}'
+
+send_packet:
+  description: >-
+    Send a completely bespoke command packet.
+  fields:
+    device_id:
+      description: The destination device_id.
+      example: 01:123456
+    verb:
+      description: 'The packet verb, one of: I, RQ, RP, W.'
+      example: RQ
+    code:
+      description: The packet code (class).
+      example: 1F09
+    payload:
+      description: The packet payload as a hexadecimal string.
+      example: '00'

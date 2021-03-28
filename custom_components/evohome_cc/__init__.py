@@ -125,6 +125,11 @@ def setup_service_functions(hass: HomeAssistantType, broker):
         }
         async_dispatcher_send(hass, DOMAIN, payload)
 
+    @verify_domain_control(hass, DOMAIN)
+    async def svc_send_packet(call) -> None:
+        """Set the system mode."""
+        broker.client.send_cmd(broker.client.make_cmd(**call.data))
+
     services = {k: v for k, v in locals().items() if k.startswith("svc")}
     [
         hass.services.async_register(DOMAIN, k, services[f"svc_{k}"], schema=v)
