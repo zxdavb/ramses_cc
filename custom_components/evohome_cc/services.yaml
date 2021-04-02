@@ -61,7 +61,7 @@ set_dhw_mode:
       name: Override end time
       description: >-
         The end of the override. Mutually exclusive with duration.
-      # example: '{"minutes": 135}'
+      example: '"YYYY-MM-DD HH:MM:SS"'
 
 reset_dhw_params:
   description: >-
@@ -155,7 +155,7 @@ set_zone_mode:
     until:
       description: >-
         The end of the override. Mutually exclusive with duration.
-      # example: '{"minutes": 135}'
+      example: '"YYYY-MM-DD HH:MM:SS"'
 
 send_packet:
   description: >-
