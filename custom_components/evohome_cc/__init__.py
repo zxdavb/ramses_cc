@@ -185,7 +185,8 @@ class EvoBroker:
         """Save..."""
         app_storage = await _load_store(self._store)
 
-        await self.client._set_state(**app_storage["client_state"])
+        if app_storage.get("client_state"):
+            await self.client._set_state(**app_storage["client_state"])
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
         """Save..."""
