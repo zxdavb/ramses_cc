@@ -45,7 +45,6 @@ from .schema import (
     CLIMATE_SERVICES,
     CONF_MODE,
     CONF_SYSTEM_MODE,
-    CONF_UNTIL,
     SVC_RESET_SYSTEM,
     SVC_SET_SYSTEM_MODE,
 )
@@ -246,11 +245,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     def set_temperature(self, **kwargs) -> None:
         """Set a new target temperature."""
-        self.svc_set_zone_mode(
-            mode=kwargs.get(CONF_MODE),
-            setpoint=kwargs.get(ATTR_TEMPERATURE),
-            until=kwargs.get(CONF_UNTIL),
-        )
+        self.svc_set_zone_mode(setpoint=kwargs.get(ATTR_TEMPERATURE))
 
     def svc_reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""

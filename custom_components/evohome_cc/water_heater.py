@@ -184,8 +184,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
 
     def set_temperature(self, **kwargs):
         """Set the target temperature of the water heater."""
-        kwargs["setpoint"] = kwargs.pop(ATTR_TEMPERATURE, None)
-        self.svc_set_dhw_mode(**kwargs)
+        self.svc_set_dhw_mode(setpoint=kwargs.get(ATTR_TEMPERATURE))
 
     def svc_reset_dhw_mode(self):
         """Reset the operating mode of the water heater."""
