@@ -3,7 +3,7 @@
     "name": "Honeywell RF (RAMSES II protocol)",
     "documentation": "https://github.com/zxdavb/evohome_cc",
     "requirements": [
-      "evohome-rf>=0.7.8",
+      "evohome-rf>=0.7.9",
       "pyserial-asyncio==0.5"
     ],
     "dependencies": [],
