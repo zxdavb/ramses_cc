@@ -34,16 +34,17 @@ from homeassistant.components.climate.const import (
     SUPPORT_PRESET_MODE,
     SUPPORT_TARGET_TEMPERATURE,
 )
+from homeassistant.const import ATTR_TEMPERATURE
+from homeassistant.core import callback
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import EvoZoneBase
-from .const import ATTR_SETPOINT, BROKER, DOMAIN
+from .const import ATTR_SETPOINT, BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID
 from .schema import (
     CLIMATE_SERVICES,
     CONF_MODE,
     CONF_SYSTEM_MODE,
-    CONF_UNTIL,
     SVC_RESET_SYSTEM,
     SVC_SET_SYSTEM_MODE,
 )
@@ -63,10 +64,12 @@ MODE_TO_TCS = {
 }
 MODE_TO_TCS[HVAC_MODE_AUTO] = SystemMode.RESET  # not all systems support this
 
+PRESET_CUSTOM = "custom"  # NOTE: not an offical PRESET
+
 PRESET_TCS_TO_HA = {
     SystemMode.AUTO: PRESET_NONE,
     SystemMode.AWAY: PRESET_AWAY,
-    SystemMode.CUSTOM: "custom",  # NOTE: not an offical PRESET
+    SystemMode.CUSTOM: PRESET_CUSTOM,
     SystemMode.DAY_OFF: PRESET_HOME,
     SystemMode.ECO_BOOST: PRESET_ECO,  # or: PRESET_BOOST
     SystemMode.HEAT_OFF: PRESET_NONE,
@@ -188,6 +191,18 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         return HVAC_MODE_HEAT
 
     @property
+    def max_temp(self) -> Optional[float]:
+        """Return the maximum target temperature of a Zone."""
+        if self._device.config:
+            return self._device.config["max_temp"]
+
+    @property
+    def min_temp(self) -> Optional[float]:
+        """Return the minimum target temperature of a Zone."""
+        if self._device.config:
+            return self._device.config["min_temp"]
+
+    @property
     def preset_mode(self) -> Optional[str]:
         """Return the Zone's current preset mode, e.g., home, away, temp."""
 
@@ -203,18 +218,6 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         return PRESET_ZONE_TO_HA.get(self._device.mode[CONF_MODE])
 
     @property
-    def max_temp(self) -> Optional[float]:
-        """Return the maximum target temperature of a Zone."""
-        if self._device.config:
-            return self._device.config["max_temp"]
-
-    @property
-    def min_temp(self) -> Optional[float]:
-        """Return the minimum target temperature of a Zone."""
-        if self._device.config:
-            return self._device.config["min_temp"]
-
-    @property
     def target_temperature(self) -> Optional[float]:
         """Return the temperature we try to reach."""
         return self._device.setpoint
@@ -222,47 +225,39 @@ class EvoZone(EvoZoneBase, ClimateEntity):
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set a Zone to one of its native operating modes."""
         if hvac_mode == HVAC_MODE_AUTO:  # FollowSchedule
-            self._device.reset_mode()
-
+            self.svc_reset_zone_mode()
         elif hvac_mode == HVAC_MODE_HEAT:  # TemporaryOverride
-            self._device.set_mode(mode=ZoneMode.PERMANENT, setpoint=25)
-
+            self.svc_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)  # TODO:
         else:  # HVAC_MODE_OFF, PermentOverride, temp = min
-            self._device.set_frost_mode()
-
-    def set_temperature(self, **kwargs) -> None:
-        """Set a new target temperature."""
-        setpoint = kwargs["temperature"]
-        mode = kwargs.get(CONF_MODE)
-        until = kwargs.get(CONF_UNTIL)
-
-        if mode is None and until is None:
-            self._device.setpoint = setpoint
-        else:
-            self._device(mode=mode, setpoint=setpoint, until=until)
+            self._device.set_frost_mode()  # TODO:
+            self.async_schedule_update_ha_state()
 
     def set_preset_mode(self, preset_mode: Optional[str]) -> None:
         """Set the preset mode; if None, then revert to following the schedule."""
-
-        evozone_preset_mode = PRESET_TO_ZONE.get(preset_mode, ZoneMode.SCHEDULE)
-
-        if evozone_preset_mode == ZoneMode.SCHEDULE:
-            self._device.reset_mode()
+        if PRESET_TO_ZONE.get(preset_mode, ZoneMode.SCHEDULE) == ZoneMode.SCHEDULE:
+            self.svc_reset_zone_mode()
         else:
-            setpoint = self._device.setpoint  # TODO: what if not known
-            self._device.set_mode(mode=ZoneMode.TEMPORARY, setpoint=setpoint)
+            self.svc_set_zone_mode(mode=ZoneMode.TEMPORARY)
+
+    def set_temperature(self, **kwargs) -> None:
+        """Set a new target temperature."""
+        kwargs["setpoint"] = kwargs.pop(ATTR_TEMPERATURE, None)
+        self.svc_set_zone_mode(**kwargs)
 
     def svc_reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""
         self._device.reset_config()
-
-    def svc_set_zone_config(self, **kwargs) -> None:
-        """Set the configuration of the Zone (min/max temp, etc.)."""
-        self.svc_set_zone_mode(**kwargs)
+        self.async_schedule_update_ha_state()
 
     def svc_reset_zone_mode(self) -> None:
         """Reset the (native) operating mode of the Zone."""
         self._device.reset_mode()
+        self.async_schedule_update_ha_state()
+
+    def svc_set_zone_config(self, **kwargs) -> None:
+        """Set the configuration of the Zone (min/max temp, etc.)."""
+        self._device.set_config(**kwargs)
+        self.async_schedule_update_ha_state()
 
     def svc_set_zone_mode(
         self, mode=None, setpoint=None, duration=None, until=None
@@ -271,6 +266,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if until is None and duration is not None:
             until = dt.now() + duration
         self._device.set_mode(mode=mode, setpoint=setpoint, until=until)
+        self.async_schedule_update_ha_state()
 
 
 class EvoController(EvoZoneBase, ClimateEntity):
@@ -286,23 +282,6 @@ class EvoController(EvoZoneBase, ClimateEntity):
         self._hvac_modes = list(MODE_TO_TCS)
         self._preset_modes = list(PRESET_TO_TCS)
         self._supported_features = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
-
-    def _handle_dispatch(self, *args) -> None:
-        """Process a service request (system mode) for a controller.
-
-        Data validation is not required, it will have been done upstream.
-        """
-        if not args:
-            self.async_schedule_update_ha_state()  # TODO: force_refresh=True)
-            return
-
-        payload = args[0]
-        if payload.get("unique_id") != self._device.id:
-            return
-        elif payload["service"] == SVC_RESET_SYSTEM:
-            self.svc_reset_system()
-        elif payload["service"] == SVC_SET_SYSTEM_MODE:
-            self.svc_set_system_mode(**payload["data"])
 
     @property
     def current_temperature(self) -> Optional[float]:
@@ -351,14 +330,6 @@ class EvoController(EvoZoneBase, ClimateEntity):
         return HVAC_MODE_HEAT
 
     @property
-    def preset_mode(self) -> Optional[str]:
-        """Return the Controller's current preset mode, e.g., home, away, temp."""
-
-        if self._device.system_mode is None:
-            return  # unable to determine
-        return PRESET_TCS_TO_HA[self._device.system_mode[CONF_SYSTEM_MODE]]
-
-    @property
     def max_temp(self) -> None:
         """Return None as Controllers don't have a target temperature."""
         return
@@ -372,6 +343,14 @@ class EvoController(EvoZoneBase, ClimateEntity):
     def name(self) -> str:
         """Return the name of the Controller."""
         return "Controller"
+
+    @property
+    def preset_mode(self) -> Optional[str]:
+        """Return the Controller's current preset mode, e.g., home, away, temp."""
+
+        if self._device.system_mode is None:
+            return  # unable to determine
+        return PRESET_TCS_TO_HA[self._device.system_mode[CONF_SYSTEM_MODE]]
 
     @property
     def target_temperature(self) -> Optional[float]:
@@ -394,16 +373,33 @@ class EvoController(EvoZoneBase, ClimateEntity):
         """Set the preset mode; if None, then revert to 'Auto' mode."""
         self.svc_set_system_mode(PRESET_TO_TCS.get(preset_mode, SystemMode.AUTO))
 
+    @callback
+    def _handle_dispatch(self, *args) -> None:
+        """Process a service request (system mode) for a controller."""
+        if not args:
+            self.async_schedule_update_ha_state()  # TODO: force_refresh=True)
+            return
+
+        payload = args[0]
+        if payload.get(UNIQUE_ID) != self.unique_id:
+            return
+        elif payload[SERVICE] == SVC_RESET_SYSTEM:
+            self.svc_reset_system()
+        elif payload[SERVICE] == SVC_SET_SYSTEM_MODE:
+            self.svc_set_system_mode(**payload[DATA])
+
     def svc_reset_system(self) -> None:
         """Reset the (native) operating mode of the Controller."""
         self._device.reset_mode()
+        self.async_schedule_update_ha_state()  # TODO: change these to a dispatch
 
     def svc_set_system_mode(self, mode, period=None, days=None) -> None:
         """Set the (native) operating mode of the Controller."""
         if period is not None:
             until = dt.now() + period
         elif days is not None:
-            until = dt.now() + days
+            until = dt.now() + days  # TODO: round down
         else:
             until = None
         self._device.set_mode(system_mode=mode, until=until)
+        self.async_schedule_update_ha_state()

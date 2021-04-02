@@ -255,6 +255,7 @@ CONFIG_SCHEMA = vol.Schema(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
                 vol.Optional(SVC_SEND_PACKET): bool,
+                vol.Optional("restore_client_state", default=True): bool,
             },
             extra=vol.ALLOW_EXTRA,  # will be system schemas
         )

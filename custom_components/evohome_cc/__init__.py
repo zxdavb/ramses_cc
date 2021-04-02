@@ -7,6 +7,7 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 
 import logging
+from datetime import timedelta as td
 from typing import Any, Dict, List, Optional
 
 import evohome_rf
@@ -29,10 +30,13 @@ from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from .const import (
     BINARY_SENSOR_ATTRS,
     BROKER,
+    DATA,
     DOMAIN,
     SENSOR_ATTRS,
+    SERVICE,
     STORAGE_KEY,
     STORAGE_VERSION,
+    UNIQUE_ID,
 )
 from .schema import CONFIG_SCHEMA  # noqa: F401
 from .schema import DOMAIN_SERVICES, SVC_SEND_PACKET, normalise_config_schema
@@ -42,6 +46,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 PLATFORMS = [BINARY_SENSOR, CLIMATE, SENSOR, WATER_HEATER]
+SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
+
+
+async def _load_store(store) -> Optional[Dict]:
+    # return store.async_save(app_storage)  # HOWTO: save store
+    app_storage = await store.async_load()
+    return dict(app_storage if app_storage else {})
 
 
 async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
@@ -53,10 +64,6 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         except serial.SerialException as exc:
             _LOGGER.error("Unable to open the serial port. Message is: %s", exc)
             raise exc
-
-    async def load_system_config(store) -> Optional[Dict]:
-        app_storage = await store.async_load()
-        return dict(app_storage if app_storage else {})
 
     if VERSION == evohome_rf.VERSION:
         _LOGGER.warning(
@@ -71,10 +78,11 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
             evohome_rf.VERSION,
         )
 
-    store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
-    evohome_store = await load_system_config(store)
+    _LOGGER.debug("\r\n\nConfig =  %s\r\n", hass_config[DOMAIN])
 
-    _LOGGER.error("Store = %s, Config =  %s", evohome_store, hass_config[DOMAIN])
+    store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
+    evohome_store = await _load_store(store)
+    _LOGGER.debug("\r\n\nStore = %s\r\n", evohome_store)
 
     serial_port, kwargs = normalise_config_schema(dict(hass_config[DOMAIN]))
     client = evohome_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
@@ -87,8 +95,18 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     broker.hass_config = hass_config  # TODO: don't think this is needed
     broker.loop_task = hass.loop.create_task(handle_exceptions(client.start()))
 
+    if hass_config[DOMAIN]["restore_client_state"]:
+        _LOGGER.debug("Restoring client state...")
+        await broker.async_restore_client_state()
+    else:
+        _LOGGER.warning("The restore client state feature has been disabled.")
+
     hass.helpers.event.async_track_time_interval(
         broker.async_update, hass_config[DOMAIN][CONF_SCAN_INTERVAL]
+    )
+
+    hass.helpers.event.async_track_time_interval(
+        broker.async_save_client_state, SAVE_STATE_INTERVAL
     )
 
     setup_service_functions(hass, broker)
@@ -102,33 +120,32 @@ def setup_service_functions(hass: HomeAssistantType, broker):
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_force_refresh(call) -> None:
-        """Obtain the latest state data via the vendor's RESTful API."""
-        await broker.async_update()
+        await broker.async_update()  #: includes async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_reset_system(call) -> None:
-        """Set the system mode."""
         payload = {
-            "unique_id": broker.client.evo.id,
-            "service": call.service,
-            "data": call.data,
+            UNIQUE_ID: broker.client.evo.id,
+            SERVICE: call.service,
+            DATA: call.data,
         }
         async_dispatcher_send(hass, DOMAIN, payload)
+        async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_set_system_mode(call) -> None:
-        """Set the system mode."""
         payload = {
-            "unique_id": broker.client.evo.id,
-            "service": call.service,
-            "data": call.data,
+            UNIQUE_ID: broker.client.evo.id,
+            SERVICE: call.service,
+            DATA: call.data,
         }
         async_dispatcher_send(hass, DOMAIN, payload)
+        async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_send_packet(call) -> None:
-        """Set the system mode."""
         broker.client.send_cmd(broker.client.make_cmd(**call.data))
+        async_dispatcher_send(hass, DOMAIN)
 
     domain_service = DOMAIN_SERVICES
     if not broker.hass_config[DOMAIN].get(SVC_SEND_PACKET):
@@ -150,9 +167,9 @@ class EvoBroker:
         self.hass = hass
         self.client = client
         self._store = store
-        self.params = params
 
         self.config = None
+        self.params = params
         self.status = None
 
         self.binary_sensors = []
@@ -164,11 +181,19 @@ class EvoBroker:
         self.hass_config = None
         self.loop_task = None
 
-    async def save_system_config(self) -> None:
+    async def async_restore_client_state(self) -> None:
         """Save..."""
-        app_storage = {}
+        app_storage = await _load_store(self._store)
 
-        await self._store.async_save(app_storage)
+        await self.client._set_state(**app_storage["client_state"])
+
+    async def async_save_client_state(self, *args, **kwargs) -> None:
+        """Save..."""
+        (schema, packets) = self.client._get_state()
+
+        await self._store.async_save(
+            {"client_state": {"schema": schema, "packets": packets}}
+        )
 
     async def async_update(self, *args, **kwargs) -> None:
         """Retrieve the latest state data..."""
@@ -210,7 +235,7 @@ class EvoBroker:
             )
 
         # inform the evohome devices that state data may have changed
-        self.hass.helpers.dispatcher.async_dispatcher_send(DOMAIN)
+        async_dispatcher_send(self.hass, DOMAIN)
 
     def find_new_binary_sensors(self) -> list:
         """Produce a list of any unknown binary sensors."""
@@ -245,10 +270,13 @@ class EvoEntity(Entity):
         self._entity_state_attrs = ()
 
     @callback
-    def _handle_dispatch(self, *args) -> None:
-        """Process a dispatched message."""
+    def _handle_dispatch(self, *args) -> None:  # TODO: remove as unneeded?
+        """Process a dispatched message.
+
+        Data validation is not required, it will have been done upstream.
+        """
         if not args:
-            self.async_schedule_update_ha_state()  # TODO: force_refresh=True)
+            self.async_schedule_update_ha_state()
 
     @property
     def should_poll(self) -> bool:
@@ -268,7 +296,7 @@ class EvoEntity(Entity):
             for a in self._entity_state_attrs
             if hasattr(self._device, a)
         }
-        attrs["controller"] = self._device._ctl.id if self._device._ctl else None
+        attrs["controller_id"] = self._device._ctl.id if self._device._ctl else None
         return attrs
 
     async def async_added_to_hass(self) -> None:
@@ -288,6 +316,8 @@ class EvoDeviceBase(EvoEntity):
 
         klass = self.DEVICE_CLASS if self.DEVICE_CLASS else self.STATE_ATTR
         self._name = f"{device.id} ({klass})"
+        # if device.zone:  # not all have this attr
+        #     self._name = f"{device.zone.name} ({klass})"
 
     @property
     def available(self) -> bool:
@@ -303,13 +333,22 @@ class EvoDeviceBase(EvoEntity):
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         attrs = super().device_state_attributes
+        attrs["device_id"] = self._device.id
         attrs["domain_id"] = self._device._domain_id
+        if hasattr(self._device, "zone"):
+            attrs["zone"] = self._device.zone.name if self._device.zone else None
         return attrs
 
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
         return self._name
+        # klass = self.DEVICE_CLASS if self.DEVICE_CLASS else self.STATE_ATTR
+        # self._name = f"{self._device.id} ({klass})"
+        # if getattr(self._device, "zone", None):
+        #     return f"{self._device.zone.name} ({klass})"
+        # else:
+        # return f"{self._device.id} ({klass})"
 
 
 class EvoZoneBase(EvoEntity):
@@ -330,6 +369,7 @@ class EvoZoneBase(EvoEntity):
 
     @property
     def name(self) -> str:
+        """Return the name of the entity."""
         return self._device.name
 
     @property
