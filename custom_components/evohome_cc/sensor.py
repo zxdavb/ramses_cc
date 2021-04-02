@@ -51,7 +51,7 @@ async def async_setup_platform(
         if hasattr(device, klass.STATE_ATTR)
     ]
     if new_entities:
-        async_add_entities(new_entities)  # TODO: , update_before_add=True)
+        async_add_entities(new_entities)
 
 
 class EvoSensorBase(EvoDeviceBase):

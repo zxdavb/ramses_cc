@@ -98,6 +98,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     if hass_config[DOMAIN]["restore_client_state"]:
         _LOGGER.debug("Restoring client state...")
         await broker.async_restore_client_state()
+        await broker.async_update()
     else:
         _LOGGER.warning("The restore client state feature has been disabled.")
 

@@ -93,7 +93,7 @@ MODE_ZONE_TO_HA[ZoneMode.PERMANENT] = MODE_ZONE_TO_HA[ZoneMode.ADVANCED]
 MODE_ZONE_TO_HA[ZoneMode.TEMPORARY] = MODE_ZONE_TO_HA[ZoneMode.ADVANCED]
 
 MODE_TO_ZONE = (ZoneMode.SCHEDULE, ZoneMode.PERMANENT)
-MODE_TO_ZONE = {v: k for k, v in PRESET_TCS_TO_HA.items() if k in MODE_TO_ZONE}
+MODE_TO_ZONE = {v: k for k, v in MODE_ZONE_TO_HA.items() if k in MODE_TO_ZONE}
 PRESET_ZONE_TO_HA = {
     ZoneMode.SCHEDULE: PRESET_NONE,
     ZoneMode.TEMPORARY: "temporary",
@@ -121,7 +121,7 @@ async def async_setup_platform(
         broker.climates.append(zone)
 
     if new_entities:
-        async_add_entities(new_entities)  # TODO: , update_before_add=True)
+        async_add_entities(new_entities)
 
     if broker.services.get(PLATFORM):
         return
@@ -208,7 +208,11 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
         if self._device._evo.system_mode is None:
             return  # unable to determine
-        if self._device._evo.system_mode[CONF_SYSTEM_MODE] in MODE_TCS_TO_HA:
+        # if self._device._evo.system_mode[CONF_SYSTEM_MODE] in MODE_TCS_TO_HA:
+        if self._device._evo.system_mode[CONF_SYSTEM_MODE] in (
+            SystemMode.AWAY,
+            SystemMode.HEAT_OFF,
+        ):
             return PRESET_TCS_TO_HA[self._device._evo.system_mode[CONF_SYSTEM_MODE]]
 
         if self._device.mode is None:

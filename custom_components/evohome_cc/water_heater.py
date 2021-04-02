@@ -75,7 +75,7 @@ async def async_setup_platform(
     broker = hass.data[DOMAIN][BROKER]
     dhw = broker.water_heater = broker.client.evo.dhw
 
-    async_add_entities([EvoDHW(broker, dhw)])  # TODO: , update_before_add=True)
+    async_add_entities([EvoDHW(broker, dhw)])
 
     if broker.services.get(PLATFORM):
         return
