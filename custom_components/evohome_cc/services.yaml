@@ -37,7 +37,7 @@ set_dhw_mode:
           options:
             - follow_schedule
             - permanent_override
-            - tmporary_override
+            - temporary_override
     active:
       name: DHW state
       description: >-
