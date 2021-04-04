@@ -1,21 +1,21 @@
 reset_dhw_mode:
-  description: >-
-    Reset the operating mode of the DHW controller.
+  name: Reset the DHW mode
+  description: Reset the operating mode of the DHW controller.
   fields:
     entity_id:
       description: The entity_id of the water_heater.
       example: water_heater.stored_hw
 
 set_dhw_boost:
-  description: >-
-    Enable the DHW controller for an hour.
+  name: Set DHW boost mode
+  description: Enable the DHW controller for an hour.
   fields:
     entity_id:
       description: The entity_id of the water_heater.
       example: water_heater.stored_hw
 
 set_dhw_mode:
-  name: Set DHW mode
+  name: Set the DHW mode
   description: >-
     Set the operating mode of the DHW controller, optionally for a given duration.
   target:
@@ -64,16 +64,16 @@ set_dhw_mode:
       example: '"YYYY-MM-DD HH:MM:SS"'
 
 reset_dhw_params:
-  description: >-
-    Reset the configuration of the DHW controller.
+  name: Reset the DHW config
+  description: Reset the configuration of the DHW controller.
   fields:
     entity_id:
       description: The entity_id of the water_heater.
       example: water_heater.stored_hw
 
 set_dhw_params:
-  description: >-
-    Set the configuration of the DHW controller.
+  name: Set the DHW config
+  description: Set the configuration of the DHW controller.
   fields:
     entity_id:
       description: The entity_id of the water_heater.
@@ -92,17 +92,21 @@ set_dhw_params:
       example: 1
 
 refresh_system:
+  name: Refresh the System
   description: >-
-    Update the system now, rather than waiting for the next scheduled update.
+    Update the system state now, without waiting for the next scheduled update.
 
-reset_system:
+reset_system_mode:
+  name: Fully reset the System
   description: >-
-    Hard reset the System. The Controller will be in auto mode, and all Zones will
-    be in follow_schedule mode (including those in permanent_override mode).
+    The System will be in auto mode and all Zones will be in follow_schedule mode,
+    including (if supported) those in permanent_override mode.
 
 set_system_mode:
+  name: Set the System
   description: >-
-    Reset the System. The Controller will be in Auto mode.
+    The System will be in the new mode and all Zones not in permanent_override mode
+    will be affected.
   fields:
     mode:
       description: "One of: auto, eco_boost, away, day_off, heating_off, or custom."
@@ -117,22 +121,37 @@ set_system_mode:
       example: '{"hours": 18}'
 
 reset_zone_config:
-  description: >-
-    Reset the configuration of the Zone.
+  name: Reset a Zone's config
+  description: Reset the configuration of the Zone.
   fields:
     entity_id:
       description: The entity_id of the Zone.
       example: climate.bedroom
 
 reset_zone_mode:
-  description: >-
-    Reset the operating mode of the Zone.
+  name: Reset a Zone's mode
+  description: Reset the operating mode of the Zone.
   fields:
     entity_id:
       description: The entity_id of the Zone.
       example: climate.bedroom
 
+set_zone_config:
+  name: Reset a Zone's config
+  description: Reset the configuration of the Zone.
+  fields:
+    entity_id:
+      description: The entity_id of the Zone.
+      example: climate.bedroom
+    min_temp:
+      description: The minimum permitted setpoint (5-21, in degrees C).
+      example: 5
+    max_temp:
+      description: The maximum permitted setpoint (21-35, in degrees C).
+      example: 30
+
 set_zone_mode:
+  name: Set a Zone's mode
   description: >-
     Set the operating mode of the Zone, either indefinitely or for a given duration.
   fields:
@@ -158,8 +177,8 @@ set_zone_mode:
       example: '"YYYY-MM-DD HH:MM:SS"'
 
 send_packet:
-  description: >-
-    Send a completely bespoke command packet.
+  name: Send a Packet
+  description: Send a completely bespoke command packet.
   fields:
     device_id:
       description: The destination device_id.

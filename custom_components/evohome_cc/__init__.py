@@ -39,7 +39,12 @@ from .const import (
     UNIQUE_ID,
 )
 from .schema import CONFIG_SCHEMA  # noqa: F401
-from .schema import DOMAIN_SERVICES, SVC_SEND_PACKET, normalise_config_schema
+from .schema import (
+    CONF_RESTORE_STATE,
+    DOMAIN_SERVICES,
+    SVC_SEND_PACKET,
+    normalise_config_schema,
+)
 from .version import __version__ as VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -95,7 +100,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     broker.hass_config = hass_config  # TODO: don't think this is needed
     broker.loop_task = hass.loop.create_task(handle_exceptions(client.start()))
 
-    if hass_config[DOMAIN]["restore_client_state"]:
+    if hass_config[DOMAIN][CONF_RESTORE_STATE]:
         _LOGGER.debug("Restoring client state...")
         await broker.async_restore_client_state()
         await broker.async_update()
@@ -124,7 +129,7 @@ def setup_service_functions(hass: HomeAssistantType, broker):
         await broker.async_update()  #: includes async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_reset_system(call) -> None:
+    async def svc_reset_system_mode(call) -> None:
         payload = {
             UNIQUE_ID: broker.client.evo.id,
             SERVICE: call.service,

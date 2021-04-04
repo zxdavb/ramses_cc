@@ -45,7 +45,7 @@ from .schema import (
     CLIMATE_SERVICES,
     CONF_MODE,
     CONF_SYSTEM_MODE,
-    SVC_RESET_SYSTEM,
+    SVC_RESET_SYSTEM_MODE,
     SVC_SET_SYSTEM_MODE,
 )
 
@@ -80,6 +80,7 @@ PRESET_TCS_TO_HA[SystemMode.RESET] = PRESET_TCS_TO_HA[SystemMode.AUTO]
 PRESET_TO_TCS = (
     SystemMode.AUTO,
     SystemMode.AWAY,
+    SystemMode.CUSTOM,
     SystemMode.DAY_OFF,
     SystemMode.ECO_BOOST,
 )
@@ -386,12 +387,12 @@ class EvoController(EvoZoneBase, ClimateEntity):
         payload = args[0]
         if payload.get(UNIQUE_ID) != self.unique_id:
             return
-        elif payload[SERVICE] == SVC_RESET_SYSTEM:
-            self.svc_reset_system()
+        elif payload[SERVICE] == SVC_RESET_SYSTEM_MODE:
+            self.svc_reset_system_mode()
         elif payload[SERVICE] == SVC_SET_SYSTEM_MODE:
             self.svc_set_system_mode(**payload[DATA])
 
-    def svc_reset_system(self) -> None:
+    def svc_reset_system_mode(self) -> None:
         """Reset the (native) operating mode of the Controller."""
         self._device.reset_mode()
         self.async_schedule_update_ha_state()  # TODO: change these to a dispatch
