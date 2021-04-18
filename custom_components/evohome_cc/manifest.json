@@ -3,7 +3,7 @@
     "name": "Honeywell RF",
     "documentation": "https://github.com/zxdavb/evohome_cc",
     "requirements": [
-      "evohome-rf>=0.8.0",
+      "evohome-rf>=0.8.1",
       "pyserial-asyncio==0.5"
     ],
     "dependencies": [],
