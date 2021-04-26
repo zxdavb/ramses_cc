@@ -109,15 +109,16 @@ set_system_mode:
     will be affected.
   fields:
     mode:
-      description: "One of: auto, eco_boost, away, day_off, heating_off, or custom."
+      description: "One of: auto, eco_boost, away, day_off, heat_off, or custom."
       example: away
     period:
       description: >-
-        A period of time in days; used only with away, day_off, or custom. The system
-        will revert to auto at midnight (up to 99 days, today is day 1).
+        Optional. A period of time in days; used only with away, day_off, or custom. The
+        system will revert to auto at midnight (up to 99 days, today is day 1).
       example: '{"days": 28}'
     duration:
-      description: The duration in hours; used only with eco_boost (up to 24 hours).
+      description: >-
+        Optional. The duration in hours; used only with eco_boost (up to 24 hours).
       example: '{"hours": 18}'
 
 reset_zone_config:
