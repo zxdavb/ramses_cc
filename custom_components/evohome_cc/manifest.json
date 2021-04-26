@@ -1,9 +1,9 @@
 {
     "domain": "evohome_cc",
-    "name": "Honeywell RF",
+    "name": "RAMSES RF",
     "documentation": "https://github.com/zxdavb/evohome_cc",
     "requirements": [
-      "evohome-rf>=0.8.1",
+      "evohome-rf>=0.8.3",
       "pyserial-asyncio==0.5"
     ],
     "dependencies": [],
