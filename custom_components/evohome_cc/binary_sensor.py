@@ -93,9 +93,10 @@ class EvoBattery(EvoBinarySensorBase):
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
+        state = self._device.battery_state
         return {
             **super().device_state_attributes,
-            ATTR_BATTERY_LEVEL: self._device.battery_state.get(ATTR_BATTERY_LEVEL),
+            ATTR_BATTERY_LEVEL: state and state.get(ATTR_BATTERY_LEVEL),
         }
 
 
