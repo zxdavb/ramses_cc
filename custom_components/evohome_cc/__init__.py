@@ -57,7 +57,7 @@ SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
 async def _load_store(store) -> Optional[Dict]:
     # return store.async_save(app_storage)  # HOWTO: save store
     app_storage = await store.async_load()
-    return dict(app_storage if app_storage else {})
+    return dict(app_storage or {})
 
 
 async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
