@@ -249,7 +249,7 @@ CONFIG_SCHEMA = vol.Schema(
                     SERIAL_CONFIG_SCHEMA.extend({vol.Required(PORT_NAME): cv.string}),
                 ),
                 vol.Optional(CONFIG, default={}): CONFIG_SCHEMA,
-                vol.Required(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
+                vol.Optional(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
                 vol.Optional(ALLOW_LIST, default=[]): FILTER_SCHEMA,
                 vol.Optional(BLOCK_LIST, default=[]): FILTER_SCHEMA,
                 vol.Required(
@@ -279,7 +279,9 @@ def normalise_config_schema(config) -> Tuple[str, dict]:
     else:
         serial_port = config.pop(SERIAL_PORT)
 
-    if isinstance(config[PACKET_LOG], dict):
+    if PACKET_LOG not in config:
+        config[CONFIG][PACKET_LOG] = {}
+    elif isinstance(config[PACKET_LOG], dict):
         config[CONFIG][PACKET_LOG] = config.pop(PACKET_LOG)
     else:
         config[CONFIG][PACKET_LOG] = PACKET_LOG_SCHEMA(
