@@ -182,7 +182,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if self._device._evo.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVAC_MODE_OFF
 
-        if self._device.mode is None:
+        if self._device.mode is None or self._device.mode[ATTR_SETPOINT] is None:
             return  # unable to determine
         if (
             self._device.config
