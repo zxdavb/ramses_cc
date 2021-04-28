@@ -235,7 +235,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             self.svc_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)  # TODO:
         else:  # HVAC_MODE_OFF, PermentOverride, temp = min
             self._device.set_frost_mode()  # TODO:
-            self.async_schedule_update_ha_state()
+            self._req_ha_state_update()
 
     def set_preset_mode(self, preset_mode: Optional[str]) -> None:
         """Set the preset mode; if None, then revert to following the schedule."""
@@ -251,17 +251,17 @@ class EvoZone(EvoZoneBase, ClimateEntity):
     def svc_reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""
         self._device.reset_config()
-        self.async_schedule_update_ha_state()
+        self._req_ha_state_update()
 
     def svc_reset_zone_mode(self) -> None:
         """Reset the (native) operating mode of the Zone."""
         self._device.reset_mode()
-        self.async_schedule_update_ha_state()
+        self._req_ha_state_update()
 
     def svc_set_zone_config(self, **kwargs) -> None:
         """Set the configuration of the Zone (min/max temp, etc.)."""
         self._device.set_config(**kwargs)
-        self.async_schedule_update_ha_state()
+        self._req_ha_state_update()
 
     def svc_set_zone_mode(
         self, mode=None, setpoint=None, duration=None, until=None
@@ -270,7 +270,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         if until is None and duration is not None:
             until = dt.now() + duration
         self._device.set_mode(mode=mode, setpoint=setpoint, until=until)
-        self.async_schedule_update_ha_state()
+        self._req_ha_state_update()
 
 
 class EvoController(EvoZoneBase, ClimateEntity):
@@ -364,7 +364,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
         temps = [z.setpoint for z in zones if z.heat_demand is not None]
         if temps:
             return min(temps)
-        return max([z.setpoint for z in zones]) if temps else None
+        return max(z.setpoint for z in zones) if temps else None
 
         # temps = [z.setpoint for z in self._device.zones]
         # return round(sum(temps) / len(temps), 1) if temps else None
@@ -381,7 +381,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
     def _handle_dispatch(self, *args) -> None:
         """Process a service request (system mode) for a controller."""
         if not args:
-            self.async_schedule_update_ha_state()  # TODO: force_refresh=True)
+            self._req_ha_state_update()
             return
 
         payload = args[0]
@@ -395,7 +395,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
     def svc_reset_system_mode(self) -> None:
         """Reset the (native) operating mode of the Controller."""
         self._device.reset_mode()
-        self.async_schedule_update_ha_state()  # TODO: change these to a dispatch
+        self._req_ha_state_update()  # TODO: change these to a dispatch
 
     def svc_set_system_mode(self, mode, period=None, days=None) -> None:
         """Set the (native) operating mode of the Controller."""
@@ -406,4 +406,4 @@ class EvoController(EvoZoneBase, ClimateEntity):
         else:
             until = None
         self._device.set_mode(system_mode=mode, until=until)
-        self.async_schedule_update_ha_state()
+        self._req_ha_state_update()

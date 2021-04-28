@@ -189,28 +189,28 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     def svc_reset_dhw_mode(self):
         """Reset the operating mode of the water heater."""
         self._device.reset_mode()
-        self.async_schedule_update_ha_state()
+        self._req_ha_state_update()
 
     def svc_reset_dhw_params(self):
         """Reset the configuration of the water heater."""
         self._device.reset_config()
-        self.async_schedule_update_ha_state()
+        self._req_ha_state_update()
 
     def svc_set_dhw_boost(self):
         """Enable the water heater for an hour."""
         self._device.set_boost_mode()
-        self.async_schedule_update_ha_state()
+        self._req_ha_state_update()
 
     def svc_set_dhw_mode(self, mode=None, active=None, duration=None, until=None):
         """Set the (native) operating mode of the water heater."""
         if until is None and duration is not None:
             until = dt.now() + duration
         self._device.set_mode(mode=mode, active=active, until=until)
-        self.async_schedule_update_ha_state()
+        self._req_ha_state_update()
 
     def svc_set_dhw_params(self, setpoint=None, overrun=None, differential=None):
         """Set the configuration of the water heater."""
         self._device.set_config(
             setpoint=setpoint, overrun=overrun, differential=differential
         )
-        self.async_schedule_update_ha_state()
+        self._req_ha_state_update()

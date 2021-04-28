@@ -249,7 +249,7 @@ class EvoBroker:
         sensors = [
             s
             for s in self.client.devices + [self.client.evo]
-            if any([hasattr(s, a) for a in BINARY_SENSOR_ATTRS])
+            if any(hasattr(s, a) for a in BINARY_SENSOR_ATTRS)
         ]
         return [s for s in sensors if s not in self.binary_sensors]
 
@@ -260,7 +260,7 @@ class EvoBroker:
         sensors = [
             s
             for s in self.client.devices + [self.client.evo]
-            if any([hasattr(s, a) for a in SENSOR_ATTRS])
+            if any(hasattr(s, a) for a in SENSOR_ATTRS)
         ]
         return [s for s in sensors if s not in self.sensors]
 
@@ -284,6 +284,10 @@ class EvoEntity(Entity):
         """
         if not args:
             self.async_schedule_update_ha_state()
+
+    def _req_ha_state_update(self) -> None:
+        """Update HA state after a short delay to allow system to quiesce."""
+        self.hass.helpers.event.async_call_later(1, self.async_schedule_update_ha_state)
 
     @property
     def should_poll(self) -> bool:
@@ -321,7 +325,7 @@ class EvoDeviceBase(EvoEntity):
         """Initialize the sensor."""
         super().__init__(broker, device)
 
-        klass = self.DEVICE_CLASS if self.DEVICE_CLASS else self.STATE_ATTR
+        klass = self.DEVICE_CLASS or self.STATE_ATTR
         self._name = f"{device.id} ({klass})"
         # if device.zone:  # not all have this attr
         #     self._name = f"{device.zone.name} ({klass})"
