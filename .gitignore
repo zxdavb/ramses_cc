@@ -4,6 +4,9 @@
 *.db
 
 ### HACS-specific ignores
+custom_components/*
+!custom_components/evohome_cc/
+
 .HA_VERSION
 .storage/
 *.yaml

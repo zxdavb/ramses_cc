@@ -244,7 +244,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         else:
             self.svc_set_zone_mode(mode=ZoneMode.TEMPORARY)
 
-    def set_temperature(self, **kwargs) -> None:
+    def set_temperature(self, **kwargs) -> None:  # set_target_temp (aka setpoint)
         """Set a new target temperature."""
         self.svc_set_zone_mode(setpoint=kwargs.get(ATTR_TEMPERATURE))
 
@@ -271,6 +271,10 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             until = dt.now() + duration
         self._device.set_mode(mode=mode, setpoint=setpoint, until=until)
         self._req_ha_state_update()
+
+    def svc_set_zone_temp(self, temperature, **kwargs) -> None:  # set_current_temp
+        """Set the current (measured) temperature of the Zone sensor."""
+        self._device.sensor.temperature = temperature
 
 
 class EvoController(EvoZoneBase, ClimateEntity):

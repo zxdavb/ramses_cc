@@ -42,6 +42,7 @@ CONF_MIN_TEMP = "min_temp"
 CONF_MULTIROOM = "multiroom_mode"
 CONF_OPENWINDOW = "openwindow_function"
 CONF_SETPOINT = "setpoint"
+CONF_TEMPERATURE = "temperature"
 CONF_UNTIL = "until"
 
 CONF_ACTIVE = "active"
@@ -66,6 +67,7 @@ PACKET_LOG_SCHEMA = vol.Schema(
 )  # unlike evohome_rf, evohome_cc requires a packet_log
 
 # Integration domain services for System/Controller
+SVC_CREATE_SENSOR = "create_sensor"
 SVC_REFRESH_SYSTEM = "force_refresh"
 SVC_RESET_SYSTEM_MODE = "reset_system_mode"
 SVC_SEND_PACKET = "send_packet"
@@ -108,6 +110,7 @@ SET_SYSTEM_MODE_SCHEMA = vol.Any(
 )
 
 DOMAIN_SERVICES = {
+    SVC_CREATE_SENSOR: None,
     SVC_REFRESH_SYSTEM: None,
     SVC_RESET_SYSTEM_MODE: None,
     SVC_SEND_PACKET: SEND_PACKET_SCHEMA,
@@ -119,6 +122,7 @@ SVC_RESET_ZONE_CONFIG = "reset_zone_config"
 SVC_RESET_ZONE_MODE = "reset_zone_mode"
 SVC_SET_ZONE_CONFIG = "set_zone_config"
 SVC_SET_ZONE_MODE = "set_zone_mode"
+SVC_SET_ZONE_TEMP = "set_zone_temp"
 
 CONF_ZONE_MODES = (
     ZoneMode.SCHEDULE,
@@ -179,11 +183,20 @@ SET_ZONE_MODE_SCHEMA = vol.Any(
     SET_ZONE_MODE_SCHEMA_UNTIL,
 )
 
+SET_ZONE_TEMP_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
+    {
+        vol.Required(CONF_TEMPERATURE): vol.All(
+            vol.Coerce(float), vol.Range(min=-20, max=99)
+        ),
+    }
+)
+
 CLIMATE_SERVICES = {
     SVC_RESET_ZONE_CONFIG: SET_ZONE_BASE_SCHEMA,
     SVC_RESET_ZONE_MODE: SET_ZONE_BASE_SCHEMA,
     SVC_SET_ZONE_CONFIG: SET_ZONE_CONFIG_SCHEMA,
     SVC_SET_ZONE_MODE: SET_ZONE_MODE_SCHEMA,
+    SVC_SET_ZONE_TEMP: SET_ZONE_TEMP_SCHEMA,
 }
 
 # WaterHeater platform services for DHW

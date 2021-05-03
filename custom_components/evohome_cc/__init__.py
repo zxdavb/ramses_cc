@@ -127,6 +127,10 @@ def setup_service_functions(hass: HomeAssistantType, broker):
     """Set up the handlers for the system-wide services."""
 
     @verify_domain_control(hass, DOMAIN)
+    async def svc_create_sensor(call) -> None:
+        broker.client._bind_fake_sensor()
+
+    @verify_domain_control(hass, DOMAIN)
     async def svc_force_refresh(call) -> None:
         await broker.async_update()  #: includes async_dispatcher_send(hass, DOMAIN)
 
@@ -219,10 +223,12 @@ class EvoBroker:
             "Status = %s", {k: v for k, v in evohome.status.items() if k != "devices"}
         )
 
+        save_updated_schema = False
         if [z for z in evohome.zones if z not in self.climates]:
             self.hass.async_create_task(
                 async_load_platform(self.hass, CLIMATE, DOMAIN, {}, self.hass_config)
             )
+            save_updated_schema = True
 
         if evohome.dhw and self.water_heater is None:
             self.hass.async_create_task(
@@ -230,11 +236,13 @@ class EvoBroker:
                     self.hass, WATER_HEATER, DOMAIN, {}, self.hass_config
                 )
             )
+            save_updated_schema = True
 
         if self.find_new_sensors():
             self.hass.async_create_task(
                 async_load_platform(self.hass, SENSOR, DOMAIN, {}, self.hass_config)
             )
+            save_updated_schema = True
 
         if self.find_new_binary_sensors():
             self.hass.async_create_task(
@@ -242,8 +250,12 @@ class EvoBroker:
                     self.hass, BINARY_SENSOR, DOMAIN, {}, self.hass_config
                 )
             )
+            save_updated_schema = True
 
-        # inform the evohome devices that state data may have changed
+        if save_updated_schema:
+            self.hass.helpers.event.async_call_later(5, self.async_save_client_state)
+
+        # inform the evohome devices that their state data may have changed
         async_dispatcher_send(self.hass, DOMAIN)
 
     def find_new_binary_sensors(self) -> list:

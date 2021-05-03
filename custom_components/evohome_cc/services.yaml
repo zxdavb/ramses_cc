@@ -1,3 +1,23 @@
+create_sensor:
+  name: Create a Zone sensor
+  description: >-
+    Create an emulated temperature sensor for a zone. Once created, it will immediately
+    enter bind mode and respond appropriately to any controller. The controller must be
+    listening for a sensor before calling this service (as per the normal bind process).
+
+set_zone_temp:
+  name: Set a Zone's temperature
+  description: >-
+    Announce the current temperature of a Zone's temperature sensor. The zone must have
+    an emulated sensor (see the `create_zone_sensor` service call).
+  fields:
+    entity_id:
+      description: The entity_id of the Zone.
+      example: climate.main_room
+    temperature:
+      description: The current temperature in degrees Celsius.
+      example: 21.3
+
 reset_dhw_mode:
   name: Reset the DHW mode
   description: Reset the operating mode of the DHW controller.
