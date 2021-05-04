@@ -284,8 +284,9 @@ class EvoEntity(Entity):
 
     def __init__(self, broker, device) -> None:
         """Initialize the entity."""
-        self._device = device
+        self.hass = broker.hass
         self._broker = broker
+        self._device = device
 
         self._unique_id = self._name = None
         self._entity_state_attrs = ()
@@ -303,7 +304,7 @@ class EvoEntity(Entity):
 
     def _req_ha_state_update(self, delay=1) -> None:
         """Update HA state after a short delay to allow system to quiesce."""
-        self._broker.hass.helpers.event.async_call_later(
+        self.hass.helpers.event.async_call_later(
             delay, self.async_schedule_update_ha_state
         )
 
