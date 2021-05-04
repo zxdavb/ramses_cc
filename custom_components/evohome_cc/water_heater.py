@@ -11,8 +11,6 @@ from datetime import datetime as dt
 from datetime import timedelta as td
 from typing import Dict, List, Optional
 
-from evohome_rf.const import SystemMode, ZoneMode
-from evohome_rf.systems import StoredHw
 from homeassistant.components.water_heater import ATTR_AWAY_MODE
 from homeassistant.components.water_heater import DOMAIN as PLATFORM
 from homeassistant.components.water_heater import (
@@ -27,6 +25,8 @@ from homeassistant.const import (  # PRECISION_TENTHS,; PRECISION_WHOLE,
 )
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from ramses_rf.const import SystemMode, ZoneMode
+from ramses_rf.systems import StoredHw
 
 from . import EvoZoneBase
 from .const import BROKER, DOMAIN

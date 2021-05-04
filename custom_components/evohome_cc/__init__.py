@@ -10,7 +10,7 @@ import logging
 from datetime import timedelta as td
 from typing import Any, Dict, List, Optional
 
-import evohome_rf
+import ramses_rf
 import serial
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR
 from homeassistant.components.climate import DOMAIN as CLIMATE
@@ -70,17 +70,17 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
             _LOGGER.error("Unable to open the serial port. Message is: %s", exc)
             raise exc
 
-    if VERSION == evohome_rf.VERSION:
+    if VERSION == ramses_rf.VERSION:
         _LOGGER.warning(
-            "evohome_cc v%s, using evohome_rf v%s - versions match (this is good)",
+            "evohome_cc v%s, using ramses_rf v%s - versions match (this is good)",
             VERSION,
-            evohome_rf.VERSION,
+            ramses_rf.VERSION,
         )
     else:
         _LOGGER.error(
-            "evohome_cc v%s, using evohome_rf v%s - versions don't match (this is bad)",
+            "evohome_cc v%s, using ramses_rf v%s - versions don't match (this is bad)",
             VERSION,
-            evohome_rf.VERSION,
+            ramses_rf.VERSION,
         )
 
     _LOGGER.debug("\r\n\nConfig =  %s\r\n", hass_config[DOMAIN])
@@ -90,7 +90,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     _LOGGER.debug("\r\n\nStore = %s\r\n", evohome_store)
 
     serial_port, kwargs = normalise_config_schema(dict(hass_config[DOMAIN]))
-    client = evohome_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
+    client = ramses_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
 
     hass.data[DOMAIN] = {}
     hass.data[DOMAIN][BROKER] = broker = EvoBroker(

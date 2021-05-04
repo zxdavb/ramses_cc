@@ -9,7 +9,6 @@ import logging
 from datetime import datetime as dt
 from typing import Any, Dict, Optional
 
-from evohome_rf.const import SystemMode, ZoneMode
 from homeassistant.components.climate import DOMAIN as PLATFORM
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
@@ -38,6 +37,7 @@ from homeassistant.const import ATTR_TEMPERATURE
 from homeassistant.core import callback
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from ramses_rf.const import SystemMode, ZoneMode
 
 from . import EvoZoneBase
 from .const import ATTR_SETPOINT, BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID
