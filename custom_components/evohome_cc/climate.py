@@ -43,11 +43,11 @@ from . import EvoZoneBase
 from .const import ATTR_SETPOINT, BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID
 from .schema import (
     CLIMATE_SERVICES,
+    CONF_ADVANCED_OVERRIDE,
     CONF_MODE,
     CONF_SYSTEM_MODE,
     SVC_RESET_SYSTEM_MODE,
     SVC_SET_SYSTEM_MODE,
-    CONF_ADVANCED_OVERRIDE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -250,7 +250,9 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         """Set a new target temperature."""
         if self.broker.hass_config[DOMAIN][CONF_ADVANCED_OVERRIDE]:
             _LOGGER.info("evohome_cc - set temperature with advanced override ENABLED")
-            self.svc_set_zone_mode(mode=ZoneMode.ADVANCED,setpoint=kwargs.get(ATTR_TEMPERATURE))
+            self.svc_set_zone_mode(
+                mode=ZoneMode.ADVANCED, setpoint=kwargs.get(ATTR_TEMPERATURE)
+            )
         else:
             _LOGGER.info("evohome_cc - set temperature with advanced override DISABLED")
             self.svc_set_zone_mode(setpoint=kwargs.get(ATTR_TEMPERATURE))

@@ -40,11 +40,11 @@ from .const import (
 )
 from .schema import CONFIG_SCHEMA  # noqa: F401
 from .schema import (
+    CONF_ADVANCED_OVERRIDE,
     CONF_RESTORE_STATE,
     DOMAIN_SERVICES,
     SVC_SEND_PACKET,
     normalise_config_schema,
-    CONF_ADVANCED_OVERRIDE,
 )
 from .version import __version__ as VERSION
 
@@ -92,7 +92,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
 
     serial_port, kwargs = normalise_config_schema(dict(hass_config[DOMAIN]))
     client = ramses_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
-    
+
     if hass_config[DOMAIN][CONF_ADVANCED_OVERRIDE]:
         _LOGGER.warning("evohome_cc: advanced_override ENABLED")
 
