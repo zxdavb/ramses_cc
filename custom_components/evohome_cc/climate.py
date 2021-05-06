@@ -47,6 +47,7 @@ from .schema import (
     CONF_SYSTEM_MODE,
     SVC_RESET_SYSTEM_MODE,
     SVC_SET_SYSTEM_MODE,
+    CONF_ADVANCED_OVERRIDE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -145,6 +146,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         self._hvac_modes = list(MODE_TO_ZONE)
         self._preset_modes = list(PRESET_TO_ZONE)
         self._supported_features = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
+        self.broker = broker
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
@@ -246,7 +248,12 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     def set_temperature(self, **kwargs) -> None:  # set_target_temp (aka setpoint)
         """Set a new target temperature."""
-        self.svc_set_zone_mode(setpoint=kwargs.get(ATTR_TEMPERATURE))
+        if self.broker.hass_config[DOMAIN][CONF_ADVANCED_OVERRIDE]:
+            _LOGGER.info("evohome_cc - set temperature with advanced override ENABLED")
+            self.svc_set_zone_mode(mode=ZoneMode.ADVANCED,setpoint=kwargs.get(ATTR_TEMPERATURE))
+        else:
+            _LOGGER.info("evohome_cc - set temperature with advanced override DISABLED")
+            self.svc_set_zone_mode(setpoint=kwargs.get(ATTR_TEMPERATURE))
 
     def svc_reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""
