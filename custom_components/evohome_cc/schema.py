@@ -54,6 +54,7 @@ SCAN_INTERVAL_DEFAULT = td(seconds=300)
 SCAN_INTERVAL_MINIMUM = td(seconds=10)
 
 CONF_RESTORE_STATE = "restore_state"
+CONF_ADVANCED_OVERRIDE = "advanced_override"
 
 PACKET_LOG_SCHEMA = vol.Schema(
     {
@@ -270,6 +271,7 @@ CONFIG_SCHEMA = vol.Schema(
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
                 vol.Optional(SVC_SEND_PACKET): bool,
                 vol.Optional(CONF_RESTORE_STATE, default=True): bool,
+                vol.Optional(CONF_ADVANCED_OVERRIDE, default=False): bool,
             },
             extra=vol.ALLOW_EXTRA,  # will be system schemas
         )
