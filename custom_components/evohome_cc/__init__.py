@@ -44,6 +44,7 @@ from .schema import (
     DOMAIN_SERVICES,
     SVC_SEND_PACKET,
     normalise_config_schema,
+    CONF_ADVANCED_OVERRIDE,
 )
 from .version import __version__ as VERSION
 
@@ -91,6 +92,9 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
 
     serial_port, kwargs = normalise_config_schema(dict(hass_config[DOMAIN]))
     client = ramses_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
+    
+    if hass_config[DOMAIN][CONF_ADVANCED_OVERRIDE]:
+        _LOGGER.warning("evohome_cc: advanced_override ENABLED")
 
     hass.data[DOMAIN] = {}
     hass.data[DOMAIN][BROKER] = broker = EvoBroker(
