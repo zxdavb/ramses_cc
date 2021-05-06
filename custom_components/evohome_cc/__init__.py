@@ -40,7 +40,6 @@ from .const import (
 )
 from .schema import CONFIG_SCHEMA  # noqa: F401
 from .schema import (
-    CONF_ADVANCED_OVERRIDE,
     CONF_RESTORE_STATE,
     DOMAIN_SERVICES,
     SVC_SEND_PACKET,
