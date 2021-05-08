@@ -265,7 +265,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(ALLOW_LIST, default=[]): FILTER_SCHEMA,
                 vol.Optional(BLOCK_LIST, default=[]): FILTER_SCHEMA,
                 vol.Optional(CONFIG, default={}): CONFIG_SCHEMA,
-                vol.Optional(CONF_ADVANCED_OVERRIDE, default=False): bool,
+                vol.Optional(CONF_ADVANCED_OVERRIDE, default=True): bool,
                 vol.Optional(CONF_RESTORE_STATE, default=True): bool,
                 vol.Required(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
