@@ -43,6 +43,7 @@ from . import EvoZoneBase
 from .const import ATTR_SETPOINT, BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID
 from .schema import (
     CLIMATE_SERVICES,
+    CONF_ADVANCED_OVERRIDE,
     CONF_MODE,
     CONF_SYSTEM_MODE,
     SVC_RESET_SYSTEM_MODE,
@@ -246,7 +247,12 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     def set_temperature(self, **kwargs) -> None:  # set_target_temp (aka setpoint)
         """Set a new target temperature."""
-        self.svc_set_zone_mode(setpoint=kwargs.get(ATTR_TEMPERATURE))
+        if self._broker.hass_config[DOMAIN][CONF_ADVANCED_OVERRIDE]:
+            self.svc_set_zone_mode(
+                mode=ZoneMode.ADVANCED, setpoint=kwargs.get(ATTR_TEMPERATURE)
+            )
+        else:
+            self.svc_set_zone_mode(setpoint=kwargs.get(ATTR_TEMPERATURE))
 
     def svc_reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""

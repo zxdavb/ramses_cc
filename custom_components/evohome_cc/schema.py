@@ -53,6 +53,7 @@ CONF_OVERRUN = "overrun"
 SCAN_INTERVAL_DEFAULT = td(seconds=300)
 SCAN_INTERVAL_MINIMUM = td(seconds=10)
 
+CONF_ADVANCED_OVERRIDE = "advanced_override"
 CONF_RESTORE_STATE = "restore_state"
 
 PACKET_LOG_SCHEMA = vol.Schema(
@@ -261,15 +262,16 @@ CONFIG_SCHEMA = vol.Schema(
                     cv.string,
                     SERIAL_CONFIG_SCHEMA.extend({vol.Required(PORT_NAME): cv.string}),
                 ),
-                vol.Optional(CONFIG, default={}): CONFIG_SCHEMA,
-                vol.Optional(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
                 vol.Optional(ALLOW_LIST, default=[]): FILTER_SCHEMA,
                 vol.Optional(BLOCK_LIST, default=[]): FILTER_SCHEMA,
+                vol.Optional(CONFIG, default={}): CONFIG_SCHEMA,
+                vol.Optional(CONF_ADVANCED_OVERRIDE, default=True): bool,
+                vol.Optional(CONF_RESTORE_STATE, default=True): bool,
                 vol.Required(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
+                vol.Optional(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
                 vol.Optional(SVC_SEND_PACKET): bool,
-                vol.Optional(CONF_RESTORE_STATE, default=True): bool,
             },
             extra=vol.ALLOW_EXTRA,  # will be system schemas
         )
