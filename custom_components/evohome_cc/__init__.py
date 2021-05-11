@@ -7,6 +7,7 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 
 import logging
+from datetime import datetime as dt
 from datetime import timedelta as td
 from typing import Any, Dict, List, Optional
 
@@ -192,6 +193,7 @@ class EvoBroker:
 
         self.hass_config = None
         self.loop_task = None
+        self._last_update = dt.min
 
     async def async_restore_client_state(self) -> None:
         """Save..."""
@@ -210,6 +212,11 @@ class EvoBroker:
 
     async def async_update(self, *args, **kwargs) -> None:
         """Retrieve the latest state data..."""
+
+        dt_now = dt.now()  # HACK: workaround bug
+        if self._last_update > dt_now - td(seconds=9):
+            return
+        self._last_update = dt_now
 
         _LOGGER.info("Devices = %s", {d.id: d.status for d in self.client.devices})
 
