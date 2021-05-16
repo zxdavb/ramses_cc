@@ -11,24 +11,14 @@ from typing import Any, Dict, Optional
 
 from homeassistant.const import (  # DEVICE_CLASS_BATTERY,; DEVICE_CLASS_PROBLEM,
     DEVICE_CLASS_HUMIDITY,
+    DEVICE_CLASS_PRESSURE,
     DEVICE_CLASS_TEMPERATURE,
     TEMP_CELSIUS,
 )
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import EvoDeviceBase
-from .const import (
-    ATTR_FAN_RATE,
-    ATTR_FAULT_LOG,
-    ATTR_HEAT_DEMAND,
-    ATTR_HUMIDITY,
-    ATTR_RELAY_DEMAND,
-    ATTR_SETPOINT,
-    ATTR_TEMPERATURE,
-    BROKER,
-    DOMAIN,
-    PERCENTAGE,
-)
+from .const import ATTR_SETPOINT, BROKER, DOMAIN, PERCENTAGE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,43 +30,34 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
-    broker = hass.data[DOMAIN][BROKER]
-    new_devices = broker.find_new_sensors()
-    broker.sensors += new_devices
-
     new_entities = [
-        klass(broker, device)
-        for klass in SENSOR_CLASSES
-        for device in new_devices
-        if hasattr(device, klass.STATE_ATTR)
+        v.get(ENTITY_CLASS, EvoSensor)(hass.data[DOMAIN][BROKER], device, k, **v)
+        for k, v in SENSOR_ATTRS.items()
+        for device in discovery_info
+        if hasattr(device, k)
     ]
+
     if new_entities:
         async_add_entities(new_entities)
 
 
-class EvoSensorBase(EvoDeviceBase):
+class EvoSensor(EvoDeviceBase):
     """Representation of a generic sensor."""
 
-    DEVICE_CLASS = None
-    DEVICE_UNITS = PERCENTAGE
-    STATE_ATTR = None  # needs to be overridden
+    def __init__(
+        self, broker, device, state_attr, device_class=None, device_units=None, **kwargs
+    ) -> None:
+        """Initialize a sensor."""
+        _LOGGER.info("Found a Sensor (%s), id=%s", state_attr, device.id)
+        super().__init__(broker, device, state_attr, device_class)
 
-    def __init__(self, broker, device) -> None:
-        """Initialize the sensor."""
-        _LOGGER.info("Found a Sensor (%s), id=%s", self.STATE_ATTR, device.id)
-        super().__init__(broker, device)
-
-        self._unique_id = f"{device.id}-{self.STATE_ATTR}"
-
-    @property
-    def available(self) -> bool:
-        """Return True if the sensor is available."""
-        return getattr(self._device, self.STATE_ATTR) is not None
+        self._unique_id = f"{device.id}-{state_attr}"
+        self._unit_of_measurement = device_units or PERCENTAGE
 
     @property
-    def state(self) -> Optional[int]:
+    def state(self) -> Optional[Any]:  # int or float
         """Return the state of the sensor."""
-        state = getattr(self._device, self.STATE_ATTR)
+        state = getattr(self._device, self._state_attr)
         if self.unit_of_measurement == PERCENTAGE:
             return int(state * 100) if state is not None else None
         return state
@@ -84,13 +65,11 @@ class EvoSensorBase(EvoDeviceBase):
     @property
     def unit_of_measurement(self) -> str:
         """Return the unit of measurement of the sensor."""
-        return self.DEVICE_UNITS
+        return self._unit_of_measurement
 
 
-class EvoHeatDemand(EvoSensorBase):
+class EvoHeatDemand(EvoSensor):
     """Representation of a heat demand sensor."""
-
-    STATE_ATTR = ATTR_HEAT_DEMAND
 
     @property
     def icon(self) -> str:
@@ -98,27 +77,17 @@ class EvoHeatDemand(EvoSensorBase):
         return "mdi:radiator-off" if self.state == 0 else "mdi:radiator"
 
 
-class EvoRelayDemand(EvoSensorBase):
+class EvoRelayDemand(EvoSensor):
     """Representation of a relay demand sensor."""
-
-    STATE_ATTR = ATTR_RELAY_DEMAND
 
     @property
     def icon(self) -> str:
         """Return the icon to use in the frontend, if any."""
-        # return "mdi:power-plug-off" if self.state == 0 else "mdi:power-plug"
-        # return "mdi:flash-off" if self.state == 0 else "mdi:flash"
-        return (
-            "mdi:electric-switch" if self.state == 0 else "mdi:electric-switch-closed"
-        )
+        return "mdi:power-plug" if self.state else "mdi:power-plug-off"
 
 
-class EvoTemperature(EvoSensorBase):
+class EvoTemperature(EvoSensor):
     """Representation of a temperature sensor (incl. DHW sensor)."""
-
-    DEVICE_CLASS = DEVICE_CLASS_TEMPERATURE
-    DEVICE_UNITS = TEMP_CELSIUS
-    STATE_ATTR = ATTR_TEMPERATURE
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
@@ -129,29 +98,15 @@ class EvoTemperature(EvoSensorBase):
         return attrs
 
 
-class EvoHumidity(EvoSensorBase):
-    """Representation of a humidity sensor."""
-
-    DEVICE_CLASS = DEVICE_CLASS_HUMIDITY
-    STATE_ATTR = ATTR_HUMIDITY
-
-
-class EvoFanRate(EvoSensorBase):
-    """Representation of a fan rate (not speed) sensor."""
-
-    STATE_ATTR = ATTR_FAN_RATE
-
-
 class EvoFaultLog(EvoDeviceBase):
     """Representation of a system's fault log."""
 
     # DEVICE_CLASS = DEVICE_CLASS_PROBLEM
     DEVICE_UNITS = "entries"
-    STATE_ATTR = ATTR_FAULT_LOG
 
     def __init__(self, broker, device) -> None:
         """Initialize the sensor."""
-        super().__init__(broker, device)
+        super().__init__(broker, device, None, None)  # TODO
 
         self._fault_log = None
 
@@ -179,11 +134,57 @@ class EvoFaultLog(EvoDeviceBase):
         pass
 
 
-SENSOR_CLASSES = (
-    EvoFanRate,
-    EvoHeatDemand,
-    EvoHumidity,
-    EvoRelayDemand,
-    EvoTemperature,
-    EvoFaultLog,
-)
+DEVICE_CLASS = "device_class"
+DEVICE_UNITS = "device_units"
+ENTITY_CLASS = "entity_class"
+
+SENSOR_ATTRS = {
+    "heat_demand": {
+        DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: EvoHeatDemand,
+    },
+    "modulation_level": {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "relay_demand": {
+        DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: EvoRelayDemand,
+    },
+    "temperature": {
+        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+        ENTITY_CLASS: EvoTemperature,
+    },
+    "boiler_setpoint": {
+        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    "boiler_temp": {
+        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    "ch_pressure": {
+        DEVICE_CLASS: DEVICE_CLASS_PRESSURE,
+        DEVICE_UNITS: "bar",
+    },
+    "cv_return_temp": {
+        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    "dhw_rate": {
+        DEVICE_UNITS: "l/min",
+    },
+    "rel_modulation_level": {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "boost_timer": {
+        DEVICE_UNITS: "min",
+    },
+    "fan_rate": {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "relative_humidity": {
+        DEVICE_CLASS: DEVICE_CLASS_HUMIDITY,
+        DEVICE_UNITS: PERCENTAGE,
+    },
+}

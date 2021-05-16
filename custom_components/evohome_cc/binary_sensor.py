@@ -17,15 +17,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import EvoDeviceBase
-from .const import (
-    ATTR_ACTUATOR,
-    ATTR_BATTERY,
-    ATTR_BATTERY_LEVEL,
-    ATTR_WINDOW,
-    BROKER,
-    DEVICE_CLASS_ACTUATOR,
-    DOMAIN,
-)
+from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,58 +29,44 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
-    broker = hass.data[DOMAIN][BROKER]
-    new_devices = broker.find_new_binary_sensors()
-    broker.binary_sensors += new_devices
-
     new_entities = [
-        klass(broker, device)
-        for klass in (EvoActuator, EvoBattery, EvoWindow)
-        for device in new_devices
-        if hasattr(device, klass.STATE_ATTR)
+        v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], device, k, **v)
+        for k, v in BINARY_SENSOR_ATTRS.items()
+        for device in discovery_info
+        if hasattr(device, k)
     ]
+
     if new_entities:
         async_add_entities(new_entities)
 
 
-class EvoBinarySensorBase(EvoDeviceBase, BinarySensorEntity):
+class EvoBinarySensor(EvoDeviceBase, BinarySensorEntity):
     """Representation of a generic binary sensor."""
 
-    def __init__(self, broker, device) -> None:
-        """Initialize the binary sensor."""
-        _LOGGER.info("Found a Binary Sensor (%s), id=%s", self.STATE_ATTR, device.id)
-        super().__init__(broker, device)
+    def __init__(self, broker, device, state_attr, device_class=None, **kwargs) -> None:
+        """Initialize a binary sensor."""
+        _LOGGER.info("Found a Binary Sensor (%s), id=%s", state_attr, device.id)
+        super().__init__(broker, device, state_attr, device_class)
 
-        self._unique_id = f"{device.id}-{self.STATE_ATTR}_state"
-
-    @property
-    def available(self) -> bool:
-        """Return True if the binary sensor is available."""
-        return getattr(self._device, self.STATE_ATTR) is not None
+        self._unique_id = f"{device.id}-{state_attr}_state"
 
     @property
     def is_on(self) -> bool:
         """Return the state of the binary sensor."""
-        return getattr(self._device, self.STATE_ATTR)
+        return getattr(self._device, self._state_attr)
 
 
-class EvoActuator(EvoBinarySensorBase):
+class EvoActuator(EvoBinarySensor):
     """Representation of an actuator sensor; on means active."""
-
-    DEVICE_CLASS = DEVICE_CLASS_ACTUATOR
-    STATE_ATTR = ATTR_ACTUATOR
 
     @property
     def icon(self) -> str:
         """Return the icon to use in the frontend, if any."""
-        return "mdi:valve" if self.is_on else "mdi:valve-closed"  # "mdi:valve-open"
+        return "mdi:electric-switch-closed" if self.is_on else "mdi:electric-switch"
 
 
-class EvoBattery(EvoBinarySensorBase):
+class EvoBattery(EvoBinarySensor):
     """Representation of a low battery sensor; on means low."""
-
-    DEVICE_CLASS = DEVICE_CLASS_BATTERY
-    STATE_ATTR = ATTR_BATTERY
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
@@ -100,8 +78,18 @@ class EvoBattery(EvoBinarySensorBase):
         }
 
 
-class EvoWindow(EvoBinarySensorBase):
-    """Representation of an open window sensor; on means open."""
+DEVICE_CLASS = "device_class"
+ENTITY_CLASS = "entity_class"
 
-    DEVICE_CLASS = DEVICE_CLASS_WINDOW
-    STATE_ATTR = ATTR_WINDOW
+BINARY_SENSOR_ATTRS = {
+    "battery_low": {
+        DEVICE_CLASS: DEVICE_CLASS_BATTERY,
+        ENTITY_CLASS: EvoBattery,
+    },
+    "enabled": {
+        ENTITY_CLASS: EvoActuator,
+    },
+    "window_open": {
+        DEVICE_CLASS: DEVICE_CLASS_WINDOW,
+    },
+}
