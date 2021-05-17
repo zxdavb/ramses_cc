@@ -247,7 +247,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     def set_temperature(self, **kwargs) -> None:  # set_target_temp (aka setpoint)
         """Set a new target temperature."""
-        if self._broker.hass_config[DOMAIN][CONF_ADVANCED_OVERRIDE]:
+        if self._broker.config[DOMAIN][CONF_ADVANCED_OVERRIDE]:
             self.svc_set_zone_mode(
                 mode=ZoneMode.ADVANCED, setpoint=kwargs.get(ATTR_TEMPERATURE)
             )
