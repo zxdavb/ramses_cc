@@ -29,15 +29,15 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
-    new_entities = [
+    new_devices = [
         v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], device, k, **v)
+        for device in discovery_info["new_devices"]
         for k, v in BINARY_SENSOR_ATTRS.items()
-        for device in discovery_info
         if hasattr(device, k)
     ]
 
-    if new_entities:
-        async_add_entities(new_entities)
+    if new_devices:
+        async_add_entities(new_devices)
 
 
 class EvoBinarySensor(EvoDeviceBase, BinarySensorEntity):

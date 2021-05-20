@@ -189,7 +189,8 @@ class EvoBroker:
         self.loop_task = None
         self._last_update = dt.min
 
-        self.known_devices = []
+        self._devices = []
+        self._domains = []
         self._lock = Lock()
 
     async def async_restore_client_state(self) -> None:
@@ -214,10 +215,15 @@ class EvoBroker:
             return False
 
         save_updated_schema = False
-        if [z for z in evohome.zones if z not in self.climates]:
+        new_domains = [z for z in evohome.zones if z not in self.climates]
+        if new_domains:
             self.hass.async_create_task(
                 async_load_platform(self.hass, CLIMATE, DOMAIN, {}, self.config)
             )
+            # new_domains = {"new_domains": new_domains + [self.client.evo]}
+            # self.hass.async_create_task(
+            #     async_load_platform(self.hass, SENSOR, DOMAIN, new_domains, self.config)
+            # )
             save_updated_schema = True
 
         if evohome.dhw and self.water_heater is None:
@@ -234,22 +240,32 @@ class EvoBroker:
         return save_updated_schema
 
     def _get_devices(self) -> bool:
-        new_devices = [d for d in self.client.devices if d not in self.known_devices]
+        new_devices = [
+            d
+            for d in self.client.devices
+            if d not in self._devices
+            and d.id in self.client._include
+            and d.id not in self.client._exclude
+        ]
+        self._devices.extend(new_devices)
 
-        if new_devices and self.client._include:
-            new_devices = [d for d in new_devices if d.id in self.client._include]
-        if new_devices and self.client._exclude:
-            new_devices = [d for d in new_devices if d.id not in self.client._exclude]
-        if new_devices:
+        new_domains = []
+        if self.client.evo:
+            new_domains = [d for d in self.client.evo.zones if d not in self._domains]
+            if self.client.evo not in self._domains:
+                new_domains.append(self.client.evo)
+            self._domains.extend(new_domains)
+
+        if new_devices or new_domains:
+            new_devices = {"new_devices": new_devices, "new_domains": new_domains}
             for platform in (BINARY_SENSOR, SENSOR):
                 self.hass.async_create_task(
                     async_load_platform(
                         self.hass, platform, DOMAIN, new_devices, self.config
                     )
                 )
-            self.known_devices.extend(new_devices)
 
-        _LOGGER.info("Devices = %s", {d.id: d.status for d in self.known_devices})
+        _LOGGER.info("Devices = %s", [d.id for d in self._devices])
         return bool(new_devices)
 
     async def async_update(self, *args, **kwargs) -> None:
@@ -358,9 +374,9 @@ class EvoDeviceBase(EvoEntity):
         """Return the integration-specific state attributes."""
         attrs = super().device_state_attributes
         attrs["device_id"] = self._device.id
-        attrs["domain_id"] = self._device._domain_id
-        if hasattr(self._device, "zone"):
-            attrs["zone"] = self._device.zone.name if self._device.zone else None
+        # attrs["domain_id"] = self._device._domain_id self.idx
+        # if hasattr(self._device, "zone"):
+        #     attrs["zone"] = self._device.zone.name if self._device.zone else None
         return attrs
 
     @property
