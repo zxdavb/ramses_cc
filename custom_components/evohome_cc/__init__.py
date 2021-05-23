@@ -244,7 +244,7 @@ class EvoBroker:
             d
             for d in self.client.devices
             if d not in self._devices
-            and d.id in self.client._include
+            and not (self.client._include and d.id in self.client._include)
             and d.id not in self.client._exclude
         ]
         self._devices.extend(new_devices)
