@@ -70,18 +70,9 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
             _LOGGER.error("Unable to open the serial port. Message is: %s", exc)
             raise exc
 
-    if VERSION == ramses_rf.VERSION:
-        _LOGGER.warning(
-            "evohome_cc v%s, using ramses_rf v%s - versions match (this is good)",
-            VERSION,
-            ramses_rf.VERSION,
-        )
-    else:
-        _LOGGER.error(
-            "evohome_cc v%s, using ramses_rf v%s - versions don't match (this is bad)",
-            VERSION,
-            ramses_rf.VERSION,
-        )
+    _LOGGER.warning(
+        "evohome_cc v%s, is using ramses_rf v%s", VERSION, ramses_rf.VERSION
+    )
 
     _LOGGER.debug("\r\n\nConfig =  %s\r\n", hass_config[DOMAIN])
 
