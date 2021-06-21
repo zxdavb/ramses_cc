@@ -86,16 +86,17 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     hass.data[DOMAIN] = {}
     hass.data[DOMAIN][BROKER] = broker = EvoBroker(hass, client, store, hass_config)
 
-    broker.loop_task = hass.loop.create_task(handle_exceptions(client.start()))
-
     if hass_config[DOMAIN][CONF_RESTORE_STATE]:
         _LOGGER.debug("Restoring client state...")
         await broker.async_restore_client_state()
         await broker.async_update()
     else:
-        _LOGGER.warning("The restore client state feature has been disabled.")
+        _LOGGER.info("The restore client state feature has not been enabled.")
         hass.helpers.event.async_call_later(10, broker.async_update)
         hass.helpers.event.async_call_later(30, broker.async_update)
+
+    # await asyncio.sleep(5)
+    broker.loop_task = hass.loop.create_task(handle_exceptions(client.start()))
 
     hass.helpers.event.async_track_time_interval(
         broker.async_update, hass_config[DOMAIN][CONF_SCAN_INTERVAL]

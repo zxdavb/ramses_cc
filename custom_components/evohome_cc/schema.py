@@ -284,6 +284,8 @@ def normalise_config_schema(config) -> Tuple[str, dict]:
     """Convert a HA config dict into the client library's own format."""
 
     del config[CONF_SCAN_INTERVAL]
+    config.pop(CONF_ADVANCED_OVERRIDE, None)
+    config.pop(CONF_RESTORE_STATE, None)
     config.pop(SVC_SEND_PACKET, None)
 
     if isinstance(config[SERIAL_PORT], dict):

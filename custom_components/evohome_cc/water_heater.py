@@ -90,7 +90,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
 
     def __init__(self, broker, device) -> None:
         """Initialize an evohome DHW controller."""
-        _LOGGER.warning("Found a DHW controller, id=%s", device.id)  # TODO: info
+        _LOGGER.info("Found a DHW controller, id=%s", device.id)  # TODO: info
         super().__init__(broker, device)
 
         self._unique_id = device.id
