@@ -146,52 +146,62 @@ DEVICE_UNITS = "device_units"
 ENTITY_CLASS = "entity_class"
 
 SENSOR_ATTRS = {
-    "heat_demand": {
-        DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: EvoHeatDemand,
-    },
-    "modulation_level": {
-        DEVICE_UNITS: PERCENTAGE,
-    },
-    "relay_demand": {
+    # SENSOR_ATTRS_BDR = {  # incl: actuator
+    "relay_demand": {  # 0008
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: EvoRelayDemand,
+    },
+    "modulation_level": {  # 3EF0/3EF1
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    # SENSOR_ATTRS_OTB = {  # excl. actuator
+    "boiler_setpoint": {  # 22D9
+        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    "boiler_water_temperature": {  # 3220
+        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    "ch_water_pressure": {  # 3220
+        DEVICE_CLASS: DEVICE_CLASS_PRESSURE,
+        DEVICE_UNITS: "bar",
+    },
+    "dhw_flow_rate": {  # 3220
+        DEVICE_UNITS: "l/min",
+    },
+    "dhw_temperature": {  # 3220
+        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+        ENTITY_CLASS: EvoTemperature,
+    },
+    "relative_modulation_level": {  # 3200
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "return_water_temperature": {  # 3220
+        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+        ENTITY_CLASS: EvoTemperature,
+    },
+    # SENSOR_ATTRS_OTH = {
+    "heat_demand": {  # 3150
+        DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: EvoHeatDemand,
     },
     "temperature": {
         DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
         ENTITY_CLASS: EvoTemperature,
-    },
-    "boiler_setpoint": {
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
-    },
-    "boiler_temp": {
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
-    },
-    "ch_pressure": {
-        DEVICE_CLASS: DEVICE_CLASS_PRESSURE,
-        DEVICE_UNITS: "bar",
-    },
-    "cv_return_temp": {
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
-    },
-    "dhw_rate": {
-        DEVICE_UNITS: "l/min",
-    },
-    "rel_modulation_level": {
-        DEVICE_UNITS: PERCENTAGE,
-    },
-    "boost_timer": {
-        DEVICE_UNITS: "min",
-    },
-    "fan_rate": {
-        DEVICE_UNITS: PERCENTAGE,
-    },
-    "relative_humidity": {
-        DEVICE_CLASS: DEVICE_CLASS_HUMIDITY,
-        DEVICE_UNITS: PERCENTAGE,
+        # SENSOR_ATTRS_FAN = {
+        "boost_timer": {
+            DEVICE_UNITS: "min(s)",
+        },
+        "fan_rate": {
+            DEVICE_UNITS: PERCENTAGE,
+        },
+        "relative_humidity": {
+            DEVICE_CLASS: DEVICE_CLASS_HUMIDITY,
+            DEVICE_UNITS: PERCENTAGE,
+        },
     },
 }
