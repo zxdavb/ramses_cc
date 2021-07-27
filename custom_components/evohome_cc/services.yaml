@@ -123,7 +123,7 @@ reset_system_mode:
     including (if supported) those in permanent_override mode.
 
 set_system_mode:
-  name: Set the System
+  name: Set the System mode
   description: >-
     The System will be in the new mode and all Zones not in permanent_override mode
     will be affected.
@@ -212,4 +212,4 @@ send_packet:
       example: 1F09
     payload:
       description: The packet payload as a hexadecimal string.
-      example: '00'
+      example: 'FF'
