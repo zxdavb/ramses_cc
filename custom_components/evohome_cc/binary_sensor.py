@@ -106,19 +106,12 @@ class EvoSystem(EvoEntity, BinarySensorEntity):
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        other_list = [
-            d.id
-            for d in self._device._gwy.devices
-            if d.id not in self._device._gwy._include.keys()
-            and d.id not in self._device._gwy._exclude.keys()
-        ]
-
         return {
             "schema_min": self._device._evo.schema_min,
             "schema": self._device._evo.schema,
             "known_list": [{k: v} for k, v in self._device._gwy._include.items()],
             "block_list": [{k: v} for k, v in self._device._gwy._exclude.items()],
-            "other_list": sorted(other_list),
+            "other_list": sorted(self._device._gwy.pkt_protocol._unwanted),
         }
 
     @property
