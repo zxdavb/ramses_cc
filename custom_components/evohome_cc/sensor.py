@@ -9,6 +9,7 @@ Provides support for sensors.
 import logging
 from typing import Any, Dict, Optional
 
+from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT, SensorEntity
 from homeassistant.const import (  # DEVICE_CLASS_BATTERY,; DEVICE_CLASS_PROBLEM,
     DEVICE_CLASS_HUMIDITY,
     DEVICE_CLASS_PRESSURE,
@@ -48,8 +49,10 @@ async def async_setup_platform(
         async_add_entities(new_devices + new_domains)
 
 
-class EvoSensor(EvoDeviceBase):
+class EvoSensor(EvoDeviceBase, SensorEntity):
     """Representation of a generic sensor."""
+
+    _attr_state_class = STATE_CLASS_MEASUREMENT
 
     def __init__(
         self, broker, device, state_attr, device_class=None, device_units=None, **kwargs
@@ -66,7 +69,9 @@ class EvoSensor(EvoDeviceBase):
         """Return the state of the sensor."""
         state = getattr(self._device, self._state_attr)
         if self.unit_of_measurement == PERCENTAGE:
-            return int(state * 100) if state is not None else None
+            return int(state * 200) / 2 if state is not None else None
+        if self.unit_of_measurement == TEMP_CELSIUS:
+            return int(state * 200) / 200 if state is not None else None
         return state
 
     @property

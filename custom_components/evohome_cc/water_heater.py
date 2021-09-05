@@ -23,9 +23,10 @@ from homeassistant.const import (  # PRECISION_TENTHS,; PRECISION_WHOLE,
     STATE_OFF,
     STATE_ON,
 )
+from homeassistant.core import callback
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
-from ramses_rf.const import SystemMode, ZoneMode
+from ramses_rf.protocol.const import SystemMode, ZoneMode
 from ramses_rf.systems import StoredHw
 
 from . import EvoZoneBase
@@ -55,12 +56,9 @@ MODE_HA_TO_EVO = {
     STATE_ON: ZoneMode.PERMANENT,
 }
 
-SUPPORTED_FEATURES = sum(
-    (
-        SUPPORT_OPERATION_MODE,
-        SUPPORT_TARGET_TEMPERATURE,
-    )
-)  # SUPPORT_AWAY_MODE,
+SUPPORTED_FEATURES = (
+    SUPPORT_OPERATION_MODE + SUPPORT_TARGET_TEMPERATURE  # + SUPPORT_AWAY_MODE
+)
 
 STATE_ATTRS_DHW = ("config", "mode", "status")
 
@@ -167,6 +165,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
         """Return the temperature we try to reach."""
         return self._device.setpoint
 
+    @callback
     def set_operation_mode(self, operation_mode):
         """Set the operating mode of the water heater."""
         active = until = None  # for STATE_AUTO
@@ -182,35 +181,41 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
             mode=MODE_HA_TO_EVO[operation_mode], active=active, until=until
         )
 
+    @callback
     def set_temperature(self, **kwargs):
         """Set the target temperature of the water heater."""
         self.svc_set_dhw_params(setpoint=kwargs.get(ATTR_TEMPERATURE))
 
+    @callback
     def svc_reset_dhw_mode(self):
         """Reset the operating mode of the water heater."""
-        self._device.reset_mode()
-        self._req_ha_state_update()
+        self._call_client_api(self._device.reset_mode)
 
+    @callback
     def svc_reset_dhw_params(self):
         """Reset the configuration of the water heater."""
-        self._device.reset_config()
-        self._req_ha_state_update()
+        self._call_client_api(self._device.reset_config)
 
+    @callback
     def svc_set_dhw_boost(self):
         """Enable the water heater for an hour."""
-        self._device.set_boost_mode()
-        self._req_ha_state_update()
+        self._call_client_api(self._device.set_boost_mode)
 
+    @callback
     def svc_set_dhw_mode(self, mode=None, active=None, duration=None, until=None):
         """Set the (native) operating mode of the water heater."""
         if until is None and duration is not None:
             until = dt.now() + duration
-        self._device.set_mode(mode=mode, active=active, until=until)
-        self._req_ha_state_update()
+        self._call_client_api(
+            self._device.set_mode, mode=mode, active=active, until=until
+        )
 
+    @callback
     def svc_set_dhw_params(self, setpoint=None, overrun=None, differential=None):
         """Set the configuration of the water heater."""
-        self._device.set_config(
-            setpoint=setpoint, overrun=overrun, differential=differential
+        self._call_client_api(
+            self._device.set_config,
+            setpoint=setpoint,
+            overrun=overrun,
+            differential=differential,
         )
-        self._req_ha_state_update()

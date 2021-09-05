@@ -9,18 +9,18 @@ from typing import Tuple
 import voluptuous as vol
 from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID
 from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
-from ramses_rf.const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
+from ramses_rf.protocol.const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
+from ramses_rf.protocol.schema import LOG_FILE_NAME, LOG_ROTATE_BYTES, LOG_ROTATE_COUNT
 from ramses_rf.schema import (
-    ALLOW_LIST,
     BLOCK_LIST,
     CONFIG,
     CONFIG_SCHEMA,
+    DEVICE_DICT,
+    DEVICE_ID,
     EVOFW_FLAG,
-    FILTER_SCHEMA,
-    LOG_FILE_NAME,
-    LOG_ROTATE_BYTES,
-    LOG_ROTATE_COUNT,
+    KNOWN_LIST,
     PACKET_LOG,
     PORT_NAME,
     SERIAL_CONFIG,
@@ -68,12 +68,19 @@ PACKET_LOG_SCHEMA = vol.Schema(
 )
 
 # Integration domain services for System/Controller
-SVC_CREATE_SENSOR = "create_sensor"
+SVC_FAKE_DEVICE = "fake_device"
 SVC_REFRESH_SYSTEM = "force_refresh"
 SVC_RESET_SYSTEM_MODE = "reset_system_mode"
 SVC_SEND_PACKET = "send_packet"
 SVC_SET_SYSTEM_MODE = "set_system_mode"
 
+FAKE_DEVICE_SCHEMA = vol.Schema(
+    {
+        vol.Required("device_id"): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
+        vol.Optional("create_device", default=False): vol.Any(None, bool),
+        vol.Optional("start_binding", default=False): vol.Any(None, bool),
+    }
+)
 SEND_PACKET_SCHEMA = vol.Schema(
     {
         vol.Required("device_id"): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
@@ -82,7 +89,6 @@ SEND_PACKET_SCHEMA = vol.Schema(
         vol.Required("payload"): vol.Match(r"^[0-9A-F]{1,48}$"),
     }
 )
-
 SET_SYSTEM_MODE_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),  # incl. DAY_OFF_ECO
@@ -111,7 +117,7 @@ SET_SYSTEM_MODE_SCHEMA = vol.Any(
 )
 
 DOMAIN_SERVICES = {
-    SVC_CREATE_SENSOR: None,
+    SVC_FAKE_DEVICE: FAKE_DEVICE_SCHEMA,
     SVC_REFRESH_SYSTEM: None,
     SVC_RESET_SYSTEM_MODE: None,
     SVC_SEND_PACKET: SEND_PACKET_SCHEMA,
@@ -123,7 +129,7 @@ SVC_RESET_ZONE_CONFIG = "reset_zone_config"
 SVC_RESET_ZONE_MODE = "reset_zone_mode"
 SVC_SET_ZONE_CONFIG = "set_zone_config"
 SVC_SET_ZONE_MODE = "set_zone_mode"
-SVC_SET_ZONE_TEMP = "set_zone_temp"
+SVC_PUT_ZONE_TEMP = "put_zone_temp"
 
 CONF_ZONE_MODES = (
     ZoneMode.SCHEDULE,
@@ -184,7 +190,7 @@ SET_ZONE_MODE_SCHEMA = vol.Any(
     SET_ZONE_MODE_SCHEMA_UNTIL,
 )
 
-SET_ZONE_TEMP_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
+PUT_ZONE_TEMP_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
     {
         vol.Required(CONF_TEMPERATURE): vol.All(
             vol.Coerce(float), vol.Range(min=-20, max=99)
@@ -197,7 +203,7 @@ CLIMATE_SERVICES = {
     SVC_RESET_ZONE_MODE: SET_ZONE_BASE_SCHEMA,
     SVC_SET_ZONE_CONFIG: SET_ZONE_CONFIG_SCHEMA,
     SVC_SET_ZONE_MODE: SET_ZONE_MODE_SCHEMA,
-    SVC_SET_ZONE_TEMP: SET_ZONE_TEMP_SCHEMA,
+    SVC_PUT_ZONE_TEMP: PUT_ZONE_TEMP_SCHEMA,
 }
 
 # WaterHeater platform services for DHW
@@ -254,6 +260,8 @@ WATER_HEATER_SERVICES = {
     SVC_SET_DHW_PARAMS: SET_DHW_CONFIG_SCHEMA,
 }
 
+DEVICE_LIST = vol.Schema(vol.All([vol.Any(DEVICE_ID, DEVICE_DICT)], vol.Length(min=0)))
+
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
@@ -262,12 +270,12 @@ CONFIG_SCHEMA = vol.Schema(
                     cv.string,
                     SERIAL_CONFIG_SCHEMA.extend({vol.Required(PORT_NAME): cv.string}),
                 ),
-                vol.Optional(ALLOW_LIST, default=[]): FILTER_SCHEMA,
-                vol.Optional(BLOCK_LIST, default=[]): FILTER_SCHEMA,
+                vol.Optional(KNOWN_LIST, default=[]): DEVICE_LIST,
+                vol.Optional(BLOCK_LIST, default=[]): DEVICE_LIST,
                 vol.Optional(CONFIG, default={}): CONFIG_SCHEMA,
                 vol.Optional(CONF_ADVANCED_OVERRIDE, default=True): bool,
                 vol.Optional(CONF_RESTORE_STATE, default=True): bool,
-                vol.Required(
+                vol.Optional(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
                 vol.Optional(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
@@ -280,8 +288,27 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
-def normalise_config_schema(config) -> Tuple[str, dict]:
+@callback
+def normalise_device_list(device_list) -> dict:
+    """Convert a device_list schema into a ramses_rf format."""
+    # convert: ['01:123456',    {'03:123456': None}, {'18:123456': {'a': 1, 'b': 2}}]
+    #    into: {'01:123456': {}, '03:123456': {},     '18:123456': {'a': 1, 'b': 2}}
+    if isinstance(device_list, list):
+        result = [
+            {k: v for k, v in x.items()} if isinstance(x, dict) else {x: None}
+            for x in device_list
+        ]
+        return {k: v or {} for d in result for k, v in d.items()}
+
+    # elif isinstance(device_list, dict):
+    return {k: v or {} for k, v in device_list.items()}
+
+
+@callback
+def normalise_config_schema(kwargs) -> Tuple[str, dict]:
     """Convert a HA config dict into the client library's own format."""
+
+    config = dict(kwargs)
 
     del config[CONF_SCAN_INTERVAL]
     config.pop(CONF_ADVANCED_OVERRIDE, None)
@@ -305,7 +332,7 @@ def normalise_config_schema(config) -> Tuple[str, dict]:
             {LOG_FILE_NAME: config.pop(PACKET_LOG)}
         )
 
-    config[ALLOW_LIST] = {k: None for k in config[ALLOW_LIST]}
-    config[BLOCK_LIST] = {k: None for k in config[BLOCK_LIST]}
+    config[KNOWN_LIST] = normalise_device_list(config[KNOWN_LIST])
+    config[BLOCK_LIST] = normalise_device_list(config[BLOCK_LIST])
 
     return serial_port, config

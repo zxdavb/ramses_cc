@@ -49,25 +49,19 @@ from .version import __version__ as VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
-
 PLATFORMS = [BINARY_SENSOR, CLIMATE, SENSOR, WATER_HEATER]
 SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
-
-
-async def _load_store(store) -> Optional[Dict]:
-    # return store.async_save(app_storage)  # HOWTO: save store
-    app_storage = await store.async_load()
-    return dict(app_storage or {})
 
 
 async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     """Create a Honeywell RF (RAMSES_II)-based system."""
 
-    async def handle_exceptions(awaitable):
+    async def async_handle_exceptions(awaitable):
+        """Wrap the serial port interface to catch exceptions."""
         try:
             return await awaitable
         except serial.SerialException as exc:
-            _LOGGER.error("Unable to open the serial port. Message is: %s", exc)
+            _LOGGER.error("There is a problem with the serial port: %s", exc)
             raise exc
 
     _LOGGER.warning(
@@ -77,26 +71,25 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     _LOGGER.debug("\r\n\nConfig =  %s\r\n", hass_config[DOMAIN])
 
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
-    evohome_store = await _load_store(store)
+    evohome_store = await EvoBroker.async_load_store(store)
     _LOGGER.debug("\r\n\nStore = %s\r\n", evohome_store)
 
-    serial_port, kwargs = normalise_config_schema(dict(hass_config[DOMAIN]))
+    serial_port, kwargs = normalise_config_schema(hass_config[DOMAIN])
     client = ramses_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
 
     hass.data[DOMAIN] = {}
     hass.data[DOMAIN][BROKER] = broker = EvoBroker(hass, client, store, hass_config)
 
-    if hass_config[DOMAIN][CONF_RESTORE_STATE]:
+    if hass_config[DOMAIN].get(CONF_RESTORE_STATE):
         _LOGGER.debug("Restoring client state...")
-        await broker.async_restore_client_state()
+        await broker.async_load_client_state()
         await broker.async_update()
     else:
         _LOGGER.info("The restore client state feature has not been enabled.")
         hass.helpers.event.async_call_later(10, broker.async_update)
         hass.helpers.event.async_call_later(30, broker.async_update)
 
-    # await asyncio.sleep(5)
-    broker.loop_task = hass.loop.create_task(handle_exceptions(client.start()))
+    broker.loop_task = hass.loop.create_task(async_handle_exceptions(client.start()))
 
     hass.helpers.event.async_track_time_interval(
         broker.async_update, hass_config[DOMAIN][CONF_SCAN_INTERVAL]
@@ -106,18 +99,19 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         broker.async_save_client_state, SAVE_STATE_INTERVAL
     )
 
-    setup_service_functions(hass, broker)
+    register_service_functions(hass, broker)
 
     return True
 
 
-@callback
-def setup_service_functions(hass: HomeAssistantType, broker):
+@callback  # TODO: add async_ to routines where required to do so
+def register_service_functions(hass: HomeAssistantType, broker):
     """Set up the handlers for the system-wide services."""
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_create_sensor(call) -> None:
-        broker.client._bind_fake_sensor()
+    async def svc_fake_device(call) -> None:
+        broker.client.fake_device(**call.data)
+        await broker.async_update()
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_force_refresh(call) -> None:
@@ -185,22 +179,26 @@ class EvoBroker:
         self._domains = []
         self._lock = Lock()
 
-    async def async_restore_client_state(self) -> None:
-        """Save..."""
-        app_storage = await _load_store(self._store)
+    @staticmethod
+    async def async_load_store(store) -> Optional[Dict]:
+        app_storage = await store.async_load()
+        return dict(app_storage or {})
 
+    async def async_load_client_state(self) -> None:
+        """Restore the client state from the app store."""
+        app_storage = await self.async_load_store(self._store)
         if app_storage.get("client_state"):
             await self.client._set_state(**app_storage["client_state"])
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
-        """Save..."""
+        """Save the client state to the app store"""
         (schema, packets) = self.client._get_state()
-
         await self._store.async_save(
             {"client_state": {"schema": schema, "packets": packets}}
         )
 
-    def _get_domains(self) -> bool:
+    @callback
+    def new_domains(self) -> bool:
         evohome = self.client.evo
         if evohome is None:
             _LOGGER.info("Schema = %s", {})
@@ -231,13 +229,17 @@ class EvoBroker:
         )
         return save_updated_schema
 
-    def _get_devices(self) -> bool:
+    @callback
+    def new_devices(self) -> bool:
         new_devices = [
             d
             for d in self.client.devices
             if d not in self._devices
-            and (not self.client._include or d.id in self.client._include)
-            and d.id not in self.client._exclude
+            and (
+                self.client.config.enforce_known_list
+                and d.id in self.client._include
+                or d.id not in self.client._exclude
+            )
         ]
         self._devices.extend(new_devices)
 
@@ -261,7 +263,7 @@ class EvoBroker:
         return bool(new_devices)
 
     async def async_update(self, *args, **kwargs) -> None:
-        """Retrieve the latest state data..."""
+        """Retrieve the latest state data from the client library."""
 
         self._lock.acquire()  # HACK: workaround bug
 
@@ -269,18 +271,18 @@ class EvoBroker:
         if self._last_update < dt_now - td(seconds=10):
             self._last_update = dt_now
 
-            new_domains = self._get_domains()
-            new_devices = self._get_devices()
+            new_domains = self.new_domains()
+            new_devices = self.new_devices()
 
             if new_domains or new_devices:
                 self.hass.helpers.event.async_call_later(
                     5, self.async_save_client_state
                 )
 
-            # inform the evohome devices that their state data may have changed
-            async_dispatcher_send(self.hass, DOMAIN)
-
         self._lock.release()
+
+        # inform the evohome devices that their state data may have changed
+        async_dispatcher_send(self.hass, DOMAIN)
 
 
 class EvoEntity(Entity):
@@ -295,22 +297,38 @@ class EvoEntity(Entity):
         self._unique_id = self._name = None
         self._entity_state_attrs = ()
 
-        self._req_ha_state_update(delay=5)  # give time to collect entire state
+        self.update_ha_state(delay=5)  # give time to collect entire state
 
     @callback
-    def _handle_dispatch(self, *args) -> None:  # TODO: remove as unneeded?
+    def async_handle_dispatch(self, *args) -> None:  # TODO: remove as unneeded?
         """Process a dispatched message.
 
         Data validation is not required, it will have been done upstream.
+        This routine is threadsafe.
         """
         if not args:
-            self.async_schedule_update_ha_state()
+            self.update_ha_state()
 
-    def _req_ha_state_update(self, delay=1) -> None:
-        """Update HA state after a short delay to allow system to quiesce."""
-        self.hass.helpers.event.async_call_later(
-            delay, self.async_schedule_update_ha_state
-        )
+    @callback
+    def update_ha_state(self, delay=1) -> None:
+        """Update HA state after a short delay to allow system to quiesce.
+
+        This routine is threadsafe.
+        """
+        args = (delay, self.async_schedule_update_ha_state)
+        self.hass.loop.call_soon_threadsafe(
+            self.hass.helpers.event.async_call_later, *args
+        )  # HACK: call_soon_threadsafe should not be needed
+
+    @callback  # TODO: WIP
+    def _call_client_api(self, func, *args, **kwargs) -> None:
+        """Wrap client APIs to make them threadsafe."""
+        # self.hass.loop.call_soon_threadsafe(
+        #     func(*args, **kwargs)
+        # )  # HACK: call_soon_threadsafe should not be needed
+
+        func(*args, **kwargs)
+        self.update_ha_state()
 
     @property
     def should_poll(self) -> bool:
@@ -335,7 +353,7 @@ class EvoEntity(Entity):
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
-        async_dispatcher_connect(self.hass, DOMAIN, self._handle_dispatch)
+        async_dispatcher_connect(self.hass, DOMAIN, self.async_handle_dispatch)
 
 
 class EvoDeviceBase(EvoEntity):
