@@ -69,7 +69,7 @@ PACKET_LOG_SCHEMA = vol.Schema(
 
 # Integration domain services for System/Controller
 SVC_FAKE_DEVICE = "fake_device"
-SVC_REFRESH_SYSTEM = "force_refresh"
+SVC_REFRESH_SYSTEM = "refresh_system"
 SVC_RESET_SYSTEM_MODE = "reset_system_mode"
 SVC_SEND_PACKET = "send_packet"
 SVC_SET_SYSTEM_MODE = "set_system_mode"
@@ -125,11 +125,11 @@ DOMAIN_SERVICES = {
 }
 
 # Climate platform services for Zone
+SVC_PUT_ZONE_TEMP = "put_zone_temp"
 SVC_RESET_ZONE_CONFIG = "reset_zone_config"
 SVC_RESET_ZONE_MODE = "reset_zone_mode"
 SVC_SET_ZONE_CONFIG = "set_zone_config"
 SVC_SET_ZONE_MODE = "set_zone_mode"
-SVC_PUT_ZONE_TEMP = "put_zone_temp"
 
 CONF_ZONE_MODES = (
     ZoneMode.SCHEDULE,
@@ -208,7 +208,7 @@ CLIMATE_SERVICES = {
 
 # WaterHeater platform services for DHW
 SVC_RESET_DHW_MODE = "reset_dhw_mode"
-SVC_RESET_DHW_CONFIG = "reset_dhw_params"
+SVC_RESET_DHW_PARAMS = "reset_dhw_params"
 SVC_SET_DHW_BOOST = "set_dhw_boost"
 SVC_SET_DHW_MODE = "set_dhw_mode"
 SVC_SET_DHW_PARAMS = "set_dhw_params"
@@ -254,7 +254,7 @@ SET_DHW_CONFIG_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
 
 WATER_HEATER_SERVICES = {
     SVC_RESET_DHW_MODE: SET_DHW_BASE_SCHEMA,
-    SVC_RESET_DHW_CONFIG: SET_DHW_BASE_SCHEMA,
+    SVC_RESET_DHW_PARAMS: SET_DHW_BASE_SCHEMA,
     SVC_SET_DHW_BOOST: SET_DHW_BASE_SCHEMA,
     SVC_SET_DHW_MODE: SET_DHW_MODE_SCHEMA,
     SVC_SET_DHW_PARAMS: SET_DHW_CONFIG_SCHEMA,

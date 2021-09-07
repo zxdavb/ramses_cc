@@ -1,3 +1,5 @@
+# system service calls
+
 fake_device:
   name: Fake a device
   description: >-
@@ -37,20 +39,60 @@ fake_device:
       selector:
         boolean
 
-# If the service accepts entity IDs, target allows the user to specify entities by
-# entity, device, or area. If `target` is specified, `entity_id` should not be defined
-# in the `fields` map. By default it shows only targets matching entities from the same
-# domain as the service, but if further customization is required, target supports the
-# entity, device, and area selectors
-# (https://www.home-assistant.io/docs/blueprint/selectors/).
-# Entity selector parameters will automatically be applied to device and area, and
-# device selector parameters will automatically be applied to area
+refresh_system:
+  name: Refresh the system state
+  description: >-
+    Update the system state now, without waiting for the next scheduled update.
+
+reset_system_mode:
+  name: Fully reset the system mode
+  description: >-
+    The system will be in auto mode and all zones will be in follow_schedule mode,
+    including (if supported) those in permanent_override mode.
+
+send_packet:
+  name: Send a packet
+  description: Send a completely bespoke command packet.
+  fields:
+    device_id:
+      description: The destination device_id.
+      example: 01:123456
+    verb:
+      description: 'The packet verb, one of: I, RQ, RP, W.'
+      example: RQ
+    code:
+      description: The packet code (class).
+      example: 1F09
+    payload:
+      description: The packet payload as a hexadecimal string.
+      example: '00'
+
+set_system_mode:
+  name: Set the system mode
+  description: >-
+    The system will be in the new mode and all zones not in permanent_override mode
+    will be affected.
+  fields:
+    mode:
+      description: "One of: auto, eco_boost, away, day_off, heat_off, or custom."
+      example: away
+    period:
+      description: >-
+        Optional. A period of time in days; used only with away, day_off, or custom. The
+        system will revert to auto at midnight (up to 99 days, today is day 1).
+      example: '{"days": 28}'
+    duration:
+      description: >-
+        Optional. The duration in hours; used only with eco_boost (up to 24 hours).
+      example: '{"hours": 18}'
+
+# zone service calls
 
 put_zone_temp:
   name: Fake a zone's temperature
   description: >-
     Announce the current temperature of a zone's temperature sensor. The zone must have
-    an faked sensor (see the `fake_device` service call).
+    a faked sensor (see the `fake_device` service call).
   target:
     integration: evohome_cc
     domain: climate
@@ -62,9 +104,69 @@ put_zone_temp:
       example: climate.main_room
       required: true
     temperature:
-      description: The current temperature in degrees Celsius.
+      description: >-
+        The current temperature in degrees Celsius. This is the measured temperature,
+        not the target temperature (i.e. the setpoint).
       example: 21.3
       required: true
+
+reset_zone_config:
+  name: Reset a zone's config
+  description: Reset the configuration of the zone.
+  fields:
+    entity_id:
+      description: The entity_id of the zone.
+      example: climate.bedroom
+
+reset_zone_mode:
+  name: Reset a zone's mode
+  description: Reset the operating mode of the zone.
+  fields:
+    entity_id:
+      description: The entity_id of the zone.
+      example: climate.bedroom
+
+set_zone_config:
+  name: Reset a zone's config
+  description: Reset the configuration of the zone.
+  fields:
+    entity_id:
+      description: The entity_id of the zone.
+      example: climate.bedroom
+    min_temp:
+      description: The minimum permitted setpoint (5-21, in degrees C).
+      example: 5
+    max_temp:
+      description: The maximum permitted setpoint (21-35, in degrees C).
+      example: 30
+
+set_zone_mode:
+  name: Set a zone's mode
+  description: >-
+    Set the operating mode of the zone, either indefinitely or for a given duration.
+  fields:
+    entity_id:
+      description: The entity_id of the zone.
+      example: climate.bedroom
+    mode:
+      description: >-
+        The duration of the override. Optional, one of: follow_schedule,
+        advanced_override, temporary_override or permanent_override.
+      example: temporary_override
+    setpoint:
+      description: >-
+        The target temperature in degrees Celsius. Default is 21.0.
+      example: 21.0
+    duration:
+      description: >-
+        The duration of the override. Mutually exclusive with until.
+      example: '{"minutes": 135}'
+    until:
+      description: >-
+        The end of the override. Mutually exclusive with duration.
+      example: '"YYYY-MM-DD HH:MM:SS"'
+
+# dhw service calls
 
 reset_dhw_mode:
   name: Reset the DHW mode
@@ -74,6 +176,14 @@ reset_dhw_mode:
       description: The entity_id of the water_heater.
       example: water_heater.stored_hw
       required: true
+
+reset_dhw_params:
+  name: Reset the DHW config
+  description: Reset the configuration of the DHW controller.
+  fields:
+    entity_id:
+      description: The entity_id of the water_heater.
+      example: water_heater.stored_hw
 
 set_dhw_boost:
   name: Set DHW boost mode
@@ -133,14 +243,6 @@ set_dhw_mode:
         The end of the override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
 
-reset_dhw_params:
-  name: Reset the DHW config
-  description: Reset the configuration of the DHW controller.
-  fields:
-    entity_id:
-      description: The entity_id of the water_heater.
-      example: water_heater.stored_hw
-
 set_dhw_params:
   name: Set the DHW config
   description: Set the configuration of the DHW controller.
@@ -161,105 +263,11 @@ set_dhw_params:
         The differential in degrees Celsius. Default is 1.
       example: 1
 
-refresh_system:
-  name: Refresh the system state
-  description: >-
-    Update the system state now, without waiting for the next scheduled update.
-
-reset_system_mode:
-  name: Fully reset the system mode
-  description: >-
-    The system will be in auto mode and all zones will be in follow_schedule mode,
-    including (if supported) those in permanent_override mode.
-
-set_system_mode:
-  name: Set the system mode
-  description: >-
-    The system will be in the new mode and all zones not in permanent_override mode
-    will be affected.
-  fields:
-    mode:
-      description: "One of: auto, eco_boost, away, day_off, heat_off, or custom."
-      example: away
-    period:
-      description: >-
-        Optional. A period of time in days; used only with away, day_off, or custom. The
-        system will revert to auto at midnight (up to 99 days, today is day 1).
-      example: '{"days": 28}'
-    duration:
-      description: >-
-        Optional. The duration in hours; used only with eco_boost (up to 24 hours).
-      example: '{"hours": 18}'
-
-reset_zone_config:
-  name: Reset a zone's config
-  description: Reset the configuration of the zone.
-  fields:
-    entity_id:
-      description: The entity_id of the zone.
-      example: climate.bedroom
-
-reset_zone_mode:
-  name: Reset a zone's mode
-  description: Reset the operating mode of the zone.
-  fields:
-    entity_id:
-      description: The entity_id of the zone.
-      example: climate.bedroom
-
-set_zone_config:
-  name: Reset a zone's config
-  description: Reset the configuration of the zone.
-  fields:
-    entity_id:
-      description: The entity_id of the zone.
-      example: climate.bedroom
-    min_temp:
-      description: The minimum permitted setpoint (5-21, in degrees C).
-      example: 5
-    max_temp:
-      description: The maximum permitted setpoint (21-35, in degrees C).
-      example: 30
-
-set_zone_mode:
-  name: Set a zone's mode
-  description: >-
-    Set the operating mode of the zone, either indefinitely or for a given duration.
-  fields:
-    entity_id:
-      description: The entity_id of the zone.
-      example: climate.bedroom
-    mode:
-      description: >-
-        The duration of the override. Optional, one of: follow_schedule,
-        advanced_override, temporary_override or permanent_override.
-      example: temporary_override
-    setpoint:
-      description: >-
-        The target temperature in degrees Celsius. Default is 21.0.
-      example: 21.0
-    duration:
-      description: >-
-        The duration of the override. Mutually exclusive with until.
-      example: '{"minutes": 135}'
-    until:
-      description: >-
-        The end of the override. Mutually exclusive with duration.
-      example: '"YYYY-MM-DD HH:MM:SS"'
-
-send_packet:
-  name: Send a packet
-  description: Send a completely bespoke command packet.
-  fields:
-    device_id:
-      description: The destination device_id.
-      example: 01:123456
-    verb:
-      description: 'The packet verb, one of: I, RQ, RP, W.'
-      example: RQ
-    code:
-      description: The packet code (class).
-      example: 1F09
-    payload:
-      description: The packet payload as a hexadecimal string.
-      example: '00'
+# If the service accepts entity IDs, target allows the user to specify entities by
+# entity, device, or area. If `target` is specified, `entity_id` should not be defined
+# in the `fields` map. By default it shows only targets matching entities from the same
+# domain as the service, but if further customization is required, target supports the
+# entity, device, and area selectors
+# (https://www.home-assistant.io/docs/blueprint/selectors/).
+# Entity selector parameters will automatically be applied to device and area, and
+# device selector parameters will automatically be applied to area
