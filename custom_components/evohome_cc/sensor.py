@@ -197,16 +197,16 @@ SENSOR_ATTRS = {
         DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
         ENTITY_CLASS: EvoTemperature,
-        # SENSOR_ATTRS_FAN = {
-        "boost_timer": {
-            DEVICE_UNITS: "min(s)",
-        },
-        "fan_rate": {
-            DEVICE_UNITS: PERCENTAGE,
-        },
-        "relative_humidity": {
-            DEVICE_CLASS: DEVICE_CLASS_HUMIDITY,
-            DEVICE_UNITS: PERCENTAGE,
-        },
+    },
+    # SENSOR_ATTRS_FAN = {
+    "boost_timer": {
+        DEVICE_UNITS: "min(s)",
+    },
+    "fan_rate": {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "relative_humidity": {
+        DEVICE_CLASS: DEVICE_CLASS_HUMIDITY,
+        DEVICE_UNITS: PERCENTAGE,
     },
 }
