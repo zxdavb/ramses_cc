@@ -3,6 +3,8 @@
 #
 """Support for Honeywell's RAMSES-II RF protocol, as used by evohome & others."""
 
+from types import SimpleNamespace
+
 DOMAIN = "evohome_cc"
 
 STORAGE_VERSION = 1
@@ -41,3 +43,42 @@ SENSOR_ATTRS = (
     ATTR_RELAY_DEMAND,
     ATTR_TEMPERATURE,
 )  # ATTR_FAULT_LOG
+
+
+SystemMode = SimpleNamespace(
+    AUTO="auto",
+    AWAY="away",
+    CUSTOM="custom",
+    DAY_OFF="day_off",
+    DAY_OFF_ECO="day_off_eco",  # set to Eco when DayOff ends
+    ECO_BOOST="eco_boost",  # Eco, or Boost
+    HEAT_OFF="heat_off",
+    RESET="auto_with_reset",
+)
+SYSTEM_MODE_MAP = {
+    "00": SystemMode.AUTO,
+    "01": SystemMode.HEAT_OFF,
+    "02": SystemMode.ECO_BOOST,
+    "03": SystemMode.AWAY,
+    "04": SystemMode.DAY_OFF,
+    "05": SystemMode.DAY_OFF_ECO,
+    "06": SystemMode.RESET,
+    "07": SystemMode.CUSTOM,
+}
+SYSTEM_MODE_LOOKUP = {v: k for k, v in SYSTEM_MODE_MAP.items()}
+
+ZoneMode = SimpleNamespace(
+    SCHEDULE="follow_schedule",
+    ADVANCED="advanced_override",  # until the next setpoint
+    PERMANENT="permanent_override",  # indefinitely
+    COUNTDOWN="countdown_override",  # for a number of minutes (max 1,215)
+    TEMPORARY="temporary_override",  # until a given date/time
+)
+ZONE_MODE_MAP = {
+    "00": ZoneMode.SCHEDULE,
+    "01": ZoneMode.ADVANCED,
+    "02": ZoneMode.PERMANENT,
+    "03": ZoneMode.COUNTDOWN,
+    "04": ZoneMode.TEMPORARY,
+}
+ZONE_MODE_LOOKUP = {v: k for k, v in ZONE_MODE_MAP.items()}

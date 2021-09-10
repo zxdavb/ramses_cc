@@ -11,7 +11,6 @@ from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
-from ramses_rf.protocol.const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
 from ramses_rf.protocol.schema import LOG_FILE_NAME, LOG_ROTATE_BYTES, LOG_ROTATE_COUNT
 from ramses_rf.schema import (
     BLOCK_LIST,
@@ -28,7 +27,7 @@ from ramses_rf.schema import (
     SERIAL_PORT,
 )
 
-from .const import DOMAIN
+from .const import DOMAIN, SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
 
 CONF_MODE = "mode"
 CONF_SYSTEM_MODE = "system_mode"

@@ -37,10 +37,18 @@ from homeassistant.const import ATTR_TEMPERATURE
 from homeassistant.core import callback
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
-from ramses_rf.protocol.const import SystemMode, ZoneMode
 
 from . import EvoZoneBase
-from .const import ATTR_SETPOINT, BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID
+from .const import (
+    ATTR_SETPOINT,
+    BROKER,
+    DATA,
+    DOMAIN,
+    SERVICE,
+    UNIQUE_ID,
+    SystemMode,
+    ZoneMode,
+)
 from .schema import (
     CLIMATE_SERVICES,
     CONF_ADVANCED_OVERRIDE,
@@ -62,8 +70,8 @@ MODE_TCS_TO_HA[SystemMode.RESET] = MODE_TCS_TO_HA[SystemMode.AUTO]
 MODE_TO_TCS = {
     HVAC_MODE_HEAT: SystemMode.AUTO,
     HVAC_MODE_OFF: SystemMode.HEAT_OFF,
+    HVAC_MODE_AUTO: SystemMode.RESET,  # not all systems support this
 }
-MODE_TO_TCS[HVAC_MODE_AUTO] = SystemMode.RESET  # not all systems support this
 
 PRESET_CUSTOM = "custom"  # NOTE: not an offical PRESET
 

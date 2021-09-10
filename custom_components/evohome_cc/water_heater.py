@@ -26,11 +26,10 @@ from homeassistant.const import (  # PRECISION_TENTHS,; PRECISION_WHOLE,
 from homeassistant.core import callback
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
-from ramses_rf.protocol.const import SystemMode, ZoneMode
 from ramses_rf.systems import StoredHw
 
 from . import EvoZoneBase
-from .const import BROKER, DOMAIN
+from .const import BROKER, DOMAIN, SystemMode, ZoneMode
 from .schema import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE, WATER_HEATER_SERVICES
 
 _LOGGER = logging.getLogger(__name__)
