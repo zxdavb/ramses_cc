@@ -417,9 +417,9 @@ class EvoController(EvoZoneBase, ClimateEntity):
         if payload.get(UNIQUE_ID) != self.unique_id:
             return
         elif payload[SERVICE] == SVC_RESET_SYSTEM_MODE:
-            self._call_client_api(self._device.svc_reset_system_mode)
+            self._call_client_api(self._device.reset_system_mode)
         elif payload[SERVICE] == SVC_SET_SYSTEM_MODE:
-            self._call_client_api(self._device.svc_reset_system_mode, **payload[DATA])
+            self._call_client_api(self._device.set_system_mode, **payload[DATA])
 
     @callback
     def svc_reset_system_mode(self) -> None:
