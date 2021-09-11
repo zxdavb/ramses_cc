@@ -150,20 +150,21 @@ set_zone_mode:
       example: climate.bedroom
     mode:
       description: >-
-        The duration of the override. Optional, one of: follow_schedule,
-        advanced_override, temporary_override or permanent_override.
-      example: temporary_override
+        The permanency of the override. Optional, one of: follow_schedule,
+        advanced_override (until next scheduled setpoint), temporary_override (see:
+        duration and until), or permanent_override (indefinitely).
+      example: advanced_override
     setpoint:
       description: >-
         The target temperature in degrees Celsius. Default is 21.0.
       example: 21.0
     duration:
       description: >-
-        The duration of the override. Mutually exclusive with until.
+        The duration of the temporary_override. Mutually exclusive with until.
       example: '{"minutes": 135}'
     until:
       description: >-
-        The end of the override. Mutually exclusive with duration.
+        The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
 
 # dhw service calls
@@ -209,26 +210,29 @@ set_dhw_mode:
     mode:
       name: DHW mode
       description: >-
-        The duration of the override. Optional, one of: follow_schedule,
-        temporary_override or permanent_override.
-      example: temporary_override
+        The permanency of the override. Optional, one of: follow_schedule,
+        advanced_override (until next scheduled setpoint), temporary_override (see:
+        duration and until), or permanent_override (indefinitely).
+      example: advanced_override
       selector:
         select:
           options:
             - follow_schedule
+            - advanced_override
             - permanent_override
             - temporary_override
     active:
       name: DHW state
       description: >-
-        The state of the water heater.
+        The state of the water heater. If active, the system will heat the water until
+        the current temperature exceeds the setpoint.
       selector:
         boolean:
       example: true
     duration:
       name: Override duration
       description: >-
-        The duration of the override. Mutually exclusive with until.
+        The duration of the temporary_override. Mutually exclusive with until.
       example: '{"minutes": 135}'
       selector:
         number:
@@ -240,7 +244,7 @@ set_dhw_mode:
     until:
       name: Override end time
       description: >-
-        The end of the override. Mutually exclusive with duration.
+        The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
 
 set_dhw_params:

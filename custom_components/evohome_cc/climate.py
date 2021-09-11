@@ -417,9 +417,14 @@ class EvoController(EvoZoneBase, ClimateEntity):
         if payload.get(UNIQUE_ID) != self.unique_id:
             return
         elif payload[SERVICE] == SVC_RESET_SYSTEM_MODE:
-            self._call_client_api(self._device.reset_system_mode)
+            self._call_client_api(self._device.reset_mode)
         elif payload[SERVICE] == SVC_SET_SYSTEM_MODE:
-            self._call_client_api(self._device.set_system_mode, **payload[DATA])
+            kwargs = dict(payload[DATA])
+            kwargs["system_mode"] = kwargs.pop("mode", None)
+            kwargs["until"] = dt.now() + (
+                kwargs.pop("duration", None) or kwargs.pop("period", None)
+            )  # duration, period are mutex
+            self._call_client_api(self._device.set_mode, **kwargs)
 
     @callback
     def svc_reset_system_mode(self) -> None:
