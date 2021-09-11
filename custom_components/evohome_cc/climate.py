@@ -421,9 +421,8 @@ class EvoController(EvoZoneBase, ClimateEntity):
         elif payload[SERVICE] == SVC_SET_SYSTEM_MODE:
             kwargs = dict(payload[DATA])
             kwargs["system_mode"] = kwargs.pop("mode", None)
-            kwargs["until"] = dt.now() + (
-                kwargs.pop("duration", None) or kwargs.pop("period", None)
-            )  # duration, period are mutex
+            until = kwargs.pop("duration", None) or kwargs.pop("period", None)
+            kwargs["until"] = (dt.now() + until) if until else None
             self._call_client_api(self._device.set_mode, **kwargs)
 
     @callback
