@@ -36,7 +36,7 @@ async def async_setup_platform(
         for device in discovery_info["new_devices"]
         for k, v in SENSOR_ATTRS.items()
         if hasattr(device, k)
-    ]
+    ]  # and (not device._is_faked or device["fakable"])
 
     new_domains = [
         v.get(ENTITY_CLASS, EvoSensor)(hass.data[DOMAIN][BROKER], domain, k, **v)
@@ -197,6 +197,7 @@ SENSOR_ATTRS = {
         DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
         ENTITY_CLASS: EvoTemperature,
+        "fakable": True,
     },
     # SENSOR_ATTRS_FAN = {
     "boost_timer": {

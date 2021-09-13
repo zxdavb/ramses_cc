@@ -64,9 +64,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
             _LOGGER.error("There is a problem with the serial port: %s", exc)
             raise exc
 
-    _LOGGER.warning(
-        "evohome_cc v%s, is using ramses_rf v%s", VERSION, ramses_rf.VERSION
-    )
+    _LOGGER.debug("evohome_cc v%s, is using ramses_rf v%s", VERSION, ramses_rf.VERSION)
 
     _LOGGER.debug("\r\n\nConfig =  %s\r\n", hass_config[DOMAIN])
 
@@ -175,6 +173,7 @@ class EvoBroker:
         self.loop_task = None
         self._last_update = dt.min
 
+        self._hgi = None
         self._devices = []
         self._domains = []
         self._lock = Lock()
@@ -231,6 +230,7 @@ class EvoBroker:
 
     @callback
     def new_devices(self) -> bool:
+
         new_devices = [
             d
             for d in self.client.devices
@@ -241,6 +241,11 @@ class EvoBroker:
                 or d.id not in self.client._exclude
             )
         ]
+
+        # if self._hgi is None and self.client._hgi:
+        #     self._hgi = self.client._hgi
+        #     new_devices.append(self._hgi)
+
         self._devices.extend(new_devices)
 
         new_domains = []
@@ -251,16 +256,16 @@ class EvoBroker:
             self._domains.extend(new_domains)
 
         if new_devices or new_domains:
-            new_devices = {"new_devices": new_devices, "new_domains": new_domains}
+            discovery_info = {"new_devices": new_devices, "new_domains": new_domains}
             for platform in (BINARY_SENSOR, SENSOR):
                 self.hass.async_create_task(
                     async_load_platform(
-                        self.hass, platform, DOMAIN, new_devices, self.config
+                        self.hass, platform, DOMAIN, discovery_info, self.config
                     )
                 )
 
         _LOGGER.info("Devices = %s", [d.id for d in self._devices])
-        return bool(new_devices)
+        return bool(new_devices or new_domains)
 
     async def async_update(self, *args, **kwargs) -> None:
         """Retrieve the latest state data from the client library."""

@@ -28,6 +28,7 @@ async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
 ) -> None:
     """Set up the evohome sensor entities."""
+
     if discovery_info is None:
         return
 
@@ -43,6 +44,12 @@ async def async_setup_platform(
         for system in discovery_info["new_devices"]
         if hasattr(system, "_evo") and system._is_controller
     ]
+
+    # new_gateway = [
+    #     EvoGateway(hass.data[DOMAIN][BROKER], system._evo, "schema")
+    #     for system in discovery_info["new_devices"]
+    #     if hasattr(system, "_evo") and system._is_controller
+    # ]
 
     if new_devices:
         async_add_entities(new_devices + new_systems)
@@ -87,7 +94,7 @@ class EvoBattery(EvoBinarySensor):
 
 
 class EvoSystem(EvoEntity, BinarySensorEntity):
-    """Representation of a generic sensor."""
+    """Representation of a system (a controller)."""
 
     def __init__(self, broker, device, state_attr, device_class=None, **kwargs) -> None:
         """Initialize a binary sensor."""
@@ -99,7 +106,7 @@ class EvoSystem(EvoEntity, BinarySensorEntity):
 
     @property
     def available(self) -> bool:
-        """Return True if the controller has been seen recently."""
+        """Return True if the device has been seen recently."""
         if msg := self._device._msgs.get("1F09"):
             return dt.now() - msg.dtm < td(seconds=msg.payload["remaining_seconds"] * 2)
 
@@ -113,6 +120,39 @@ class EvoSystem(EvoEntity, BinarySensorEntity):
             "block_list": [{k: v} for k, v in self._device._gwy._exclude.items()],
             "other_list": sorted(self._device._gwy.pkt_protocol._unwanted),
         }
+
+    @property
+    def is_on(self) -> Optional[bool]:
+        """Return True if the controller has been seen recently."""
+        return self.available
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return self._name
+
+
+class EvoGateway(EvoEntity, BinarySensorEntity):
+    """Representation of a gateway (a HGI80)."""
+
+    def __init__(self, broker, device, state_attr, device_class=None, **kwargs) -> None:
+        """Initialize a binary sensor."""
+        _LOGGER.info("Found a Gateway (%s), id=%s", state_attr, device.id)
+        super().__init__(broker, device)
+
+        self._name = f"{device.id} (config)"
+        self._unique_id = f"{device.id}-config"
+
+    @property
+    def available(self) -> bool:
+        """Return True if the device has been seen recently."""
+        if msg := sorted(self._device._msgs)[0]:
+            return dt.now() - msg.dtm < td(seconds=300)
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        return self._device.config
 
     @property
     def is_on(self) -> Optional[bool]:
