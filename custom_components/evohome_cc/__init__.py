@@ -231,7 +231,12 @@ class EvoBroker:
     @callback
     def new_devices(self) -> bool:
 
-        new_devices = [
+        discovery_info = {}
+
+        if self._hgi is None and self.client.hgi:
+            discovery_info["gateway"] = self._hgi = self.client.hgi
+
+        if new_devices := [
             d
             for d in self.client.devices
             if d not in self._devices
@@ -240,23 +245,21 @@ class EvoBroker:
                 and d.id in self.client._include
                 or d.id not in self.client._exclude
             )
-        ]
-
-        # if self._hgi is None and self.client._hgi:
-        #     self._hgi = self.client._hgi
-        #     new_devices.append(self._hgi)
-
-        self._devices.extend(new_devices)
+        ]:
+            discovery_info["devices"] = new_devices
+            self._devices.extend(new_devices)
 
         new_domains = []
         if self.client.evo:
             new_domains = [d for d in self.client.evo.zones if d not in self._domains]
             if self.client.evo not in self._domains:
                 new_domains.append(self.client.evo)
+
+        if new_domains:
+            discovery_info["domains"] = new_domains
             self._domains.extend(new_domains)
 
-        if new_devices or new_domains:
-            discovery_info = {"new_devices": new_devices, "new_domains": new_domains}
+        if discovery_info:
             for platform in (BINARY_SENSOR, SENSOR):
                 self.hass.async_create_task(
                     async_load_platform(

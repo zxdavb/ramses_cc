@@ -32,27 +32,28 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
-    new_devices = [
+    devices = [
         v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], device, k, **v)
-        for device in discovery_info["new_devices"]
+        for device in discovery_info.get("devices", [])
         for k, v in BINARY_SENSOR_ATTRS.items()
         if hasattr(device, k)
     ]
 
-    new_systems = [
+    systems = [
         EvoSystem(hass.data[DOMAIN][BROKER], system._evo, "schema")
-        for system in discovery_info["new_devices"]
+        for system in discovery_info.get("devices", [])
         if hasattr(system, "_evo") and system._is_controller
     ]
 
-    # new_gateway = [
-    #     EvoGateway(hass.data[DOMAIN][BROKER], system._evo, "schema")
-    #     for system in discovery_info["new_devices"]
-    #     if hasattr(system, "_evo") and system._is_controller
-    # ]
+    gateway = (
+        []
+        if not discovery_info.get("gateway")
+        else [
+            EvoGateway(hass.data[DOMAIN][BROKER], discovery_info["gateway"], "config")
+        ]
+    )
 
-    if new_devices:
-        async_add_entities(new_devices + new_systems)
+    async_add_entities(devices + systems + gateway)
 
 
 class EvoBinarySensor(EvoDeviceBase, BinarySensorEntity):
@@ -96,7 +97,7 @@ class EvoBattery(EvoBinarySensor):
 class EvoSystem(EvoEntity, BinarySensorEntity):
     """Representation of a system (a controller)."""
 
-    def __init__(self, broker, device, state_attr, device_class=None, **kwargs) -> None:
+    def __init__(self, broker, device, state_attr, **kwargs) -> None:
         """Initialize a binary sensor."""
         _LOGGER.info("Found a System (%s), id=%s", state_attr, device.id)
         super().__init__(broker, device)
@@ -114,11 +115,7 @@ class EvoSystem(EvoEntity, BinarySensorEntity):
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
-            "schema_min": self._device._evo.schema_min,
             "schema": self._device._evo.schema,
-            "known_list": [{k: v} for k, v in self._device._gwy._include.items()],
-            "block_list": [{k: v} for k, v in self._device._gwy._exclude.items()],
-            "other_list": sorted(self._device._gwy.pkt_protocol._unwanted),
         }
 
     @property
@@ -135,7 +132,7 @@ class EvoSystem(EvoEntity, BinarySensorEntity):
 class EvoGateway(EvoEntity, BinarySensorEntity):
     """Representation of a gateway (a HGI80)."""
 
-    def __init__(self, broker, device, state_attr, device_class=None, **kwargs) -> None:
+    def __init__(self, broker, device, state_attr, **kwargs) -> None:
         """Initialize a binary sensor."""
         _LOGGER.info("Found a Gateway (%s), id=%s", state_attr, device.id)
         super().__init__(broker, device)
@@ -146,13 +143,21 @@ class EvoGateway(EvoEntity, BinarySensorEntity):
     @property
     def available(self) -> bool:
         """Return True if the device has been seen recently."""
-        if msg := sorted(self._device._msgs)[0]:
-            return dt.now() - msg.dtm < td(seconds=300)
+        return True
+        # if msgs := sorted(self._device._msgs):
+        #     return dt.now() - msgs[0].dtm < td(seconds=300)
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return self._device.config
+        gwy = self._device._gwy
+        return {
+            "schema": gwy.evo.schema_min,
+            "config": {"enforce_known_list": gwy.config.enforce_known_list},
+            "known_list": [{k: v} for k, v in gwy._include.items()],
+            "block_list": [{k: v} for k, v in gwy._exclude.items()],
+            "other_list": sorted(gwy.pkt_protocol._unwanted),
+        }
 
     @property
     def is_on(self) -> Optional[bool]:

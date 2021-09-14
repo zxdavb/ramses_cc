@@ -31,22 +31,21 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
-    new_devices = [
+    devices = [
         v.get(ENTITY_CLASS, EvoSensor)(hass.data[DOMAIN][BROKER], device, k, **v)
-        for device in discovery_info["new_devices"]
+        for device in discovery_info.get("devices", [])
         for k, v in SENSOR_ATTRS.items()
         if hasattr(device, k)
     ]  # and (not device._is_faked or device["fakable"])
 
-    new_domains = [
+    domains = [
         v.get(ENTITY_CLASS, EvoSensor)(hass.data[DOMAIN][BROKER], domain, k, **v)
-        for domain in discovery_info["new_domains"]
+        for domain in discovery_info.get("domains", [])
         for k, v in SENSOR_ATTRS.items()
         if k == "heat_demand" and hasattr(domain, k)
     ]
 
-    if new_devices or new_domains:
-        async_add_entities(new_devices + new_domains)
+    async_add_entities(devices + domains)
 
 
 class EvoSensor(EvoDeviceBase, SensorEntity):
