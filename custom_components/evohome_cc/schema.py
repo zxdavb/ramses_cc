@@ -52,7 +52,6 @@ CONF_OVERRUN = "overrun"
 SCAN_INTERVAL_DEFAULT = td(seconds=300)
 SCAN_INTERVAL_MINIMUM = td(seconds=10)
 
-CONF_ADVANCED_OVERRIDE = "advanced_override"
 CONF_RESTORE_STATE = "restore_state"
 
 PACKET_LOG_SCHEMA = vol.Schema(
@@ -218,7 +217,7 @@ CONF_DHW_MODES = (
     ZoneMode.TEMPORARY,
 )
 
-SET_DHW_BASE_SCHEMA = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
+SET_DHW_BASE_SCHEMA = vol.Schema({})
 
 SET_DHW_MODE_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
     {
@@ -272,7 +271,6 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(KNOWN_LIST, default=[]): DEVICE_LIST,
                 vol.Optional(BLOCK_LIST, default=[]): DEVICE_LIST,
                 vol.Optional(CONFIG, default={}): CONFIG_SCHEMA,
-                vol.Optional(CONF_ADVANCED_OVERRIDE, default=True): bool,
                 vol.Optional(CONF_RESTORE_STATE, default=True): bool,
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
@@ -310,7 +308,6 @@ def normalise_config_schema(kwargs) -> Tuple[str, dict]:
     config = dict(kwargs)
 
     del config[CONF_SCAN_INTERVAL]
-    config.pop(CONF_ADVANCED_OVERRIDE, None)
     config.pop(CONF_RESTORE_STATE, None)
     config.pop(SVC_SEND_PACKET, None)
 

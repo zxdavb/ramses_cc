@@ -171,42 +171,21 @@ set_zone_mode:
 
 reset_dhw_mode:
   name: Reset the DHW mode
-  description: Reset the operating mode of the DHW controller.
-  fields:
-    entity_id:
-      description: The entity_id of the water_heater.
-      example: water_heater.stored_hw
-      required: true
+  description: Reset the operating mode of the system's DHW.
 
 reset_dhw_params:
   name: Reset the DHW config
-  description: Reset the configuration of the DHW controller.
-  fields:
-    entity_id:
-      description: The entity_id of the water_heater.
-      example: water_heater.stored_hw
+  description: Reset the configuration of the system's DHW.
 
 set_dhw_boost:
-  name: Set DHW boost mode
-  description: Enable the DHW controller for an hour.
-  fields:
-    entity_id:
-      description: The entity_id of the water_heater.
-      example: water_heater.stored_hw
-      required: true
+  name: Enable DHW boost mode
+  description: Enable the system's DHW for an hour.
 
 set_dhw_mode:
   name: Set the DHW mode
   description: >-
-    Set the operating mode of the DHW controller, optionally for a given duration.
-  target:
-    integration: evohome_cc
-    domain: water_heater
+    Set the operating mode of the system's DHW, optionally for a given duration.
   fields:
-    # entity_id:
-    #   name: Entity ID
-    #   description: The entity_id of the water_heater.
-    #   example: water_heater.stored_hw
     mode:
       name: DHW mode
       description: >-
@@ -249,11 +228,8 @@ set_dhw_mode:
 
 set_dhw_params:
   name: Set the DHW config
-  description: Set the configuration of the DHW controller.
+  description: Set the configuration of the system's DHW.
   fields:
-    entity_id:
-      description: The entity_id of the water_heater.
-      example: water_heater.stored_hw
     setpoint:
       description: >-
         The target temperature in degrees Celsius. Default is 50.0.

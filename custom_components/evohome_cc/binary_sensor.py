@@ -178,7 +178,7 @@ BINARY_SENSOR_ATTRS = {
         DEVICE_CLASS: DEVICE_CLASS_BATTERY,
         ENTITY_CLASS: EvoBattery,
     },
-    "enabled": {
+    "active": {
         ENTITY_CLASS: EvoActuator,
     },
     "window_open": {

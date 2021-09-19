@@ -24,13 +24,12 @@ from homeassistant.const import (  # PRECISION_TENTHS,; PRECISION_WHOLE,
     STATE_ON,
 )
 from homeassistant.core import callback
-from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from ramses_rf.systems import StoredHw
 
 from . import EvoZoneBase
-from .const import BROKER, DOMAIN, SystemMode, ZoneMode
-from .schema import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE, WATER_HEATER_SERVICES
+from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
+from .schema import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,9 +76,6 @@ async def async_setup_platform(
     if broker.services.get(PLATFORM):
         return
     broker.services[PLATFORM] = True
-
-    register_svc = entity_platform.current_platform.get().async_register_entity_service
-    [register_svc(k, v, f"svc_{k}") for k, v in WATER_HEATER_SERVICES.items()]
 
 
 class EvoDHW(EvoZoneBase, WaterHeaterEntity):
@@ -184,6 +180,22 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     def set_temperature(self, **kwargs):
         """Set the target temperature of the water heater."""
         self.svc_set_dhw_params(setpoint=kwargs.get(ATTR_TEMPERATURE))
+
+    @callback
+    def async_handle_dispatch(self, *args) -> None:
+        """Process a service request (system mode) for a controller."""
+        if not args:
+            self.update_ha_state()
+            return
+
+        payload = args[0]
+        if payload.get(UNIQUE_ID) != self.unique_id:
+            return
+
+        try:
+            getattr(self, f"svc_{payload[SERVICE]}")(**dict(payload[DATA]))
+        except AttributeError:
+            pass
 
     @callback
     def svc_reset_dhw_mode(self):

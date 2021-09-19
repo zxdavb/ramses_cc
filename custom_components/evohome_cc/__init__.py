@@ -43,6 +43,7 @@ from .schema import (
     CONF_RESTORE_STATE,
     DOMAIN_SERVICES,
     SVC_SEND_PACKET,
+    WATER_HEATER_SERVICES,
     normalise_config_schema,
 )
 from .version import __version__ as VERSION
@@ -123,7 +124,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
             DATA: call.data,
         }
         async_dispatcher_send(hass, DOMAIN, payload)
-        async_dispatcher_send(hass, DOMAIN)
+        # async_dispatcher_send(hass, DOMAIN)  # TODO: remove
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_set_system_mode(call) -> None:
@@ -133,12 +134,26 @@ def register_service_functions(hass: HomeAssistantType, broker):
             DATA: call.data,
         }
         async_dispatcher_send(hass, DOMAIN, payload)
-        async_dispatcher_send(hass, DOMAIN)
+        # async_dispatcher_send(hass, DOMAIN)  # TODO: remove
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_send_packet(call) -> None:
         broker.client.send_cmd(broker.client.make_cmd(**call.data))
-        async_dispatcher_send(hass, DOMAIN)
+        # async_dispatcher_send(hass, DOMAIN)  # TODO: remove
+
+    @verify_domain_control(hass, DOMAIN)
+    async def svc_call_dhw_svc(call) -> None:
+        payload = {
+            UNIQUE_ID: f"{broker.client.evo.id}_HW",
+            SERVICE: call.service,
+            DATA: call.data,
+        }
+        async_dispatcher_send(hass, DOMAIN, payload)
+
+    [
+        hass.services.async_register(DOMAIN, k, svc_call_dhw_svc, schema=v)
+        for k, v in WATER_HEATER_SERVICES.items()
+    ]
 
     domain_service = DOMAIN_SERVICES
     if not broker.config[DOMAIN].get(SVC_SEND_PACKET):
@@ -392,9 +407,14 @@ class EvoDeviceBase(EvoEntity):
         """Return the integration-specific state attributes."""
         attrs = super().device_state_attributes
         attrs["device_id"] = self._device.id
-        # attrs["domain_id"] = self._device._domain_id self.idx
-        # if hasattr(self._device, "zone"):
-        #     attrs["zone"] = self._device.zone.name if self._device.zone else None
+        if hasattr(self._device, "_domain_id"):
+            attrs["domain_id"] = self._device._domain_id
+        if hasattr(self._device, "role"):
+            attrs["role"] = self._device.role
+        try:
+            attrs["domain_name"] = self._device.zone.name
+        except AttributeError:
+            pass
         return attrs
 
     @property
