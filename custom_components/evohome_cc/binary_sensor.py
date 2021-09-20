@@ -157,6 +157,7 @@ class EvoGateway(EvoEntity, BinarySensorEntity):
             "known_list": [{k: v} for k, v in gwy._include.items()],
             "block_list": [{k: v} for k, v in gwy._exclude.items()],
             "other_list": sorted(gwy.pkt_protocol._unwanted),
+            "_is_evofw3": gwy.pkt_protocol._hgi80["is_evofw3"],
         }
 
     @property
