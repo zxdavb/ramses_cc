@@ -292,6 +292,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         """
         self._device.sensor._make_fake()
         self._device.sensor.temperature = temperature
+        self._device._get_temp()
         self.update_ha_state()
 
 
