@@ -9,23 +9,42 @@ Provides support for sensors.
 import logging
 from typing import Any, Dict, Optional
 
-from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT, SensorEntity
+from homeassistant.components.sensor import (
+    STATE_CLASS_MEASUREMENT,
+    SensorEntity,
+    SensorEntityDescription,
+)
 from homeassistant.const import (  # DEVICE_CLASS_BATTERY,; DEVICE_CLASS_PROBLEM,
     DEVICE_CLASS_HUMIDITY,
     DEVICE_CLASS_PRESSURE,
     DEVICE_CLASS_TEMPERATURE,
     TEMP_CELSIUS,
 )
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import EvoDeviceBase
 from .const import ATTR_SETPOINT, BROKER, DOMAIN, PERCENTAGE
 
+SENSOR_KEY_TEMPERATURE = "temperature"
+
+SENSOR_DESCRIPTION_TEMPERATURE = SensorEntityDescription(
+    key=SENSOR_KEY_TEMPERATURE,
+    name="Temperature",
+    device_class=DEVICE_CLASS_TEMPERATURE,
+    native_unit_of_measurement=TEMP_CELSIUS,
+    state_class=STATE_CLASS_MEASUREMENT,
+)
+# sensor.entity_description = SENSOR_DESCRIPTION_TEMPERATURE
+
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
+    hass: HomeAssistantType,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info=None,
 ) -> None:
     """Set up the evohome sensor sensor entities."""
     if discovery_info is None:
