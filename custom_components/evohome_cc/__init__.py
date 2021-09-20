@@ -109,7 +109,11 @@ def register_service_functions(hass: HomeAssistantType, broker):
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_fake_device(call) -> None:
-        broker.client.fake_device(**call.data)
+        try:
+            broker.client.fake_device(**call.data)
+        except LookupError as exc:
+            _LOGGER.error("%s", exc)
+            return
         await broker.async_update()
 
     @verify_domain_control(hass, DOMAIN)
