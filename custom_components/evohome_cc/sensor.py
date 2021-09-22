@@ -107,6 +107,26 @@ class EvoHeatDemand(EvoSensor):
         return "mdi:radiator-off" if self.state == 0 else "mdi:radiator"
 
 
+class EvoModLevel(EvoSensor):
+    """Representation of a heat demand sensor."""
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        attrs = super().device_state_attributes
+
+        if self._state_attr in "modulation_level":
+            attrs["status"] = {
+                self._device.ACTUATOR_CYCLE: self._device.actuator_cycle,
+                self._device.ACTUATOR_STATE: self._device.actuator_state,
+                self._device.BOILER_SETPOINT: self._device.boiler_setpoint,
+            }
+        else:  # self._state_attr == "relative_modulation_level"
+            attrs["status"] = self._device.opentherm_status
+
+        return attrs
+
+
 class EvoRelayDemand(EvoSensor):
     """Representation of a relay demand sensor."""
 
@@ -176,6 +196,7 @@ SENSOR_ATTRS = {
     },
     "modulation_level": {  # 3EF0/3EF1
         DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: EvoModLevel,
     },
     # SENSOR_ATTRS_OTB = {  # excl. actuator
     "boiler_setpoint": {  # 22D9
@@ -200,6 +221,7 @@ SENSOR_ATTRS = {
     },
     "relative_modulation_level": {  # 3200
         DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: EvoModLevel,
     },
     "return_water_temperature": {  # 3220
         DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
