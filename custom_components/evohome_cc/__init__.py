@@ -384,7 +384,7 @@ class EvoEntity(Entity):
 
 
 class EvoDeviceBase(EvoEntity):
-    """Base for any evohome II-compatible entity (e.g. Climate, Sensor)."""
+    """Base for any evohome II-compatible entity (e.g. BinarySensor, Sensor)."""
 
     def __init__(self, broker, device, state_attr, device_class) -> None:
         """Initialize the sensor."""
@@ -434,7 +434,7 @@ class EvoDeviceBase(EvoEntity):
 
 
 class EvoZoneBase(EvoEntity):
-    """Base for any evohome RF-compatible entity (e.g. Climate, Sensor)."""
+    """Base for any evohome RF-compatible entity (e.g. Controller, DHW, Zones)."""
 
     def __init__(self, broker, device) -> None:
         """Initialize the sensor."""
