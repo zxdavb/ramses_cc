@@ -65,7 +65,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
             _LOGGER.error("There is a problem with the serial port: %s", exc)
             raise exc
 
-    _LOGGER.debug("evohome_cc v%s, is using ramses_rf v%s", VERSION, ramses_rf.VERSION)
+    _LOGGER.debug(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
 
     _LOGGER.debug("\r\n\nConfig =  %s\r\n", hass_config[DOMAIN])
 
