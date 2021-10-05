@@ -6,6 +6,7 @@
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
 
+import asyncio
 import logging
 from datetime import datetime as dt
 from datetime import timedelta as td
@@ -114,11 +115,13 @@ def register_service_functions(hass: HomeAssistantType, broker):
         except LookupError as exc:
             _LOGGER.error("%s", exc)
             return
-        await broker.async_update()
+        await asyncio.sleep(1)
+        async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_force_refresh(call) -> None:
-        await broker.async_update()  #: includes async_dispatcher_send(hass, DOMAIN)
+        await broker.async_update()
+        # includes: async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_reset_system_mode(call) -> None:
@@ -128,7 +131,6 @@ def register_service_functions(hass: HomeAssistantType, broker):
             DATA: call.data,
         }
         async_dispatcher_send(hass, DOMAIN, payload)
-        # async_dispatcher_send(hass, DOMAIN)  # TODO: remove
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_set_system_mode(call) -> None:
@@ -138,12 +140,12 @@ def register_service_functions(hass: HomeAssistantType, broker):
             DATA: call.data,
         }
         async_dispatcher_send(hass, DOMAIN, payload)
-        # async_dispatcher_send(hass, DOMAIN)  # TODO: remove
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_send_packet(call) -> None:
         broker.client.send_cmd(broker.client.make_cmd(**call.data))
-        # async_dispatcher_send(hass, DOMAIN)  # TODO: remove
+        await asyncio.sleep(1)
+        async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_call_dhw_svc(call) -> None:
