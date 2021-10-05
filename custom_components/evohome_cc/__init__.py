@@ -63,7 +63,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
         try:
             return await awaitable
         except serial.SerialException as exc:
-            _LOGGER.error("There is a problem with the serial port: %s", exc)
+            _LOGGER.exception("There is a problem with the serial port: %s", exc)
             raise exc
 
     _LOGGER.debug(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
