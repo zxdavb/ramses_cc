@@ -257,7 +257,7 @@ class EvoBroker:
         if self._hgi is None and self.client.hgi:
             discovery_info["gateway"] = self._hgi = self.client.hgi
 
-        if new_devices := [
+        new_devices = [
             d
             for d in self.client.devices
             if d not in self._devices
@@ -266,7 +266,9 @@ class EvoBroker:
                 and d.id in self.client._include
                 or d.id not in self.client._exclude
             )
-        ]:
+        ]
+
+        if new_devices:
             discovery_info["devices"] = new_devices
             self._devices.extend(new_devices)
 
@@ -312,6 +314,7 @@ class EvoBroker:
 
         # inform the evohome devices that their state data may have changed
         async_dispatcher_send(self.hass, DOMAIN)
+        # TODO: no good here, as async_setup_platform will be called later
 
 
 class EvoEntity(Entity):
