@@ -270,7 +270,8 @@ CONFIG_SCHEMA = vol.Schema(
                 ),
                 vol.Optional(KNOWN_LIST, default=[]): DEVICE_LIST,
                 vol.Optional(BLOCK_LIST, default=[]): DEVICE_LIST,
-                vol.Optional(CONFIG, default={}): CONFIG_SCHEMA,
+                cv.deprecated(CONFIG, "ramses_rf"): vol.Any(),
+                vol.Optional("ramses_rf", default={}): CONFIG_SCHEMA,
                 vol.Optional(CONF_RESTORE_STATE, default=True): bool,
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
@@ -305,11 +306,12 @@ def normalise_device_list(device_list) -> dict:
 def normalise_config_schema(kwargs) -> Tuple[str, dict]:
     """Convert a HA config dict into the client library's own format."""
 
-    config = dict(kwargs)
-
-    del config[CONF_SCAN_INTERVAL]
-    config.pop(CONF_RESTORE_STATE, None)
-    config.pop(SVC_SEND_PACKET, None)
+    config = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in (CONF_RESTORE_STATE, CONF_SCAN_INTERVAL, SVC_SEND_PACKET)
+    }
+    config[CONFIG] = config.pop("ramses_rf")
 
     if isinstance(config[SERIAL_PORT], dict):
         serial_port = config[SERIAL_PORT].pop(PORT_NAME)

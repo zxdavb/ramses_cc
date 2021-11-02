@@ -208,7 +208,7 @@ class EvoBroker:
         """Restore the client state from the app store."""
         app_storage = await self.async_load_store(self._store)
         if app_storage.get("client_state"):
-            await self.client._set_state(**app_storage["client_state"])
+            await self.client._set_state(packets=app_storage["client_state"]["packets"])
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
         """Save the client state to the app store"""
