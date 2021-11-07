@@ -59,7 +59,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     """Create a Honeywell RF (RAMSES_II)-based system."""
 
     async def async_handle_exceptions(awaitable):
-        """Wrap the serial port interface to catch exceptions."""
+        """Wrap the serial port interface to catch/report exceptions."""
         try:
             return await awaitable
         except serial.SerialException as exc:
@@ -68,36 +68,36 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
 
     _LOGGER.debug(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
 
-    _LOGGER.debug("\r\n\nConfig =  %s\r\n", hass_config[DOMAIN])
-
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
-    evohome_store = await EvoBroker.async_load_store(store)
-    _LOGGER.debug("\r\n\nStore = %s\r\n", evohome_store)
 
-    serial_port, kwargs = normalise_config_schema(hass_config[DOMAIN])
-    client = ramses_rf.Gateway(serial_port, loop=hass.loop, **kwargs)
-
-    hass.data[DOMAIN] = {}
-    hass.data[DOMAIN][BROKER] = broker = EvoBroker(hass, client, store, hass_config)
+    app_storage = await EvoBroker.async_load_store(store)
 
     if hass_config[DOMAIN].get(CONF_RESTORE_STATE):
-        _LOGGER.debug("Restoring client state...")
-        await broker.async_load_client_state()
-        await broker.async_update()
-    else:
-        _LOGGER.info("The restore client state feature has not been enabled.")
-        hass.helpers.event.async_call_later(10, broker.async_update)
-        hass.helpers.event.async_call_later(30, broker.async_update)
+        _LOGGER.warning("Restoring the client state (schema)...")
 
-    broker.loop_task = hass.loop.create_task(async_handle_exceptions(client.start()))
-
-    hass.helpers.event.async_track_time_interval(
-        broker.async_update, hass_config[DOMAIN][CONF_SCAN_INTERVAL]
+    serial_port, config, schema = normalise_config_schema(
+        hass_config[DOMAIN], app_storage
     )
+
+    client = ramses_rf.Gateway(serial_port, loop=hass.loop, **config, **schema)
+
+    broker = EvoBroker(hass, client, store, hass_config)
+    hass.data[DOMAIN] = {BROKER: broker}
+
+    if hass_config[DOMAIN].get(CONF_RESTORE_STATE):
+        _LOGGER.warning("Restoring the client state (packets)...")
+        await broker.async_load_client_state(app_storage)
+
+    _LOGGER.warning("Starting the RF monitor...")
+    broker.loop_task = hass.loop.create_task(async_handle_exceptions(client.start()))
 
     hass.helpers.event.async_track_time_interval(
         broker.async_save_client_state, SAVE_STATE_INTERVAL
     )
+    hass.helpers.event.async_track_time_interval(
+        broker.async_update, hass_config[DOMAIN][CONF_SCAN_INTERVAL]
+    )
+    # hass.helpers.event.async_call_later(30, broker.async_update)
 
     register_service_functions(hass, broker)
 
@@ -200,15 +200,16 @@ class EvoBroker:
         self._lock = Lock()
 
     @staticmethod
-    async def async_load_store(store) -> Optional[Dict]:
-        app_storage = await store.async_load()
+    async def async_load_store(store) -> Dict:
+        """May return an empty dict."""
+        app_storage = await store.async_load()  # return None if no store
         return dict(app_storage or {})
 
-    async def async_load_client_state(self) -> None:
+    async def async_load_client_state(self, app_storage) -> None:
         """Restore the client state from the app store."""
-        app_storage = await self.async_load_store(self._store)
-        if app_storage.get("client_state"):
-            await self.client._set_state(packets=app_storage["client_state"]["packets"])
+        # app_storage = await self.async_load_store(self._store)
+        if client_state := app_storage.get("client_state"):
+            await self.client._set_state(packets=client_state["packets"])
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
         """Save the client state to the app store"""

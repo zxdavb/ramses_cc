@@ -40,9 +40,9 @@ async def async_setup_platform(
     ]
 
     systems = [
-        EvoSystem(hass.data[DOMAIN][BROKER], system._evo, "schema")
-        for system in discovery_info.get("devices", [])
-        if hasattr(system, "_evo") and system._is_controller
+        EvoSystem(hass.data[DOMAIN][BROKER], ctl._evo, "schema")
+        for ctl in discovery_info.get("devices", [])
+        if hasattr(ctl, "_evo") and ctl._is_controller
     ]
 
     gateway = (
@@ -152,7 +152,7 @@ class EvoGateway(EvoEntity, BinarySensorEntity):
         """Return the integration-specific state attributes."""
         gwy = self._device._gwy
         return {
-            "schema": gwy.evo.schema_min,
+            "schema": gwy.evo._schema_min if gwy.evo else {},
             "config": {"enforce_known_list": gwy.config.enforce_known_list},
             "known_list": [{k: v} for k, v in gwy._include.items()],
             "block_list": [{k: v} for k, v in gwy._exclude.items()],

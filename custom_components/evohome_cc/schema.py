@@ -3,6 +3,7 @@
 #
 """Support for Honeywell's RAMSES-II RF protocol, as used by evohome & others."""
 
+import logging
 from datetime import timedelta as td
 from typing import Tuple
 
@@ -28,6 +29,8 @@ from ramses_rf.schema import (
 )
 
 from .const import DOMAIN, SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
+
+_LOGGER = logging.getLogger(__name__)
 
 CONF_MODE = "mode"
 CONF_SYSTEM_MODE = "system_mode"
@@ -303,13 +306,40 @@ def normalise_device_list(device_list) -> dict:
 
 
 @callback
-def normalise_config_schema(kwargs) -> Tuple[str, dict]:
+def normalise_config_schema(config, store) -> Tuple[str, dict]:
     """Convert a HA config dict into the client library's own format."""
+
+    _LOGGER.debug("\r\n\nConfig = %s\r\n", config)
+    _LOGGER.debug("\r\n\nStore = %s\r\n", store)
+
+    schema = {}
+
+    if config[CONF_RESTORE_STATE]:
+        schema = store["client_state"].get("schema") if "client_state" in store else {}
+        if schema:
+            _LOGGER.warning("Using a Schema restored from cache: %s", schema)
+
+    if (
+        not schema
+        and (_schema := config.get("schema"))
+        and (ctl_id := _schema.pop("controller", None))
+    ):
+        schema = {"main_controller": ctl_id, ctl_id: _schema}
+        if schema:
+            _LOGGER.warning("Using a Schema loaded from configuration file: %s", schema)
+
+    if not schema:
+        _LOGGER.warning("Using an empty Schema: %s", {})
 
     config = {
         k: v
-        for k, v in kwargs.items()
-        if k not in (CONF_RESTORE_STATE, CONF_SCAN_INTERVAL, SVC_SEND_PACKET)
+        for k, v in config.items()
+        if k not in (
+            CONF_RESTORE_STATE,
+            CONF_SCAN_INTERVAL,
+            SVC_SEND_PACKET,
+            "schema",
+        )
     }
     config[CONFIG] = config.pop("ramses_rf")
 
@@ -317,7 +347,6 @@ def normalise_config_schema(kwargs) -> Tuple[str, dict]:
         serial_port = config[SERIAL_PORT].pop(PORT_NAME)
         config[CONFIG][EVOFW_FLAG] = config[SERIAL_PORT].pop(EVOFW_FLAG, None)
         config[CONFIG][SERIAL_CONFIG] = config.pop(SERIAL_PORT)
-
     else:
         serial_port = config.pop(SERIAL_PORT)
 
@@ -333,4 +362,4 @@ def normalise_config_schema(kwargs) -> Tuple[str, dict]:
     config[KNOWN_LIST] = normalise_device_list(config[KNOWN_LIST])
     config[BLOCK_LIST] = normalise_device_list(config[BLOCK_LIST])
 
-    return serial_port, config
+    return serial_port, config, schema
