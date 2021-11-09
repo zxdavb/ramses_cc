@@ -330,7 +330,7 @@ class EvoEntity(Entity):
         self._unique_id = self._name = None
         self._entity_state_attrs = ()
 
-        self.update_ha_state(delay=5)  # give time to collect entire state
+        # NOTE: this is bad: self.update_ha_state(delay=5)
 
     @callback
     def async_handle_dispatch(self, *args) -> None:  # TODO: remove as unneeded?
