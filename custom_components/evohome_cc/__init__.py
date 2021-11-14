@@ -417,14 +417,23 @@ class EvoDeviceBase(EvoEntity):
         """Return the integration-specific state attributes."""
         attrs = super().device_state_attributes
         attrs["device_id"] = self._device.id
+
         if hasattr(self._device, "_domain_id"):
             attrs["domain_id"] = self._device._domain_id
+        elif hasattr(self._device, "idx"):
+            attrs["domain_id"] = self._device.idx
+
+        if hasattr(self._device, "name"):
+            attrs["domain_name"] = self._device.name
+        else:
+            try:
+                attrs["domain_name"] = self._device.zone.name
+            except AttributeError:
+                pass
+
         if hasattr(self._device, "role"):
             attrs["role"] = self._device.role
-        try:
-            attrs["domain_name"] = self._device.zone.name
-        except AttributeError:
-            pass
+
         return attrs
 
     @property
