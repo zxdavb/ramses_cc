@@ -73,7 +73,7 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     app_storage = await EvoBroker.async_load_store(store)
 
     if hass_config[DOMAIN].get(CONF_RESTORE_STATE):
-        _LOGGER.warning("Restoring the client state (schema)...")
+        _LOGGER.debug("Restoring the client state (schema)...")
 
     serial_port, config, schema = normalise_config_schema(
         hass_config[DOMAIN], app_storage
@@ -85,10 +85,10 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     hass.data[DOMAIN] = {BROKER: broker}
 
     if hass_config[DOMAIN].get(CONF_RESTORE_STATE):
-        _LOGGER.warning("Restoring the client state (packets)...")
+        _LOGGER.debug("Restoring the client state (packets)...")
         await broker.async_load_client_state(app_storage)
 
-    _LOGGER.warning("Starting the RF monitor...")
+    _LOGGER.debug("Starting the RF monitor...")
     broker.loop_task = hass.loop.create_task(async_handle_exceptions(client.start()))
 
     hass.helpers.event.async_track_time_interval(
