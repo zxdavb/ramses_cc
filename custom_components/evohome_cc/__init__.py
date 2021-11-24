@@ -405,6 +405,11 @@ class EvoDeviceBase(EvoEntity):
     @property
     def available(self) -> bool:
         """Return True if the sensor is available."""
+        result = getattr(self._device, self._state_attr)
+        if result is None and getattr(self._device, "type", None) == "07":
+            _LOGGER.debug(self._device._msgs)
+            _LOGGER.debug(self._device._gwy.device_by_id)
+            return False
         return getattr(self._device, self._state_attr) is not None
 
     @property
