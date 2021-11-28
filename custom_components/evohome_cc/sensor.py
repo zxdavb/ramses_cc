@@ -76,7 +76,7 @@ class EvoSensor(EvoDeviceBase, SensorEntity):
         self, broker, device, state_attr, device_class=None, device_units=None, **kwargs
     ) -> None:
         """Initialize a sensor."""
-        _LOGGER.info("Found a Sensor (%s), id=%s", state_attr, device.id)
+        _LOGGER.info("Creating a Sensor (%s) for %s", state_attr, device.id)
         super().__init__(broker, device, state_attr, device_class)
 
         self._unique_id = f"{device.id}-{state_attr}"

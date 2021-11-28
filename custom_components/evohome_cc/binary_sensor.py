@@ -61,7 +61,7 @@ class EvoBinarySensor(EvoDeviceBase, BinarySensorEntity):
 
     def __init__(self, broker, device, state_attr, device_class=None, **kwargs) -> None:
         """Initialize a binary sensor."""
-        _LOGGER.info("Found a Binary Sensor (%s), id=%s", state_attr, device.id)
+        _LOGGER.info("Creating a Binary Sensor (%s) for %s", state_attr, device.id)
         super().__init__(broker, device, state_attr, device_class)
 
         self._unique_id = f"{device.id}-{state_attr}_state"
