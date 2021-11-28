@@ -163,6 +163,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
             "heating_type": self._device.heating_type,
             "heat_demand": self._device.heat_demand,
             "mode": self._device.mode,
+            # "schedule": self._device.schedule,
         }
 
     @property
@@ -328,6 +329,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
             "relay_demands": self._device.relay_demands,
             "system_mode": self._device.system_mode,
             "tpi_params": self._device.tpi_params,
+            "faults": self._device.faultlog,
         }
 
     @property
