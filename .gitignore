@@ -4,6 +4,7 @@
 *.db
 
 ### HACS-specific ignores
+evohome_cc
 custom_components/*
 !custom_components/evohome_cc/
 
@@ -11,7 +12,7 @@ custom_components/*
 .storage/
 *.yaml
 blueprints/
-home-assistant_v2.db
+home-assistant_v2.db*
 
 !services.yaml
 
