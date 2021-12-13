@@ -15,11 +15,7 @@ from typing import Any, Dict, List, Optional
 
 import ramses_rf
 import serial
-from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR
-from homeassistant.components.climate import DOMAIN as CLIMATE
-from homeassistant.components.sensor import DOMAIN as SENSOR
-from homeassistant.components.water_heater import DOMAIN as WATER_HEATER
-from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS
+from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS, Platform
 from homeassistant.core import callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import (
@@ -51,7 +47,9 @@ from .version import __version__ as VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [BINARY_SENSOR, CLIMATE, SENSOR, WATER_HEATER]
+PLATFORMS = [
+    Platform.BINARY_SENSOR, Platform.CLIMATE, Platform.SENSOR, Platform.WATER_HEATER
+]
 SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
 
 
@@ -229,17 +227,17 @@ class EvoBroker:
         new_domains = [z for z in evohome.zones if z not in self.climates]
         if new_domains:
             self.hass.async_create_task(
-                async_load_platform(self.hass, CLIMATE, DOMAIN, {}, self.config)
+                async_load_platform(self.hass, Platform.CLIMATE, DOMAIN, {}, self.config)
             )
             # new_domains = {"new_domains": new_domains + [self.client.evo]}
             # self.hass.async_create_task(
-            #     async_load_platform(self.hass, SENSOR, DOMAIN, new_domains, self.config)
+            #     async_load_platform(self.hass, Platform.SENSOR, DOMAIN, new_domains, self.config)
             # )
             save_updated_schema = True
 
         if evohome.dhw and self.water_heater is None:
             self.hass.async_create_task(
-                async_load_platform(self.hass, WATER_HEATER, DOMAIN, {}, self.config)
+                async_load_platform(self.hass, Platform.WATER_HEATER, DOMAIN, {}, self.config)
             )
             save_updated_schema = True
 
@@ -284,7 +282,7 @@ class EvoBroker:
             self._domains.extend(new_domains)
 
         if discovery_info:
-            for platform in (BINARY_SENSOR, SENSOR):
+            for platform in (Platform.BINARY_SENSOR, Platform.SENSOR):
                 self.hass.async_create_task(
                     async_load_platform(
                         self.hass, platform, DOMAIN, discovery_info, self.config
@@ -374,7 +372,7 @@ class EvoEntity(Entity):
         return self._unique_id
 
     @property
-    def device_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         attrs = {
             a: getattr(self._device, a)
@@ -418,9 +416,9 @@ class EvoDeviceBase(EvoEntity):
         return self._device_class
 
     @property
-    def device_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        attrs = super().device_state_attributes
+        attrs = super().extra_state_attributes
         attrs["device_id"] = self._device.id
 
         if hasattr(self._device, "_domain_id"):
@@ -495,10 +493,10 @@ class EvoZoneBase(EvoEntity):
         return self._preset_modes
 
     @property
-    def device_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
-            **super().device_state_attributes,
+            **super().extra_state_attributes,
             "zone_idx": self._device.idx,
             "config": self._device.config,
             "heat_demand": self._device.heat_demand,

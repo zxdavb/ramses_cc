@@ -10,16 +10,12 @@ import logging
 from typing import Any, Dict, Optional
 
 from homeassistant.components.sensor import (
-    STATE_CLASS_MEASUREMENT,
+    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
+    SensorStateClass,
 )
-from homeassistant.const import (  # DEVICE_CLASS_BATTERY,; DEVICE_CLASS_PROBLEM,
-    DEVICE_CLASS_HUMIDITY,
-    DEVICE_CLASS_PRESSURE,
-    DEVICE_CLASS_TEMPERATURE,
-    TEMP_CELSIUS,
-)
+from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
@@ -31,9 +27,9 @@ SENSOR_KEY_TEMPERATURE = "temperature"
 SENSOR_DESCRIPTION_TEMPERATURE = SensorEntityDescription(
     key=SENSOR_KEY_TEMPERATURE,
     name="Temperature",
-    device_class=DEVICE_CLASS_TEMPERATURE,
+    device_class=SensorDeviceClass.TEMPERATURE,
     native_unit_of_measurement=TEMP_CELSIUS,
-    state_class=STATE_CLASS_MEASUREMENT,
+    state_class=SensorStateClass.MEASUREMENT,
 )
 # sensor.entity_description = SENSOR_DESCRIPTION_TEMPERATURE
 
@@ -64,13 +60,21 @@ async def async_setup_platform(
         if k == "heat_demand" and hasattr(domain, k)
     ]
 
+    # if otb := [d for d in devices if d._klass == "OTB"]:
+    #     EvoSensor(
+    #         hass.data[DOMAIN][BROKER],
+    #         domain,
+    #         k,
+    #         **v
+    #     )
+
     async_add_entities(devices + domains)
 
 
 class EvoSensor(EvoDeviceBase, SensorEntity):
     """Representation of a generic sensor."""
 
-    _attr_state_class = STATE_CLASS_MEASUREMENT
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self, broker, device, state_attr, device_class=None, device_units=None, **kwargs
@@ -111,9 +115,9 @@ class EvoModLevel(EvoSensor):
     """Representation of a heat demand sensor."""
 
     @property
-    def device_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        attrs = super().device_state_attributes
+        attrs = super().extra_state_attributes
 
         if self._state_attr in "modulation_level":
             attrs["status"] = {
@@ -140,9 +144,9 @@ class EvoTemperature(EvoSensor):
     """Representation of a temperature sensor (incl. DHW sensor)."""
 
     @property
-    def device_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
-        attrs = super().device_state_attributes
+        attrs = super().extra_state_attributes
         if hasattr(self._device, ATTR_SETPOINT):
             attrs[ATTR_SETPOINT] = self._device.setpoint
         return attrs
@@ -171,10 +175,10 @@ class EvoFaultLog(EvoDeviceBase):
         return len(self._fault_log)
 
     @property
-    def device_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the device state attributes."""
         return {
-            **super().device_state_attributes,
+            **super().extra_state_attributes,
             "fault_log": self._device._fault_log,
         }
 
@@ -200,38 +204,38 @@ SENSOR_ATTRS = {
     },
     # SENSOR_ATTRS_OTB = {  # excl. actuator
     "boiler_output_temp": {  # 3220
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
     "boiler_return_temp": {  # 3220
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
     "boiler_setpoint": {  # 3220
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
     "ch_max_setpoint": {  # 3220
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
     "ch_water_pressure": {  # 3220
-        DEVICE_CLASS: DEVICE_CLASS_PRESSURE,
+        DEVICE_CLASS: SensorDeviceClass.PRESSURE,
         DEVICE_UNITS: "bar",
     },
     "dhw_flow_rate": {  # 3220
         DEVICE_UNITS: "l/min",
     },
     "dhw_setpoint": {  # 3220
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
     "dhw_temp": {  # 3220
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
     "outside_temp": {  # 3220
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
     "rel_modulation_level": {  # 3200
@@ -244,7 +248,7 @@ SENSOR_ATTRS = {
         ENTITY_CLASS: EvoHeatDemand,
     },
     "temperature": {
-        DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
         ENTITY_CLASS: EvoTemperature,
         "fakable": True,
@@ -257,7 +261,7 @@ SENSOR_ATTRS = {
         DEVICE_UNITS: PERCENTAGE,
     },
     "relative_humidity": {
-        DEVICE_CLASS: DEVICE_CLASS_HUMIDITY,
+        DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         DEVICE_UNITS: PERCENTAGE,
     },
 }

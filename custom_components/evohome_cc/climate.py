@@ -155,10 +155,10 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         self._supported_features = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
 
     @property
-    def device_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
-            **super().device_state_attributes,
+            **super().extra_state_attributes,
             "config": self._device.config,
             "heating_type": self._device.heating_type,
             "heat_demand": self._device.heat_demand,
@@ -321,7 +321,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
         return round(sum(temps) / len(temps), 1) if temps else None
 
     @property
-    def device_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
             "heat_demand": self._device.heat_demand,
