@@ -32,10 +32,30 @@ async def async_setup_platform(
         return
 
     devices = [
-        v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], device, k, **v)
+        v.get(ENTITY_CLASS, EvoBinarySensor)(
+            hass.data[DOMAIN][BROKER], device, k, **v
+        )
         for device in discovery_info.get("devices", [])
         for k, v in BINARY_SENSOR_ATTRS.items()
-        if hasattr(device, k)
+        if device._klass != "OTB" and hasattr(device, k)
+    ]
+
+    devices += [
+        v.get(ENTITY_CLASS, EvoBinarySensor)(
+            hass.data[DOMAIN][BROKER], device, k, device_id=f"{device.id}_OT", **v
+        )
+        for device in discovery_info.get("devices", [])
+        for k, v in BINARY_SENSOR_ATTRS.items()
+        if device._klass == "OTB" and hasattr(device, k)
+    ]
+
+    devices += [
+        v.get(ENTITY_CLASS, EvoBinarySensor)(
+            hass.data[DOMAIN][BROKER], device, f"_{k}", attr_name=k, **v
+        )
+        for device in discovery_info.get("devices", [])
+        for k, v in BINARY_SENSOR_ATTRS.items()
+        if hasattr(device, f"_{k}")
     ]
 
     systems = [
@@ -58,12 +78,32 @@ async def async_setup_platform(
 class EvoBinarySensor(EvoDeviceBase, BinarySensorEntity):
     """Representation of a generic binary sensor."""
 
-    def __init__(self, broker, device, state_attr, device_class=None, **kwargs) -> None:
-        """Initialize a binary sensor."""
-        _LOGGER.info("Creating a Binary Sensor (%s) for %s", state_attr, device.id)
-        super().__init__(broker, device, state_attr, device_class)
+    #
 
-        self._unique_id = f"{device.id}-{state_attr}_state"
+    def __init__(
+        self,
+        broker,
+        device,
+        state_attr,
+        attr_name=None,
+        device_id=None,
+        device_class=None,
+        **kwargs,
+    ) -> None:
+        """Initialize a binary sensor."""
+        attr_name = attr_name or state_attr
+        device_id = device_id or device.id
+
+        _LOGGER.info("Creating a Binary Sensor (%s) for %s", attr_name, device_id)
+
+        super().__init__(
+            broker,
+            device,
+            device_id,
+            attr_name,
+            state_attr,
+            device_class,
+        )
 
     @property
     def is_on(self) -> bool:
@@ -184,4 +224,14 @@ BINARY_SENSOR_ATTRS = {
     "window_open": {
         DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
     },
+    "ch_active": {},
+    "ch_enabled": {},
+    "cooling_active": {},
+    "cooling_enabled": {},
+    "dhw_active": {},
+    "dhw_enabled": {},
+    "fault_present": {},
+    "flame_active": {},
+    "bit_3_7": {},
+    "bit_6_6": {},
 }

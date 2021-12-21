@@ -77,13 +77,31 @@ class EvoSensor(EvoDeviceBase, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, broker, device, state_attr, device_class=None, device_units=None, **kwargs
+        self,
+        broker,
+        device,
+        state_attr,
+        attr_name=None,
+        device_id=None,
+        device_class=None,
+        device_units=None,
+        **kwargs
     ) -> None:
         """Initialize a sensor."""
-        _LOGGER.info("Creating a Sensor (%s) for %s", state_attr, device.id)
-        super().__init__(broker, device, state_attr, device_class)
+        attr_name = attr_name or state_attr
+        device_id = device_id or device.id
 
-        self._unique_id = f"{device.id}-{state_attr}"
+        _LOGGER.info("Creating a Sensor (%s) for %s", attr_name, device_id)
+
+        super().__init__(
+            broker,
+            device,
+            device_id,
+            attr_name,
+            state_attr,
+            device_class,
+        )
+
         self._unit_of_measurement = device_units or PERCENTAGE
 
     @property

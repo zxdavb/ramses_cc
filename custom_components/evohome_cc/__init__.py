@@ -48,7 +48,10 @@ from .version import __version__ as VERSION
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [
-    Platform.BINARY_SENSOR, Platform.CLIMATE, Platform.SENSOR, Platform.WATER_HEATER
+    Platform.BINARY_SENSOR,
+    Platform.CLIMATE,
+    Platform.SENSOR,
+    Platform.WATER_HEATER,
 ]
 SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
 
@@ -227,7 +230,9 @@ class EvoBroker:
         new_domains = [z for z in evohome.zones if z not in self.climates]
         if new_domains:
             self.hass.async_create_task(
-                async_load_platform(self.hass, Platform.CLIMATE, DOMAIN, {}, self.config)
+                async_load_platform(
+                    self.hass, Platform.CLIMATE, DOMAIN, {}, self.config
+                )
             )
             # new_domains = {"new_domains": new_domains + [self.client.evo]}
             # self.hass.async_create_task(
@@ -237,7 +242,9 @@ class EvoBroker:
 
         if evohome.dhw and self.water_heater is None:
             self.hass.async_create_task(
-                async_load_platform(self.hass, Platform.WATER_HEATER, DOMAIN, {}, self.config)
+                async_load_platform(
+                    self.hass, Platform.WATER_HEATER, DOMAIN, {}, self.config
+                )
             )
             save_updated_schema = True
 
@@ -390,13 +397,20 @@ class EvoEntity(Entity):
 class EvoDeviceBase(EvoEntity):
     """Base for any evohome II-compatible entity (e.g. BinarySensor, Sensor)."""
 
-    def __init__(self, broker, device, state_attr, device_class) -> None:
+    def __init__(
+        self,
+        broker,
+        device,
+        device_id,
+        attr_name,
+        state_attr,
+        device_class,
+    ) -> None:
         """Initialize the sensor."""
         super().__init__(broker, device)
 
-        self._name = f"{device.id} ({state_attr})"
-        # if device.zone:  # not all have this attr
-        #     self._name = f"{device.zone.name} ({klass})"
+        self._unique_id = f"{device_id}-{attr_name}"
+        self._name = f"{device_id} ({attr_name})"
         self._device_class = device_class
         self._state_attr = state_attr
 
