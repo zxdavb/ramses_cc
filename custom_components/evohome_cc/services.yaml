@@ -127,7 +127,7 @@ reset_zone_mode:
       example: climate.bedroom
 
 set_zone_config:
-  name: Reset a zone's config
+  name: Set a zone's config
   description: Reset the configuration of the zone.
   fields:
     entity_id:
