@@ -410,18 +410,15 @@ class EvoDeviceBase(EvoEntity):
         super().__init__(broker, device)
 
         self._unique_id = f"{device_id}-{attr_name}"
-        self._name = f"{device_id} ({attr_name})"
+
         self._device_class = device_class
+        self._device_id = device_id
         self._state_attr = state_attr
+        self._state_attr_friendly_name = attr_name
 
     @property
     def available(self) -> bool:
         """Return True if the sensor is available."""
-        result = getattr(self._device, self._state_attr)
-        if result is None and getattr(self._device, "type", None) == "07":
-            _LOGGER.debug(self._device._msgs)
-            _LOGGER.debug(self._device._gwy.device_by_id)
-            return False
         return getattr(self._device, self._state_attr) is not None
 
     @property
@@ -456,13 +453,9 @@ class EvoDeviceBase(EvoEntity):
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return self._name
-        # klass = self.DEVICE_CLASS if self.DEVICE_CLASS else self.STATE_ATTR
-        # self._name = f"{self._device.id} ({klass})"
-        # if getattr(self._device, "zone", None):
-        #     return f"{self._device.zone.name} ({klass})"
-        # else:
-        # return f"{self._device.id} ({klass})"
+        if hasattr(self._device, "name"):
+            return f"{self._device.name} ({self._state_attr_friendly_name})"
+        return f"{self._device_id} ({self._state_attr_friendly_name})"
 
 
 class EvoZoneBase(EvoEntity):
