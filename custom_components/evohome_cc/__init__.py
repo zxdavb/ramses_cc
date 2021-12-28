@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 import ramses_rf
 import serial
 from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS, Platform
-from homeassistant.core import callback
+from homeassistant.core import ServiceCall, callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
@@ -110,7 +110,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
     """Set up the handlers for the system-wide services."""
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_fake_device(call) -> None:
+    async def svc_fake_device(call: ServiceCall) -> None:
         try:
             broker.client.fake_device(**call.data)
         except LookupError as exc:
@@ -120,12 +120,12 @@ def register_service_functions(hass: HomeAssistantType, broker):
         async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_force_refresh(call) -> None:
+    async def svc_force_refresh(call: ServiceCall) -> None:
         await broker.async_update()
         # includes: async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_reset_system_mode(call) -> None:
+    async def svc_reset_system_mode(call: ServiceCall) -> None:
         payload = {
             UNIQUE_ID: broker.client.evo.id,
             SERVICE: call.service,
@@ -134,7 +134,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
         async_dispatcher_send(hass, DOMAIN, payload)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_set_system_mode(call) -> None:
+    async def svc_set_system_mode(call: ServiceCall) -> None:
         payload = {
             UNIQUE_ID: broker.client.evo.id,
             SERVICE: call.service,
@@ -143,13 +143,13 @@ def register_service_functions(hass: HomeAssistantType, broker):
         async_dispatcher_send(hass, DOMAIN, payload)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_send_packet(call) -> None:
+    async def svc_send_packet(call: ServiceCall) -> None:
         broker.client.send_cmd(broker.client.make_cmd(**call.data))
         await asyncio.sleep(1)
         async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_call_dhw_svc(call) -> None:
+    async def svc_call_dhw_svc(call: ServiceCall) -> None:
         payload = {
             UNIQUE_ID: f"{broker.client.evo.id}_HW",
             SERVICE: call.service,
