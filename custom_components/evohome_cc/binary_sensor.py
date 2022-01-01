@@ -232,6 +232,10 @@ BINARY_SENSOR_ATTRS = {
     "dhw_enabled": {},
     "fault_present": {},
     "flame_active": {},
+    # "bit_2_4": {},
+    # "bit_2_5": {},
+    # "bit_2_6": {},
+    # "bit_2_7": {},
     "bit_3_7": {},
     "bit_6_6": {},
 }
