@@ -109,7 +109,7 @@ class EvoSensor(EvoDeviceBase, SensorEntity):
         """Return the state of the sensor."""
         state = getattr(self._device, self._state_attr)
         if self.unit_of_measurement == PERCENTAGE:
-            return int(state * 200) / 2 if state is not None else None
+            return state * 100 if state is not None else None
         # if self.unit_of_measurement == TEMP_CELSIUS:
         #     return int(state * 200) / 200 if state is not None else None
         return state
@@ -212,6 +212,10 @@ ENTITY_CLASS = "entity_class"
 
 SENSOR_ATTRS = {
     # SENSOR_ATTRS_BDR = {  # incl: actuator
+    "percent": {  # 2401
+        DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: EvoRelayDemand,
+    },
     "relay_demand": {  # 0008
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: EvoRelayDemand,
