@@ -37,8 +37,10 @@ from .const import (
 )
 from .schema import CONFIG_SCHEMA  # noqa: F401
 from .schema import (
+    ADVANCED_FEATURES,
     CONF_RESTORE_STATE,
     DOMAIN_SERVICES,
+    MESSAGE_EVENTS,
     SVC_SEND_PACKET,
     WATER_HEATER_SERVICES,
     normalise_config_schema,
@@ -101,8 +103,30 @@ async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
     # hass.helpers.event.async_call_later(30, broker.async_update)
 
     register_service_functions(hass, broker)
+    register_trigger_events(hass, broker)
 
     return True
+
+
+@callback  # TODO: add async_ to routines where required to do so
+def register_trigger_events(hass: HomeAssistantType, broker):
+    """Set up the handlers for the system-wide services."""
+
+    @callback
+    def process_message(msg):
+        event_data = {
+            "dtm": msg.dtm.isoformat(),
+            "src": msg.src.id,
+            "dst": msg.dst.id,
+            "verb": msg.verb,
+            "code": msg.code,
+            "payload": msg.payload,
+            "packet": str(msg._pkt),
+        }
+        hass.bus.async_fire(f"{DOMAIN}_message", event_data)
+
+    if broker.config[ADVANCED_FEATURES].get(MESSAGE_EVENTS):
+        broker.client.create_client(process_message)
 
 
 @callback  # TODO: add async_ to routines where required to do so
@@ -163,7 +187,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
     ]
 
     domain_service = DOMAIN_SERVICES
-    if not broker.config[DOMAIN].get(SVC_SEND_PACKET):
+    if not broker.config[ADVANCED_FEATURES].get(SVC_SEND_PACKET):
         del domain_service[SVC_SEND_PACKET]
 
     services = {k: v for k, v in locals().items() if k.startswith("svc")}
@@ -177,12 +201,13 @@ def register_service_functions(hass: HomeAssistantType, broker):
 class EvoBroker:
     """Container for client and data."""
 
-    def __init__(self, hass, client, store, hass_config) -> None:
+    def __init__(self, hass, client, store, config) -> None:
         """Initialize the client and its data structure(s)."""
         self.hass = hass
         self.client = client
         self._store = store
-        self.config = hass_config
+        self.hass_config = config
+        self.config = config[DOMAIN]
 
         self.status = None
 
@@ -231,7 +256,7 @@ class EvoBroker:
         if new_domains:
             self.hass.async_create_task(
                 async_load_platform(
-                    self.hass, Platform.CLIMATE, DOMAIN, {}, self.config
+                    self.hass, Platform.CLIMATE, DOMAIN, {}, self.hass_config
                 )
             )
             # new_domains = {"new_domains": new_domains + [self.client.evo]}
@@ -243,7 +268,7 @@ class EvoBroker:
         if evohome.dhw and self.water_heater is None:
             self.hass.async_create_task(
                 async_load_platform(
-                    self.hass, Platform.WATER_HEATER, DOMAIN, {}, self.config
+                    self.hass, Platform.WATER_HEATER, DOMAIN, {}, self.hass_config
                 )
             )
             save_updated_schema = True
@@ -292,7 +317,7 @@ class EvoBroker:
             for platform in (Platform.BINARY_SENSOR, Platform.SENSOR):
                 self.hass.async_create_task(
                     async_load_platform(
-                        self.hass, platform, DOMAIN, discovery_info, self.config
+                        self.hass, platform, DOMAIN, discovery_info, self.hass_config
                     )
                 )
 

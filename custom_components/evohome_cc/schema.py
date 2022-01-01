@@ -53,7 +53,7 @@ CONF_OVERRUN = "overrun"
 
 # Configuration schema
 SCAN_INTERVAL_DEFAULT = td(seconds=300)
-SCAN_INTERVAL_MINIMUM = td(seconds=10)
+SCAN_INTERVAL_MINIMUM = td(seconds=1)
 
 CONF_RESTORE_STATE = "restore_state"
 
@@ -263,6 +263,18 @@ WATER_HEATER_SERVICES = {
 
 DEVICE_LIST = vol.Schema(vol.All([vol.Any(DEVICE_ID, DEVICE_DICT)], vol.Length(min=0)))
 
+ADVANCED_FEATURES = "advanced_features"
+MESSAGE_EVENTS = "message_events"
+DEV_MODE = "dev_mode"
+UNKNOWN_CODES = "unknown_codes"
+ADVANCED_FEATURES_SCHEMA = vol.Schema(
+    {
+        vol.Optional(SVC_SEND_PACKET, default=False): bool,
+        vol.Optional(MESSAGE_EVENTS, default=False): bool,
+        vol.Optional(DEV_MODE, default=False): bool,
+        vol.Optional(UNKNOWN_CODES, default=False): bool,
+    }
+)
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
@@ -280,7 +292,8 @@ CONFIG_SCHEMA = vol.Schema(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
                 vol.Optional(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
-                vol.Optional(SVC_SEND_PACKET): bool,
+                cv.deprecated(SVC_SEND_PACKET, ADVANCED_FEATURES): vol.Any(),
+                vol.Optional(ADVANCED_FEATURES): ADVANCED_FEATURES_SCHEMA,
             },
             extra=vol.ALLOW_EXTRA,  # will be system schemas
         )
@@ -334,7 +347,8 @@ def normalise_config_schema(config, store) -> Tuple[str, dict]:
     config = {
         k: v
         for k, v in config.items()
-        if k not in (
+        if k
+        not in (
             CONF_RESTORE_STATE,
             CONF_SCAN_INTERVAL,
             SVC_SEND_PACKET,
