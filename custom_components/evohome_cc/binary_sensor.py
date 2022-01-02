@@ -32,9 +32,7 @@ async def async_setup_platform(
         return
 
     devices = [
-        v.get(ENTITY_CLASS, EvoBinarySensor)(
-            hass.data[DOMAIN][BROKER], device, k, **v
-        )
+        v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], device, k, **v)
         for device in discovery_info.get("devices", [])
         for k, v in BINARY_SENSOR_ATTRS.items()
         if device._klass != "OTB" and hasattr(device, k)
