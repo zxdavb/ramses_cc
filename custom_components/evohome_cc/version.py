@@ -3,4 +3,4 @@
 #
 """Support for Honeywell's RAMSES-II RF protocol, as used by evohome & others."""
 
-__version__ = "0.17.1"  # revision 0
+__version__ = "0.17.3"  # revision 0
