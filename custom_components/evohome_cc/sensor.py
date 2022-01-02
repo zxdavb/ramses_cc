@@ -43,6 +43,7 @@ async def async_setup_platform(
     discovery_info=None,
 ) -> None:
     """Set up the evohome sensor sensor entities."""
+
     if discovery_info is None:
         return
 
@@ -50,7 +51,25 @@ async def async_setup_platform(
         v.get(ENTITY_CLASS, EvoSensor)(hass.data[DOMAIN][BROKER], device, k, **v)
         for device in discovery_info.get("devices", [])
         for k, v in SENSOR_ATTRS.items()
-        if hasattr(device, k)
+        if device._klass != "OTB" and hasattr(device, k)
+    ]  # and (not device._is_faked or device["fakable"])
+
+    devices += [
+        v.get(ENTITY_CLASS, EvoSensor)(
+            hass.data[DOMAIN][BROKER], device, k, device_id=f"{device.id}_OT", **v
+        )
+        for device in discovery_info.get("devices", [])
+        for k, v in SENSOR_ATTRS.items()
+        if device._klass == "OTB" and hasattr(device, k)
+    ]  # and (not device._is_faked or device["fakable"])
+
+    devices += [
+        v.get(ENTITY_CLASS, EvoSensor)(
+            hass.data[DOMAIN][BROKER], device, f"_{k}", attr_name=k, **v
+        )
+        for device in discovery_info.get("devices", [])
+        for k, v in SENSOR_ATTRS.items()
+        if hasattr(device, f"_{k}")
     ]  # and (not device._is_faked or device["fakable"])
 
     domains = [
@@ -59,14 +78,6 @@ async def async_setup_platform(
         for k, v in SENSOR_ATTRS.items()
         if k == "heat_demand" and hasattr(domain, k)
     ]
-
-    # if otb := [d for d in devices if d._klass == "OTB"]:
-    #     EvoSensor(
-    #         hass.data[DOMAIN][BROKER],
-    #         domain,
-    #         k,
-    #         **v
-    #     )
 
     async_add_entities(devices + domains)
 
@@ -85,7 +96,7 @@ class EvoSensor(EvoDeviceBase, SensorEntity):
         device_id=None,
         device_class=None,
         device_units=None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Initialize a sensor."""
         attr_name = attr_name or state_attr
@@ -212,10 +223,6 @@ ENTITY_CLASS = "entity_class"
 
 SENSOR_ATTRS = {
     # SENSOR_ATTRS_BDR = {  # incl: actuator
-    "percent": {  # 2401
-        DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: EvoRelayDemand,
-    },
     "relay_demand": {  # 0008
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: EvoRelayDemand,
@@ -241,6 +248,10 @@ SENSOR_ATTRS = {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
+    "ch_setpoint": {  # 3EF0
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
     "ch_water_pressure": {  # 3220
         DEVICE_CLASS: SensorDeviceClass.PRESSURE,
         DEVICE_UNITS: "bar",
@@ -256,9 +267,17 @@ SENSOR_ATTRS = {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
+    "max_rel_modulation": {  # 3200
+        DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: EvoModLevel,
+    },
     "outside_temp": {  # 3220
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    "percent": {  # 2401
+        DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: EvoRelayDemand,
     },
     "rel_modulation_level": {  # 3200
         DEVICE_UNITS: PERCENTAGE,
