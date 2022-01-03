@@ -293,7 +293,7 @@ CONFIG_SCHEMA = vol.Schema(
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
                 vol.Optional(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
                 cv.deprecated(SVC_SEND_PACKET, ADVANCED_FEATURES): vol.Any(),
-                vol.Optional(ADVANCED_FEATURES): ADVANCED_FEATURES_SCHEMA,
+                vol.Optional(ADVANCED_FEATURES, default={}): ADVANCED_FEATURES_SCHEMA,
             },
             extra=vol.ALLOW_EXTRA,  # will be system schemas
         )
