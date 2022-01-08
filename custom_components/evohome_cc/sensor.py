@@ -302,8 +302,11 @@ SENSOR_ATTRS = {
     "fan_rate": {
         DEVICE_UNITS: PERCENTAGE,
     },
-    "relative_humidity": {
+    "indoor_humidity": {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         DEVICE_UNITS: PERCENTAGE,
+    },
+    "co2_level": {
+        DEVICE_UNITS: "min(s)",
     },
 }
