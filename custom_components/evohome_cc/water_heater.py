@@ -23,8 +23,9 @@ from homeassistant.const import (  # PRECISION_TENTHS,; PRECISION_WHOLE,
     STATE_OFF,
     STATE_ON,
 )
-from homeassistant.core import callback
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from ramses_rf.systems import StoredHw
 
 from . import EvoZoneBase
@@ -62,7 +63,10 @@ STATE_ATTRS_DHW = ("config", "mode", "status")
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType = None,
 ) -> None:
     """Create an evohome DHW controller."""
     if discovery_info is None:

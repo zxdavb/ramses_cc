@@ -16,8 +16,9 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import TEMP_CELSIUS
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import EvoDeviceBase
 from .const import ATTR_SETPOINT, BROKER, DOMAIN, PERCENTAGE
@@ -37,10 +38,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType,
+    hass: HomeAssistant,
     config: ConfigType,
     async_add_entities: AddEntitiesCallback,
-    discovery_info=None,
+    discovery_info: DiscoveryInfoType = None,
 ) -> None:
     """Set up the evohome sensor sensor entities."""
 

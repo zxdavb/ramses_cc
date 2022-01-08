@@ -34,9 +34,9 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
 )
 from homeassistant.const import ATTR_TEMPERATURE
-from homeassistant.core import callback
-from homeassistant.helpers import entity_platform
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import EvoZoneBase
 from .const import (
@@ -112,7 +112,10 @@ PRESET_TO_ZONE = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType = None,
 ) -> None:
     """Create the evohome Controller, and its Zones, if any."""
     if discovery_info is None:
@@ -136,7 +139,7 @@ async def async_setup_platform(
         return
     broker.services[PLATFORM] = True
 
-    register_svc = entity_platform.current_platform.get().async_register_entity_service
+    register_svc = current_platform.get().async_register_entity_service
     [register_svc(k, v, f"svc_{k}") for k, v in CLIMATE_SERVICES.items()]
 
 

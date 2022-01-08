@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 import ramses_rf
 import serial
 from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS, Platform
-from homeassistant.core import ServiceCall, callback
+from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
@@ -58,7 +58,10 @@ PLATFORMS = [
 SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
 
 
-async def async_setup(hass: HomeAssistantType, hass_config: ConfigType) -> bool:
+async def async_setup(
+    hass: HomeAssistant,
+    hass_config: ConfigType,
+) -> bool:
     """Create a Honeywell RF (RAMSES_II)-based system."""
 
     async def async_handle_exceptions(awaitable):
