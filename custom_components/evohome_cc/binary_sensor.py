@@ -19,7 +19,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import EvoDeviceBase, EvoEntity
+from . import EvoDeviceBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ async def async_setup_platform(
     devices = [
         v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], device, k, **v)
         for device in discovery_info.get("devices", [])
-        for k, v in BINARY_SENSOR_ATTRS.items()
+        for k, v in BINARY_SENSOR_ATTRS["devices"].items()
         if device._klass != "OTB" and hasattr(device, k)
     ]
 
@@ -48,7 +48,7 @@ async def async_setup_platform(
             hass.data[DOMAIN][BROKER], device, k, device_id=f"{device.id}_OT", **v
         )
         for device in discovery_info.get("devices", [])
-        for k, v in BINARY_SENSOR_ATTRS.items()
+        for k, v in BINARY_SENSOR_ATTRS["devices"].items()
         if device._klass == "OTB" and hasattr(device, k)
     ]
 
@@ -57,14 +57,17 @@ async def async_setup_platform(
             hass.data[DOMAIN][BROKER], device, f"_{k}", attr_name=k, **v
         )
         for device in discovery_info.get("devices", [])
-        for k, v in BINARY_SENSOR_ATTRS.items()
+        for k, v in BINARY_SENSOR_ATTRS["devices"].items()
         if hasattr(device, f"_{k}")
     ]
 
     systems = [
-        EvoSystem(hass.data[DOMAIN][BROKER], ctl._evo, "schema")
+        v.get(ENTITY_CLASS, EvoBinarySensor)(
+            hass.data[DOMAIN][BROKER], ctl._evo, k, **v
+        )
         for ctl in discovery_info.get("devices", [])
-        if hasattr(ctl, "_evo") and ctl._is_controller
+        for k, v in BINARY_SENSOR_ATTRS["systems"].items()
+        if hasattr(ctl, "_evo") and hasattr(ctl._evo, k)
     ]
 
     gateway = (
@@ -136,22 +139,43 @@ class EvoBattery(EvoBinarySensor):
         }
 
 
-class EvoSystem(EvoEntity, BinarySensorEntity):
+class EvoFaultLog(EvoBinarySensor):
     """Representation of a system (a controller)."""
 
-    def __init__(self, broker, device, state_attr, **kwargs) -> None:
-        """Initialize a binary sensor."""
-        _LOGGER.info("Found a System (%s), id=%s", state_attr, device.id)
-        super().__init__(broker, device)
+    @property
+    def available(self) -> bool:
+        """Return True if the device has been seen recently."""
+        if msg := self._device._msgs.get("0418"):
+            return dt.now() - msg.dtm < td(seconds=1200)
 
-        self._name = f"{device.id} (schema)"
-        self._unique_id = f"{device.id}-schema"
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        return {
+            "active_fault": self._device._evo.active_fault,
+            "latest_event": self._device._evo.latest_event,
+            "latest_fault": self._device._evo.latest_fault,
+        }
+
+    # @property
+    # def icon(self) -> str:
+    #     """Return the icon to use in the frontend, if any."""
+    #     return "mdi:alert-circle" if self.is_on else "mdi:circle-outline"
+
+    @property
+    def is_on(self) -> Optional[bool]:
+        """Return True if the controller has a fault"""
+        return bool(self._device._evo.active_fault)
+
+
+class EvoSystem(EvoBinarySensor):
+    """Representation of a system (a controller)."""
 
     @property
     def available(self) -> bool:
         """Return True if the device has been seen recently."""
         if msg := self._device._msgs.get("1F09"):
-            return dt.now() - msg.dtm < td(seconds=msg.payload["remaining_seconds"] * 2)
+            return dt.now() - msg.dtm < td(seconds=msg.payload["remaining_seconds"] * 3)
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
@@ -165,22 +189,9 @@ class EvoSystem(EvoEntity, BinarySensorEntity):
         """Return True if the controller has been seen recently."""
         return self.available
 
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return self._name
 
-
-class EvoGateway(EvoEntity, BinarySensorEntity):
+class EvoGateway(EvoBinarySensor):
     """Representation of a gateway (a HGI80)."""
-
-    def __init__(self, broker, device, state_attr, **kwargs) -> None:
-        """Initialize a binary sensor."""
-        _LOGGER.info("Found a Gateway (%s), id=%s", state_attr, device.id)
-        super().__init__(broker, device)
-
-        self._name = f"{device.id} (config)"
-        self._unique_id = f"{device.id}-config"
 
     @property
     def available(self) -> bool:
@@ -210,35 +221,58 @@ class EvoGateway(EvoEntity, BinarySensorEntity):
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return self._name
+        return f"{self._device_id} configuration"
 
 
 DEVICE_CLASS = "device_class"
 ENTITY_CLASS = "entity_class"
 
 BINARY_SENSOR_ATTRS = {
-    "battery_low": {
-        DEVICE_CLASS: BinarySensorDeviceClass.BATTERY,
-        ENTITY_CLASS: EvoBattery,
+    "systems": {
+        "active_fault": {
+            ENTITY_CLASS: EvoFaultLog,
+            DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
+        },  # CTL
+        "schema": {
+            ENTITY_CLASS: EvoSystem,
+        },  # CTL
     },
-    "active": {
-        ENTITY_CLASS: EvoActuator,
+    "devices": {
+        # Special projects
+        "bit_2_4": {},
+        "bit_2_5": {},
+        "bit_2_6": {},
+        "bit_2_7": {},
+        "fault_present": {
+            DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
+        },  # OTB
+        # Standard sensors
+        "battery_low": {
+            DEVICE_CLASS: BinarySensorDeviceClass.BATTERY,
+            ENTITY_CLASS: EvoBattery,
+        },
+        "active": {
+            ENTITY_CLASS: EvoActuator,
+        },
+        "window_open": {
+            DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
+        },
+        "ch_active": {
+            DEVICE_CLASS: BinarySensorDeviceClass.HEAT,
+        },
+        "ch_enabled": {},
+        "cooling_active": {
+            DEVICE_CLASS: BinarySensorDeviceClass.COLD,
+        },
+        "cooling_enabled": {},
+        "dhw_active": {
+            DEVICE_CLASS: BinarySensorDeviceClass.HEAT,
+        },
+        "dhw_enabled": {},
+        "flame_active": {
+            DEVICE_CLASS: BinarySensorDeviceClass.HEAT,
+        },
+        "bit_3_7": {},
+        "bit_6_6": {},
     },
-    "window_open": {
-        DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
-    },
-    "ch_active": {},
-    "ch_enabled": {},
-    "cooling_active": {},
-    "cooling_enabled": {},
-    "dhw_active": {},
-    "dhw_enabled": {},
-    "fault_present": {},
-    "flame_active": {},
-    # "bit_2_4": {},
-    # "bit_2_5": {},
-    # "bit_2_6": {},
-    # "bit_2_7": {},
-    "bit_3_7": {},
-    "bit_6_6": {},
 }

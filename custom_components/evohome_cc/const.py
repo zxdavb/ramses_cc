@@ -29,7 +29,8 @@ ATTR_HUMIDITY = "relative_humidity"
 ATTR_BATTERY_LEVEL = "battery_level"
 ATTR_SETPOINT = "setpoint"
 
-PERCENTAGE = "%"
+VOLUME_FLOW_RATE_LITERS_PER_MINUTE = "L/min"
+
 
 DATA = "data"
 SERVICE = "service"

@@ -15,13 +15,18 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import TEMP_CELSIUS
+from homeassistant.const import (
+    CONCENTRATION_PARTS_PER_MILLION,
+    PERCENTAGE,
+    TEMP_CELSIUS,
+    TIME_MINUTES,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import EvoDeviceBase
-from .const import ATTR_SETPOINT, BROKER, DOMAIN, PERCENTAGE
+from .const import ATTR_SETPOINT, BROKER, DOMAIN, VOLUME_FLOW_RATE_LITERS_PER_MINUTE
 
 SENSOR_KEY_TEMPERATURE = "temperature"
 
@@ -223,6 +228,14 @@ DEVICE_UNITS = "device_units"
 ENTITY_CLASS = "entity_class"
 
 SENSOR_ATTRS = {
+    # Special projects
+    "percent": {  # 2401
+        DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: EvoRelayDemand,
+    },
+    "value": {  # 2401
+        DEVICE_UNITS: "units",
+    },
     # SENSOR_ATTRS_BDR = {  # incl: actuator
     "relay_demand": {  # 0008
         DEVICE_UNITS: PERCENTAGE,
@@ -258,7 +271,7 @@ SENSOR_ATTRS = {
         DEVICE_UNITS: "bar",
     },
     "dhw_flow_rate": {  # 3220
-        DEVICE_UNITS: "l/min",
+        DEVICE_UNITS: VOLUME_FLOW_RATE_LITERS_PER_MINUTE,
     },
     "dhw_setpoint": {  # 3220
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
@@ -275,10 +288,6 @@ SENSOR_ATTRS = {
     "outside_temp": {  # 3220
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
-    },
-    "percent": {  # 2401
-        DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: EvoRelayDemand,
     },
     "rel_modulation_level": {  # 3200
         DEVICE_UNITS: PERCENTAGE,
@@ -297,7 +306,7 @@ SENSOR_ATTRS = {
     },
     # SENSOR_ATTRS_FAN = {
     "boost_timer": {
-        DEVICE_UNITS: "min(s)",
+        DEVICE_UNITS: TIME_MINUTES,
     },
     "fan_rate": {
         DEVICE_UNITS: PERCENTAGE,
@@ -307,6 +316,7 @@ SENSOR_ATTRS = {
         DEVICE_UNITS: PERCENTAGE,
     },
     "co2_level": {
-        DEVICE_UNITS: "min(s)",
+        DEVICE_CLASS: SensorDeviceClass.CO2,
+        DEVICE_UNITS: CONCENTRATION_PARTS_PER_MILLION,
     },
 }
