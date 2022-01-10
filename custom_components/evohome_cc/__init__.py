@@ -38,7 +38,7 @@ from .const import (
 from .schema import CONFIG_SCHEMA  # noqa: F401
 from .schema import (
     ADVANCED_FEATURES,
-    CONF_RESTORE_STATE,
+    CONF_RESTORE_CACHE,
     DOMAIN_SERVICES,
     MESSAGE_EVENTS,
     SVC_SEND_PACKET,
@@ -78,7 +78,7 @@ async def async_setup(
 
     app_storage = await EvoBroker.async_load_store(store)
 
-    if hass_config[DOMAIN].get(CONF_RESTORE_STATE):
+    if hass_config[DOMAIN].get(CONF_RESTORE_CACHE):
         _LOGGER.debug("Restoring the client state (schema)...")
 
     serial_port, config, schema = normalise_config_schema(
@@ -90,7 +90,7 @@ async def async_setup(
     broker = EvoBroker(hass, client, store, hass_config)
     hass.data[DOMAIN] = {BROKER: broker}
 
-    if hass_config[DOMAIN].get(CONF_RESTORE_STATE):
+    if hass_config[DOMAIN].get(CONF_RESTORE_CACHE):
         _LOGGER.debug("Restoring the client state (packets)...")
         await broker.async_load_client_state(app_storage)
 
@@ -482,8 +482,8 @@ class EvoDeviceBase(EvoEntity):
     def name(self) -> str:
         """Return the name of the sensor."""
         if hasattr(self._device, "name"):
-            return f"{self._device.name} ({self._state_attr_friendly_name})"
-        return f"{self._device_id} ({self._state_attr_friendly_name})"
+            return f"{self._device.name} {self._state_attr_friendly_name}"
+        return f"{self._device_id} {self._state_attr_friendly_name}"
 
 
 class EvoZoneBase(EvoEntity):

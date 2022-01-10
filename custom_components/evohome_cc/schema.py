@@ -55,7 +55,7 @@ CONF_OVERRUN = "overrun"
 SCAN_INTERVAL_DEFAULT = td(seconds=300)
 SCAN_INTERVAL_MINIMUM = td(seconds=1)
 
-CONF_RESTORE_STATE = "restore_state"
+CONF_RESTORE_CACHE = "restore_schema"
 
 PACKET_LOG_SCHEMA = vol.Schema(
     {
@@ -208,6 +208,7 @@ CLIMATE_SERVICES = {
 }
 
 # WaterHeater platform services for DHW
+SVC_PUT_DHW_TEMP = "put_dhw_temp"
 SVC_RESET_DHW_MODE = "reset_dhw_mode"
 SVC_RESET_DHW_PARAMS = "reset_dhw_params"
 SVC_SET_DHW_BOOST = "set_dhw_boost"
@@ -253,12 +254,21 @@ SET_DHW_CONFIG_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
     }
 )
 
+PUT_DHW_TEMP_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
+    {
+        vol.Required(CONF_TEMPERATURE): vol.All(
+            vol.Coerce(float), vol.Range(min=-20, max=99)  # TODO: check limits
+        ),
+    }
+)
+
 WATER_HEATER_SERVICES = {
     SVC_RESET_DHW_MODE: SET_DHW_BASE_SCHEMA,
     SVC_RESET_DHW_PARAMS: SET_DHW_BASE_SCHEMA,
     SVC_SET_DHW_BOOST: SET_DHW_BASE_SCHEMA,
     SVC_SET_DHW_MODE: SET_DHW_MODE_SCHEMA,
     SVC_SET_DHW_PARAMS: SET_DHW_CONFIG_SCHEMA,
+    SVC_PUT_DHW_TEMP: PUT_DHW_TEMP_SCHEMA,
 }
 
 DEVICE_LIST = vol.Schema(vol.All([vol.Any(DEVICE_ID, DEVICE_DICT)], vol.Length(min=0)))
@@ -287,7 +297,8 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(BLOCK_LIST, default=[]): DEVICE_LIST,
                 cv.deprecated(CONFIG, "ramses_rf"): vol.Any(),
                 vol.Optional("ramses_rf", default={}): CONFIG_SCHEMA,
-                vol.Optional(CONF_RESTORE_STATE, default=True): bool,
+                cv.deprecated("restore_state", CONF_RESTORE_CACHE): vol.Any(),
+                vol.Optional(CONF_RESTORE_CACHE, default=True): vol.Any(bool),
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
@@ -327,7 +338,7 @@ def normalise_config_schema(config, store) -> Tuple[str, dict]:
 
     schema = {}
 
-    if config[CONF_RESTORE_STATE]:
+    if config[CONF_RESTORE_CACHE]:
         schema = store["client_state"].get("schema") if "client_state" in store else {}
         if schema:
             _LOGGER.warning("Using a Schema restored from cache: %s", schema)
@@ -349,7 +360,7 @@ def normalise_config_schema(config, store) -> Tuple[str, dict]:
         for k, v in config.items()
         if k
         not in (
-            CONF_RESTORE_STATE,
+            CONF_RESTORE_CACHE,
             CONF_SCAN_INTERVAL,
             SVC_SEND_PACKET,
             "schema",

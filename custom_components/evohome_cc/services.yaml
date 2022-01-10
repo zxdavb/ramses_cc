@@ -169,6 +169,28 @@ set_zone_mode:
 
 # dhw service calls
 
+put_dhw_temp:
+  name: Fake a DHW sensor's temperature
+  description: >-
+    Announce the current temperature of a DHW temperature sensor. The sensor must be
+    faked (see the `fake_device` service call).
+  target:
+    integration: evohome_cc
+    domain: water_heater
+  fields:
+    entity_id:
+      description: >-
+        The entity_id of the water_heater. Raises an exception if the sensor is not
+        faked.
+      example: water_heater.main_room
+      required: true
+    temperature:
+      description: >-
+        The current temperature in degrees Celsius. This is the measured temperature,
+        not the target temperature (i.e. the setpoint).
+      example: 63.4
+      required: true
+
 reset_dhw_mode:
   name: Reset the DHW mode
   description: Reset the operating mode of the system's DHW.
