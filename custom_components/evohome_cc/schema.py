@@ -55,7 +55,7 @@ CONF_OVERRUN = "overrun"
 SCAN_INTERVAL_DEFAULT = td(seconds=300)
 SCAN_INTERVAL_MINIMUM = td(seconds=1)
 
-CONF_RESTORE_CACHE = "restore_schema"
+CONF_RESTORE_CACHE = "restore_cache"
 
 PACKET_LOG_SCHEMA = vol.Schema(
     {
