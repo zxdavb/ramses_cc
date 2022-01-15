@@ -3,7 +3,7 @@
     "name": "RAMSES RF",
     "documentation": "https://github.com/zxdavb/evohome_cc",
     "requirements": [
-      "ramses-rf==0.17.9",
+      "ramses-rf==0.17.10",
       "pyserial-asyncio==0.5"
     ],
     "dependencies": [],
