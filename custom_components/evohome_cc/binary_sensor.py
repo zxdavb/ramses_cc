@@ -74,7 +74,13 @@ async def async_setup_platform(
         []
         if not discovery_info.get("gateway")
         else [
-            EvoGateway(hass.data[DOMAIN][BROKER], discovery_info["gateway"], "config")
+            EvoGateway(
+                hass.data[DOMAIN][BROKER],
+                discovery_info["gateway"],
+                None,
+                attr_name="gateway",
+                device_class=BinarySensorDeviceClass.PROBLEM,
+            )
         ]
     )
 
@@ -157,11 +163,6 @@ class EvoFaultLog(EvoBinarySensor):
             "latest_fault": self._device._evo.latest_fault,
         }
 
-    # @property
-    # def icon(self) -> str:
-    #     """Return the icon to use in the frontend, if any."""
-    #     return "mdi:alert-circle" if self.is_on else "mdi:circle-outline"
-
     @property
     def is_on(self) -> Optional[bool]:
         """Return True if the controller has a fault"""
@@ -195,20 +196,26 @@ class EvoGateway(EvoBinarySensor):
 
     @property
     def available(self) -> bool:
-        """Return True if the device has been seen recently."""
-        return True
-        # if msgs := sorted(self._device._msgs):
-        #     return dt.now() - msgs[0].dtm < td(seconds=300)
+        """Return True if the device is available."""
+        return bool(self._device._gwy.pkt_protocol._hgi80.get("device_id"))
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
+
+        def shrink(device_hints) -> dict:
+            result = device_hints
+            for key in ("alias", "class", "faked"):
+                if (value := result.pop(key, None)) is not None:
+                    result[key] = value
+            return result
+
         gwy = self._device._gwy
         return {
             "schema": gwy.evo._schema_min if gwy.evo else {},
             "config": {"enforce_known_list": gwy.config.enforce_known_list},
-            "known_list": [{k: v} for k, v in gwy._include.items()],
-            "block_list": [{k: v} for k, v in gwy._exclude.items()],
+            "known_list": [{k: shrink(v)} for k, v in gwy._include.items()],
+            "block_list": [{k: shrink(v)} for k, v in gwy._exclude.items()],
             "other_list": sorted(gwy.pkt_protocol._unwanted),
             "_is_evofw3": gwy.pkt_protocol._hgi80["is_evofw3"],
         }
@@ -216,16 +223,13 @@ class EvoGateway(EvoBinarySensor):
     @property
     def is_on(self) -> Optional[bool]:
         """Return True if the controller has been seen recently."""
-        return self.available
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return f"{self._device_id} configuration"
+        if msg := self._device._gwy.msg_protocol._this_msg:
+            return dt.now() - msg.dtm > td(seconds=300)
 
 
 DEVICE_CLASS = "device_class"
 ENTITY_CLASS = "entity_class"
+STATE_ICONS = "state_icons"  # TBA
 
 BINARY_SENSOR_ATTRS = {
     "systems": {
@@ -253,24 +257,23 @@ BINARY_SENSOR_ATTRS = {
         },
         "active": {
             ENTITY_CLASS: EvoActuator,
+            STATE_ICONS: ("mdi:electric-switch-closed", "mdi:electric-switch"),
         },
         "window_open": {
             DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
         },
         "ch_active": {
-            DEVICE_CLASS: BinarySensorDeviceClass.HEAT,
+            STATE_ICONS: ("mdi:circle-outline", "mdi:fire-circle"),
         },
         "ch_enabled": {},
         "cooling_active": {
-            DEVICE_CLASS: BinarySensorDeviceClass.COLD,
+            STATE_ICONS: ("mdi:snowflake", "mdi:snowflake-off"),
         },
         "cooling_enabled": {},
-        "dhw_active": {
-            DEVICE_CLASS: BinarySensorDeviceClass.HEAT,
-        },
+        "dhw_active": {},
         "dhw_enabled": {},
         "flame_active": {
-            DEVICE_CLASS: BinarySensorDeviceClass.HEAT,
+            STATE_ICONS: ("mdi:circle-outline", "mdi:fire-circle"),
         },
         "bit_3_7": {},
         "bit_6_6": {},
