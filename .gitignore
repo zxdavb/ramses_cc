@@ -26,6 +26,8 @@ home-assistant_v2.db*
 *.out
 *.txt
 
+!hacs.json
+
 .vscode/*
 .secrets/*
 
@@ -35,6 +37,8 @@ home-assistant_v2.db*
 !pyproject.toml
 !requirements*.txt
 
+
+########################################################################################
 ### github's default .gitignore for Python - Latest commit 14f8a8b on Apr 11, 2020
 # https://raw.githubusercontent.com/github/gitignore/master/Python.gitignore
 
