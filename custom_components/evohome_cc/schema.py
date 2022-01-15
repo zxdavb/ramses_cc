@@ -340,19 +340,15 @@ def normalise_config_schema(config, store) -> Tuple[str, dict]:
 
     if config[CONF_RESTORE_CACHE]:
         schema = store["client_state"].get("schema") if "client_state" in store else {}
-        if schema:
-            _LOGGER.warning("Using a Schema restored from cache: %s", schema)
 
-    if (
-        not schema
-        and (_schema := config.get("schema"))
-        and (ctl_id := _schema.pop("controller", None))
-    ):
-        schema = {"main_controller": ctl_id, ctl_id: _schema}
-        if schema:
-            _LOGGER.warning("Using a Schema loaded from configuration file: %s", schema)
+    if schema:
+        _LOGGER.warning("Using a Schema restored from cache: %s", schema)
 
-    if not schema:
+    elif (_sch := config.get("schema")) and (_ctl := _sch.pop("controller", None)):
+        schema = {"main_controller": _ctl, _ctl: _sch}
+        _LOGGER.warning("Using a Schema loaded from configuration file: %s", schema)
+
+    else:
         _LOGGER.warning("Using an empty Schema: %s", {})
 
     config = {
