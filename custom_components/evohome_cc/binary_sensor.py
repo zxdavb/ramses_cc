@@ -212,6 +212,11 @@ class EvoGateway(EvoBinarySensor):
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
 
+        # {% set device_id = state_attr("binary_sensor.01_145038_active_fault", "active_fault")[5] %}
+        # {% for state in state_attr("binary_sensor.18_140805_gateway", "known_list") %}
+        #   {%- if device_id in state %}{{ state[device_id].get('class') }}{% endif %}
+        # {%- endfor -%}
+
         def shrink(device_hints) -> dict:
             result = device_hints
             for key in ("alias", "class", "faked"):
