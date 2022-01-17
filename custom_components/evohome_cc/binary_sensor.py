@@ -61,6 +61,15 @@ async def async_setup_platform(
         if hasattr(device, f"_{k}")
     ]
 
+    domains = [
+        v.get(ENTITY_CLASS, EvoBinarySensor)(
+            hass.data[DOMAIN][BROKER], domain, k, **v
+        )
+        for domain in discovery_info.get("domains", [])
+        for k, v in BINARY_SENSOR_ATTRS["devices"].items()
+        if k == "window_open" and hasattr(domain, k)
+    ]
+
     systems = [
         v.get(ENTITY_CLASS, EvoBinarySensor)(
             hass.data[DOMAIN][BROKER], ctl._evo, k, **v
@@ -84,7 +93,7 @@ async def async_setup_platform(
         ]
     )
 
-    async_add_entities(devices + systems + gateway)
+    async_add_entities(devices + domains + systems + gateway)
 
 
 class EvoBinarySensor(EvoDeviceBase, BinarySensorEntity):
@@ -277,5 +286,10 @@ BINARY_SENSOR_ATTRS = {
         },
         "bit_3_7": {},
         "bit_6_6": {},
+    },
+    "domains": {
+        "window_open": {
+            DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
+        },
     },
 }
