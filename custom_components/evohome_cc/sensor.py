@@ -229,6 +229,9 @@ ENTITY_CLASS = "entity_class"
 
 SENSOR_ATTRS = {
     # Special projects
+    "oem_code": {  # 3220/73
+        DEVICE_UNITS: "code",
+    },
     "percent": {  # 2401
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: EvoRelayDemand,
