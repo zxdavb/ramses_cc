@@ -532,8 +532,7 @@ class EvoZoneBase(EvoEntity):
         """Return the integration-specific state attributes."""
         return {
             **super().extra_state_attributes,
-            "zone_idx": self._device.idx,
-            "config": self._device.config,
-            "heat_demand": self._device.heat_demand,
-            "mode": self._device.mode,
+            "schema": self._device.schema,
+            "params": self._device.params,
+            # "schedule": self._device.schedule,
         }
