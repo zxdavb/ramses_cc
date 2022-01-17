@@ -128,9 +128,10 @@ async def async_setup_platform(
         new_entities.append(EvoController(broker, broker.client.evo))
         broker.climates.append(broker.client.evo)
 
-    for zone in [z for z in broker.client.evo.zones if z not in broker.climates]:
-        new_entities.append(EvoZone(broker, zone))
-        broker.climates.append(zone)
+    for zone in broker.client.evo.zones:
+        if zone not in broker.climates:
+            new_entities.append(EvoZone(broker, zone))
+            broker.climates.append(zone)
 
     if new_entities:
         async_add_entities(new_entities)
