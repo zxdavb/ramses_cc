@@ -116,7 +116,7 @@ def register_trigger_events(hass: HomeAssistantType, broker):
     """Set up the handlers for the system-wide services."""
 
     @callback
-    def process_message(msg):
+    def process_msg(msg, *args, **kwargs):  # process_msg(msg, prev_msg=None)
         event_data = {
             "dtm": msg.dtm.isoformat(),
             "src": msg.src.id,
@@ -129,7 +129,7 @@ def register_trigger_events(hass: HomeAssistantType, broker):
         hass.bus.async_fire(f"{DOMAIN}_message", event_data)
 
     if broker.config[ADVANCED_FEATURES].get(MESSAGE_EVENTS):
-        broker.client.create_client(process_message)
+        broker.client.create_client(process_msg)
 
 
 @callback  # TODO: add async_ to routines where required to do so
