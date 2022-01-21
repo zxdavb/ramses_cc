@@ -128,9 +128,10 @@ async def async_setup_platform(
         new_entities.append(EvoController(broker, broker.client.evo))
         broker.climates.append(broker.client.evo)
 
-    for zone in [z for z in broker.client.evo.zones if z not in broker.climates]:
-        new_entities.append(EvoZone(broker, zone))
-        broker.climates.append(zone)
+    for zone in broker.client.evo.zones:
+        if zone not in broker.climates:
+            new_entities.append(EvoZone(broker, zone))
+            broker.climates.append(zone)
 
     if new_entities:
         async_add_entities(new_entities)
@@ -161,12 +162,11 @@ class EvoZone(EvoZoneBase, ClimateEntity):
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
-            **super().extra_state_attributes,
-            "config": self._device.config,
+            "zone_idx": self._device.idx,
             "heating_type": self._device.heating_type,
-            "heat_demand": self._device.heat_demand,
             "mode": self._device.mode,
-            # "schedule": self._device.schedule,
+            "config": self._device.config,
+            **super().extra_state_attributes,
         }
 
     @property

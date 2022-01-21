@@ -9,7 +9,7 @@ Provides support for water_heater entities.
 import logging
 from datetime import datetime as dt
 from datetime import timedelta as td
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from homeassistant.components.water_heater import ATTR_AWAY_MODE
 from homeassistant.components.water_heater import DOMAIN as PLATFORM
@@ -93,6 +93,14 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
         self._unique_id = device.id
         # self._icon = "mdi:thermometer-lines"
         self._operation_list = list(MODE_HA_TO_EVO)
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        return {
+            "mode": self._device.mode,
+            **super().extra_state_attributes,
+        }
 
     @property
     def current_operation(self) -> str:
