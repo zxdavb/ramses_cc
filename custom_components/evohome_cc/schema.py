@@ -61,9 +61,7 @@ PACKET_LOG_SCHEMA = vol.Schema(
     {
         vol.Required(LOG_FILE_NAME): str,
         vol.Optional(LOG_ROTATE_BYTES, default=None): vol.Any(None, int),
-        vol.Optional(LOG_ROTATE_COUNT, default=7): vol.All(
-            int, vol.Range(min=0, max=7)
-        ),
+        vol.Optional(LOG_ROTATE_COUNT, default=7): int,
     },
     extra=vol.PREVENT_EXTRA,
 )
