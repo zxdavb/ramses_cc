@@ -480,10 +480,10 @@ class EvoDeviceBase(EvoEntity):
 
     @property
     def name(self) -> str:
-        """Return the name of the sensor."""
-        if hasattr(self._device, "name"):
-            return f"{self._device.name} {self._state_attr_friendly_name}"
-        return f"{self._device_id} {self._state_attr_friendly_name}"
+        """Return the name of the binary_sensor/sensor."""
+        if not hasattr(self._device, "name") or not self._device.name:
+            return f"{self._device_id} {self._state_attr_friendly_name}"
+        return f"{self._device.name} {self._state_attr_friendly_name}"
 
 
 class EvoZoneBase(EvoEntity):
@@ -504,8 +504,8 @@ class EvoZoneBase(EvoEntity):
 
     @property
     def name(self) -> str:
-        """Return the name of the entity."""
-        return self._device.name
+        """Return the name of the climate/water_heater entity."""
+        return self._device.name or self._device_id
 
     @property
     def supported_features(self) -> int:
