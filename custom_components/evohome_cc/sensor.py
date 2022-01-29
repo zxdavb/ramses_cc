@@ -57,25 +57,7 @@ async def async_setup_platform(
         v.get(ENTITY_CLASS, EvoSensor)(hass.data[DOMAIN][BROKER], device, k, **v)
         for device in discovery_info.get("devices", [])
         for k, v in SENSOR_ATTRS.items()
-        if device._klass != "OTB" and hasattr(device, k)
-    ]  # and (not device._is_faked or device["fakable"])
-
-    devices += [
-        v.get(ENTITY_CLASS, EvoSensor)(
-            hass.data[DOMAIN][BROKER], device, k, device_id=f"{device.id}_OT", **v
-        )
-        for device in discovery_info.get("devices", [])
-        for k, v in SENSOR_ATTRS.items()
-        if device._klass == "OTB" and hasattr(device, k)
-    ]  # and (not device._is_faked or device["fakable"])
-
-    devices += [
-        v.get(ENTITY_CLASS, EvoSensor)(
-            hass.data[DOMAIN][BROKER], device, f"_{k}", attr_name=k, **v
-        )
-        for device in discovery_info.get("devices", [])
-        for k, v in SENSOR_ATTRS.items()
-        if hasattr(device, f"_{k}")
+        if hasattr(device, k)
     ]  # and (not device._is_faked or device["fakable"])
 
     domains = [
