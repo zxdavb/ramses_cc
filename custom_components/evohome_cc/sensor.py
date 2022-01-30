@@ -108,9 +108,9 @@ class EvoSensor(EvoDeviceBase, SensorEntity):
         """Return the state of the sensor."""
         state = getattr(self._device, self._state_attr)
         if self.unit_of_measurement == PERCENTAGE:
-            return state * 100 if state is not None else None
+            return None if state is None else state * 100
         # if self.unit_of_measurement == TEMP_CELSIUS:
-        #     return int(state * 200) / 200 if state is not None else None
+        #     return None if state is None else int(state * 200) / 200
         return state
 
     @property
