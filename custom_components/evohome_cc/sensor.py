@@ -60,6 +60,15 @@ async def async_setup_platform(
         if hasattr(device, k)
     ]  # and (not device._is_faked or device["fakable"])
 
+    devices += [
+        v.get(ENTITY_CLASS, EvoSensor)(
+            hass.data[DOMAIN][BROKER], device, f"{k}_ot", **v
+        )
+        for device in discovery_info.get("devices", [])
+        for k, v in SENSOR_ATTRS.items()
+        if device._klass == "OTB" and hasattr(device, f"{k}_ot")
+    ]
+
     domains = [
         v.get(ENTITY_CLASS, EvoSensor)(hass.data[DOMAIN][BROKER], domain, k, **v)
         for domain in discovery_info.get("domains", [])
@@ -136,14 +145,11 @@ class EvoModLevel(EvoSensor):
         """Return the integration-specific state attributes."""
         attrs = super().extra_state_attributes
 
-        if self._state_attr in "modulation_level":
-            attrs["status"] = {
-                self._device.ACTUATOR_CYCLE: self._device.actuator_cycle,
-                self._device.ACTUATOR_STATE: self._device.actuator_state,
-                self._device.BOILER_SETPOINT: self._device.boiler_setpoint,
-            }
-        else:  # self._state_attr == "relative_modulation_level"
-            attrs["status"] = self._device.opentherm_status
+        if self._state_attr[-3:] == "_ot":
+            attrs.update(self._device.opentherm_status)
+        else:
+            attrs.update(self._device.ramses_status)
+        attrs.pop("rel_modulation_level")
 
         return attrs
 
