@@ -44,9 +44,7 @@ async def async_setup_platform(
     ]
 
     domains = [
-        v.get(ENTITY_CLASS, EvoBinarySensor)(
-            hass.data[DOMAIN][BROKER], domain, k, **v
-        )
+        v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], domain, k, **v)
         for domain in discovery_info.get("domains", [])
         for k, v in BINARY_SENSOR_ATTRS["devices"].items()
         if k == "window_open" and hasattr(domain, k)
