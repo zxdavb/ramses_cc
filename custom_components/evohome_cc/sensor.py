@@ -110,7 +110,7 @@ class EvoSensor(EvoDeviceBase, SensorEntity):
             device_class,
         )
 
-        self._unit_of_measurement = device_units or PERCENTAGE
+        self._unit_of_measurement = device_units  # or PERCENTAGE
 
     @property
     def state(self) -> Optional[Any]:  # int or float
@@ -218,7 +218,7 @@ ENTITY_CLASS = "entity_class"
 SENSOR_ATTRS = {
     # Special projects
     "oem_code": {  # 3220/73
-        DEVICE_UNITS: "code",
+        DEVICE_UNITS: None,
     },
     "percent": {  # 2401
         DEVICE_UNITS: PERCENTAGE,
@@ -229,6 +229,10 @@ SENSOR_ATTRS = {
     },
     # SENSOR_ATTRS_BDR = {  # incl: actuator
     "relay_demand": {  # 0008
+        DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: EvoRelayDemand,
+    },
+    "relay_demand_fa": {  # 0008
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: EvoRelayDemand,
     },
