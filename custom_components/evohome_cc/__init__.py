@@ -171,7 +171,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_send_packet(call: ServiceCall) -> None:
-        broker.client.send_cmd(broker.client.make_cmd(**call.data))
+        broker.client.send_cmd(broker.client.create_cmd(**call.data))
         await asyncio.sleep(1)
         async_dispatcher_send(hass, DOMAIN)
 

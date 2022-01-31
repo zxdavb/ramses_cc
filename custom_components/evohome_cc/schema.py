@@ -83,7 +83,7 @@ FAKE_DEVICE_SCHEMA = vol.Schema(
 SEND_PACKET_SCHEMA = vol.Schema(
     {
         vol.Required("device_id"): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
-        vol.Required("verb"): vol.In((" I", "RQ", "RP", " W")),
+        vol.Required("verb"): vol.In((" I", "I", "RQ", "RP", " W", "W")),
         vol.Required("code"): vol.Match(r"^[0-9A-F]{4}$"),
         vol.Required("payload"): vol.Match(r"^[0-9A-F]{1,48}$"),
     }
