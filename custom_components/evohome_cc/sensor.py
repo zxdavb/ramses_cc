@@ -82,7 +82,7 @@ async def async_setup_platform(
 class EvoSensor(EvoDeviceBase, SensorEntity):
     """Representation of a generic sensor."""
 
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    # _attr_state_class = SensorStateClass.MEASUREMENT  # oem_code is not a measurement
 
     def __init__(
         self,
