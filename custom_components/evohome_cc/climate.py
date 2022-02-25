@@ -320,7 +320,10 @@ class EvoController(EvoZoneBase, ClimateEntity):
         Controllers do not have a current temp, but one is expected by HA.
         """
         temps = [z.temperature for z in self._device.zones if z.temperature is not None]
-        return round(sum(temps) / len(temps), 1) if temps else None
+        try:
+            return round(sum(temps) / len(temps), 1) if temps else None
+        except TypeError:
+            _LOGGER.error(f"temp ({temps}) contains None")
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
