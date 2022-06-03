@@ -8,7 +8,7 @@ The simplest way to know if it will work with your CH/DHW system is to identify 
  - **BDR91A** or **BDR91T**: Wireless Relay
  - **HC60NG**: Wireless Relay (older hardware version)
 
-It also works with HVAC (ventilation) systems using the same protocol, such as from **Itho**, **Orcon**, **Nuaire**, etc.
+It also works with HVAC (ventilation) systems using the same protocol, such as from **Itho**, **Orcon**, **Nuaire**, **Ventiline**, etc.
 
 It uses the [evohome_rf](https://github.com/zxdavb/evohome_rf) client library to decode the RAMSES-II protocol used by these devices. Note that other systems, such as HVAC, also use this protocol, YMMV.
 
