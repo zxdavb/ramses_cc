@@ -1,10 +1,14 @@
 ## Overview
-**ramses_cc** is a HA custom component that works with some Honeywell 868 MHz RF-based CH/DHW systems such as **evohome**, **Sundial**, **Hometronic**, **Chronotherm** and many others. It also works with HVAC (ventilation) systems using the same protocol, such as from **Itho**, **Orcon**, **Nuaire**, etc.
+**ramses_cc** is a HA custom component that works with RAMSES II-bases RF 868 Mhz systems for (heating) **CH/DHW** (e.g. Evohome) and (ventilation) **HVAC** (e.g. Spider).
 
-The simplest way to know if it will work with your system is to identify the box connected to your boiler (or other heat source) to one of (there will be other systems that also work):
+This includes some Honeywell CH/DHW systems such as **evohome**, **Sundial**, **Hometronic**, **Chronotherm** and many others. 
+
+The simplest way to know if it will work with your CH/DHW system is to identify the box connected to your boiler (or other heat source) to one of (there will be other systems that also work):
  - **R8810A** or **R8820A**: OpenTherm Bridge
  - **BDR91A** or **BDR91T**: Wireless Relay
  - **HC60NG**: Wireless Relay (older hardware version)
+
+It also works with HVAC (ventilation) systems using the same protocol, such as from **Itho**, **Orcon**, **Nuaire**, etc.
 
 It uses the [evohome_rf](https://github.com/zxdavb/evohome_rf) client library to decode the RAMSES-II protocol used by these devices. Note that other systems, such as HVAC, also use this protocol, YMMV.
 
