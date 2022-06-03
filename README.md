@@ -1,5 +1,5 @@
 ## Overview
-**evohome_cc** is a HA custom component that works with some Honeywell 868 MHz RF-based systems such as **evohome**, **Sundial**, **Hometronic**, **Chronotherm** and many others.  
+**ramses_cc** is a HA custom component that works with some Honeywell 868 MHz RF-based CH/DHW systems such as **evohome**, **Sundial**, **Hometronic**, **Chronotherm** and many others. It also works with HVAC (ventilation) systems using the same protocol, such as from **Itho**, **Orcon**, **Nuaire**, etc.
 
 The simplest way to know if it will work with your system is to identify the box connected to your boiler (or other heat source) to one of (there will be other systems that also work):
  - **R8810A** or **R8820A**: OpenTherm Bridge
