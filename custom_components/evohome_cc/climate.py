@@ -124,11 +124,11 @@ async def async_setup_platform(
     broker = hass.data[DOMAIN][BROKER]
     new_entities = []
 
-    if broker.client.evo not in broker.climates:
-        new_entities.append(EvoController(broker, broker.client.evo))
-        broker.climates.append(broker.client.evo)
+    if broker.client.tcs not in broker.climates:
+        new_entities.append(EvoController(broker, broker.client.tcs))
+        broker.climates.append(broker.client.tcs)
 
-    for zone in [z for z in broker.client.evo.zones if z not in broker.climates]:
+    for zone in [z for z in broker.client.tcs.zones if z not in broker.climates]:
         new_entities.append(EvoZone(broker, zone))
         broker.climates.append(zone)
 
@@ -148,7 +148,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
 
     def __init__(self, broker, device) -> None:
         """Initialize a Zone."""
-        _LOGGER.info("Found a Zone (%s), id=%s", device.heating_type, device.idx)
+        _LOGGER.info("Found a Zone: %r", device)
         super().__init__(broker, device)
 
         self._unique_id = device.id
@@ -172,9 +172,9 @@ class EvoZone(EvoZoneBase, ClimateEntity):
     def hvac_action(self) -> Optional[str]:
         """Return the Zone's current running hvac operation."""
 
-        if self._device._evo.system_mode is None:
+        if self._device._tcs.system_mode is None:
             return  # unable to determine
-        if self._device._evo.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+        if self._device._tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return CURRENT_HVAC_OFF
 
         if self._device.heat_demand:
@@ -186,11 +186,11 @@ class EvoZone(EvoZoneBase, ClimateEntity):
     def hvac_mode(self) -> Optional[str]:
         """Return the Zone's hvac operation ie. heat, cool mode."""
 
-        if self._device._evo.system_mode is None:
+        if self._device._tcs.system_mode is None:
             return  # unable to determine
-        if self._device._evo.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY:
+        if self._device._tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY:
             return HVAC_MODE_AUTO
-        if self._device._evo.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+        if self._device._tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVAC_MODE_OFF
 
         if self._device.mode is None or self._device.mode[ATTR_SETPOINT] is None:
@@ -218,19 +218,19 @@ class EvoZone(EvoZoneBase, ClimateEntity):
     def preset_mode(self) -> Optional[str]:
         """Return the Zone's current preset mode, e.g., home, away, temp."""
 
-        if self._device._evo.system_mode is None:
+        if self._device._tcs.system_mode is None:
             return  # unable to determine
-        # if self._device._evo.system_mode[CONF_SYSTEM_MODE] in MODE_TCS_TO_HA:
-        if self._device._evo.system_mode[CONF_SYSTEM_MODE] in (
+        # if self._device._tcs.system_mode[CONF_SYSTEM_MODE] in MODE_TCS_TO_HA:
+        if self._device._tcs.system_mode[CONF_SYSTEM_MODE] in (
             SystemMode.AWAY,
             SystemMode.HEAT_OFF,
         ):
-            return PRESET_TCS_TO_HA[self._device._evo.system_mode[CONF_SYSTEM_MODE]]
+            return PRESET_TCS_TO_HA[self._device._tcs.system_mode[CONF_SYSTEM_MODE]]
 
         if self._device.mode is None:
             return  # unable to determine
         if self._device.mode[CONF_MODE] == ZoneMode.SCHEDULE:
-            return PRESET_TCS_TO_HA[self._device._evo.system_mode[CONF_SYSTEM_MODE]]
+            return PRESET_TCS_TO_HA[self._device._tcs.system_mode[CONF_SYSTEM_MODE]]
         return PRESET_ZONE_TO_HA.get(self._device.mode[CONF_MODE])
 
     @property
@@ -304,7 +304,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
 
     def __init__(self, broker, device) -> None:
         """Initialize a Controller."""
-        _LOGGER.info("Found a Controller, id=%s", device.id)
+        _LOGGER.info("Found a Controller: %r", device)
         super().__init__(broker, device)
 
         self._unique_id = device.id

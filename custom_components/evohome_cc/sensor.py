@@ -66,7 +66,7 @@ async def async_setup_platform(
         )
         for device in discovery_info.get("devices", [])
         for k, v in SENSOR_ATTRS.items()
-        if device._klass == "OTB" and hasattr(device, f"{k}_ot")
+        if device._SLUG == "OTB" and hasattr(device, f"{k}_ot")
     ]
 
     domains = [

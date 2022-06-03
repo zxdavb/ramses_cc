@@ -75,7 +75,6 @@ async def async_setup(
     _LOGGER.debug(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
 
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
-
     app_storage = await EvoBroker.async_load_store(store)
 
     if hass_config[DOMAIN][CONF_RESTORE_CACHE]:
@@ -86,7 +85,6 @@ async def async_setup(
     )
 
     client = ramses_rf.Gateway(serial_port, loop=hass.loop, **config, **schema)
-
     broker = EvoBroker(hass, client, store, hass_config)
     hass.data[DOMAIN] = {BROKER: broker}
 
@@ -154,7 +152,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
     @verify_domain_control(hass, DOMAIN)
     async def svc_reset_system_mode(call: ServiceCall) -> None:
         payload = {
-            UNIQUE_ID: broker.client.evo.id,
+            UNIQUE_ID: broker.client.tcs.id,
             SERVICE: call.service,
             DATA: call.data,
         }
@@ -163,7 +161,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
     @verify_domain_control(hass, DOMAIN)
     async def svc_set_system_mode(call: ServiceCall) -> None:
         payload = {
-            UNIQUE_ID: broker.client.evo.id,
+            UNIQUE_ID: broker.client.tcs.id,
             SERVICE: call.service,
             DATA: call.data,
         }
@@ -178,7 +176,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
     @verify_domain_control(hass, DOMAIN)
     async def svc_call_dhw_svc(call: ServiceCall) -> None:
         payload = {
-            UNIQUE_ID: f"{broker.client.evo.id}_HW",
+            UNIQUE_ID: f"{broker.client.tcs.id}_HW",
             SERVICE: call.service,
             DATA: call.data,
         }
@@ -249,7 +247,7 @@ class EvoBroker:
 
     @callback
     def new_domains(self) -> bool:
-        evohome = self.client.evo
+        evohome = self.client.tcs
         if evohome is None:
             _LOGGER.info("Schema = %s", {})
             return False
@@ -262,7 +260,7 @@ class EvoBroker:
                     self.hass, Platform.CLIMATE, DOMAIN, {}, self.hass_config
                 )
             )
-            # new_domains = {"new_domains": new_domains + [self.client.evo]}
+            # new_domains = {"new_domains": new_domains + [self.client.tcs]}
             # self.hass.async_create_task(
             #     async_load_platform(self.hass, Platform.SENSOR, DOMAIN, new_domains, self.config)
             # )
@@ -307,10 +305,10 @@ class EvoBroker:
             self._devices.extend(new_devices)
 
         new_domains = []
-        if self.client.evo:
-            new_domains = [d for d in self.client.evo.zones if d not in self._domains]
-            if self.client.evo not in self._domains:
-                new_domains.append(self.client.evo)
+        if self.client.tcs:
+            new_domains = [d for d in self.client.tcs.zones if d not in self._domains]
+            if self.client.tcs not in self._domains:
+                new_domains.append(self.client.tcs)
 
         if new_domains:
             discovery_info["domains"] = new_domains

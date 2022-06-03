@@ -12,20 +12,25 @@ from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
-from ramses_rf.protocol.schema import LOG_FILE_NAME, LOG_ROTATE_BYTES, LOG_ROTATE_COUNT
-from ramses_rf.schema import (
-    BLOCK_LIST,
-    CONFIG,
-    CONFIG_SCHEMA,
-    DEVICE_DICT,
-    DEVICE_ID,
-    EVOFW_FLAG,
-    KNOWN_LIST,
-    PACKET_LOG,
+from ramses_rf.const import SZ_DEVICE_ID
+from ramses_rf.protocol.schema import (
+    LOG_FILE_NAME,
+    LOG_ROTATE_BYTES,
+    LOG_ROTATE_COUNT,
     PORT_NAME,
+    SERIAL_PORT,
+)
+from ramses_rf.schema import (
+    CONFIG_SCHEMA,
+    EVOFW_FLAG,
+    DEV_REGEX_ANY,
+    PACKET_LOG,
+    _SCHEMA_DEV,
     SERIAL_CONFIG,
     SERIAL_CONFIG_SCHEMA,
-    SERIAL_PORT,
+    SZ_BLOCK_LIST,
+    SZ_CONFIG,
+    SZ_KNOWN_LIST,
 )
 
 from .const import DOMAIN, SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
@@ -75,14 +80,14 @@ SVC_SET_SYSTEM_MODE = "set_system_mode"
 
 FAKE_DEVICE_SCHEMA = vol.Schema(
     {
-        vol.Required("device_id"): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
+        vol.Required(SZ_DEVICE_ID): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
         vol.Optional("create_device", default=False): vol.Any(None, bool),
         vol.Optional("start_binding", default=False): vol.Any(None, bool),
     }
 )
 SEND_PACKET_SCHEMA = vol.Schema(
     {
-        vol.Required("device_id"): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
+        vol.Required(SZ_DEVICE_ID): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
         vol.Required("verb"): vol.In((" I", "I", "RQ", "RP", " W", "W")),
         vol.Required("code"): vol.Match(r"^[0-9A-F]{4}$"),
         vol.Required("payload"): vol.Match(r"^[0-9A-F]{1,48}$"),
@@ -269,7 +274,9 @@ WATER_HEATER_SERVICES = {
     SVC_PUT_DHW_TEMP: PUT_DHW_TEMP_SCHEMA,
 }
 
-DEVICE_LIST = vol.Schema(vol.All([vol.Any(DEVICE_ID, DEVICE_DICT)], vol.Length(min=0)))
+DEVICE_LIST = vol.Schema(
+    vol.All([vol.Any(DEV_REGEX_ANY, _SCHEMA_DEV)], vol.Length(min=0))
+)
 
 ADVANCED_FEATURES = "advanced_features"
 MESSAGE_EVENTS = "message_events"
@@ -291,9 +298,9 @@ CONFIG_SCHEMA = vol.Schema(
                     cv.string,
                     SERIAL_CONFIG_SCHEMA.extend({vol.Required(PORT_NAME): cv.string}),
                 ),
-                vol.Optional(KNOWN_LIST, default=[]): DEVICE_LIST,
-                vol.Optional(BLOCK_LIST, default=[]): DEVICE_LIST,
-                cv.deprecated(CONFIG, "ramses_rf"): vol.Any(),
+                vol.Optional(SZ_KNOWN_LIST, default=[]): DEVICE_LIST,
+                vol.Optional(SZ_BLOCK_LIST, default=[]): DEVICE_LIST,
+                cv.deprecated(SZ_CONFIG, "ramses_rf"): vol.Any(),
                 vol.Optional("ramses_rf", default={}): CONFIG_SCHEMA,
                 cv.deprecated("restore_state", CONF_RESTORE_CACHE): vol.Any(),
                 vol.Optional(CONF_RESTORE_CACHE, default=True): vol.Any(bool),
@@ -335,19 +342,20 @@ def normalise_config_schema(config, store) -> Tuple[str, dict]:
     _LOGGER.debug("\r\n\nStore = %s\r\n", store)
 
     schema = {}
-
     if config[CONF_RESTORE_CACHE]:
         schema = store["client_state"].get("schema") if "client_state" in store else {}
 
     if schema:
-        _LOGGER.warning("Using a Schema restored from cache: %s", schema)
+        _LOGGER.warning("Starting with a Schema restored from cache: %s", schema)
 
     elif (_sch := config.get("schema")) and (_ctl := _sch.pop("controller", None)):
         schema = {"main_controller": _ctl, _ctl: _sch}
-        _LOGGER.warning("Using a Schema loaded from configuration file: %s", schema)
+        _LOGGER.warning(
+            "Starting with a Schema loaded from configuration file: %s", schema
+        )
 
     else:
-        _LOGGER.warning("Using an empty Schema: %s", {})
+        _LOGGER.warning("Starting with an empty Schema: %s", {})
 
     config = {
         k: v
@@ -360,25 +368,25 @@ def normalise_config_schema(config, store) -> Tuple[str, dict]:
             "schema",
         )
     }
-    config[CONFIG] = config.pop("ramses_rf")
+    config[SZ_CONFIG] = config.pop("ramses_rf")
 
     if isinstance(config[SERIAL_PORT], dict):
         serial_port = config[SERIAL_PORT].pop(PORT_NAME)
-        config[CONFIG][EVOFW_FLAG] = config[SERIAL_PORT].pop(EVOFW_FLAG, None)
-        config[CONFIG][SERIAL_CONFIG] = config.pop(SERIAL_PORT)
+        config[SZ_CONFIG][EVOFW_FLAG] = config[SERIAL_PORT].pop(EVOFW_FLAG, None)
+        config[SZ_CONFIG][SERIAL_CONFIG] = config.pop(SERIAL_PORT)
     else:
         serial_port = config.pop(SERIAL_PORT)
 
     if PACKET_LOG not in config:
-        config[CONFIG][PACKET_LOG] = {}
+        config[SZ_CONFIG][PACKET_LOG] = {}
     elif isinstance(config[PACKET_LOG], dict):
-        config[CONFIG][PACKET_LOG] = config.pop(PACKET_LOG)
+        config[SZ_CONFIG][PACKET_LOG] = config.pop(PACKET_LOG)
     else:
-        config[CONFIG][PACKET_LOG] = PACKET_LOG_SCHEMA(
+        config[SZ_CONFIG][PACKET_LOG] = PACKET_LOG_SCHEMA(
             {LOG_FILE_NAME: config.pop(PACKET_LOG)}
         )
 
-    config[KNOWN_LIST] = normalise_device_list(config[KNOWN_LIST])
-    config[BLOCK_LIST] = normalise_device_list(config[BLOCK_LIST])
+    config[SZ_KNOWN_LIST] = normalise_device_list(config[SZ_KNOWN_LIST])
+    config[SZ_BLOCK_LIST] = normalise_device_list(config[SZ_BLOCK_LIST])
 
     return serial_port, config, schema

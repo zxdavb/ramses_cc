@@ -73,7 +73,7 @@ async def async_setup_platform(
         return
 
     broker = hass.data[DOMAIN][BROKER]
-    dhw = broker.water_heater = broker.client.evo.dhw
+    dhw = broker.water_heater = broker.client.tcs.dhw
 
     async_add_entities([EvoDHW(broker, dhw)])
 
@@ -87,7 +87,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
 
     def __init__(self, broker, device) -> None:
         """Initialize an evohome DHW controller."""
-        _LOGGER.info("Found a DHW controller, id=%s", device.id)  # TODO: info
+        _LOGGER.info("Found a DHW controller: %s", device)  # TODO: info
         super().__init__(broker, device)
 
         self._unique_id = device.id
@@ -125,7 +125,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
     def is_away_mode_on(self):
         """Return True if away mode is on."""
         try:
-            return self._device._evo.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY
+            return self._device._tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY
         except TypeError:
             return
 

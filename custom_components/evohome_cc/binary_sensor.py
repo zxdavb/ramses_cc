@@ -52,11 +52,11 @@ async def async_setup_platform(
 
     systems = [
         v.get(ENTITY_CLASS, EvoBinarySensor)(
-            hass.data[DOMAIN][BROKER], ctl._evo, k, **v
+            hass.data[DOMAIN][BROKER], ctl._tcs, k, **v
         )
         for ctl in discovery_info.get("devices", [])
         for k, v in BINARY_SENSOR_ATTRS["systems"].items()
-        if hasattr(ctl, "_evo") and hasattr(ctl._evo, k)
+        if hasattr(ctl, "_tcs") and hasattr(ctl._tcs, k)
     ]
 
     gateway = (
@@ -147,15 +147,15 @@ class EvoFaultLog(EvoBinarySensor):
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
-            "active_fault": self._device._evo.active_fault,
-            "latest_event": self._device._evo.latest_event,
-            "latest_fault": self._device._evo.latest_fault,
+            "active_fault": self._device._tcs.active_fault,
+            "latest_event": self._device._tcs.latest_event,
+            "latest_fault": self._device._tcs.latest_fault,
         }
 
     @property
     def is_on(self) -> Optional[bool]:
         """Return True if the controller has a fault"""
-        return bool(self._device._evo.active_fault)
+        return bool(self._device._tcs.active_fault)
 
 
 class EvoSystem(EvoBinarySensor):
@@ -171,7 +171,7 @@ class EvoSystem(EvoBinarySensor):
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
-            "schema": self._device._evo.schema,
+            "schema": self._device._tcs.schema,
         }
 
     @property
@@ -206,7 +206,7 @@ class EvoGateway(EvoBinarySensor):
 
         gwy = self._device._gwy
         return {
-            "schema": gwy.evo._schema_min if gwy.evo else {},
+            "schema": gwy.tcs._schema_min if gwy.tcs else {},
             "config": {"enforce_known_list": gwy.config.enforce_known_list},
             "known_list": [{k: shrink(v)} for k, v in gwy._include.items()],
             "block_list": [{k: shrink(v)} for k, v in gwy._exclude.items()],
