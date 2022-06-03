@@ -1,5 +1,5 @@
 ## Overview
-**ramses_cc** is a HA custom component that works with RAMSES II-bases RF 868 Mhz systems for (heating) **CH/DHW** (e.g. Evohome) and (ventilation) **HVAC** (e.g. Spider).
+**ramses_cc** is a HA custom component that works with RAMSES II-based RF 868 Mhz systems for (heating) **CH/DHW** (e.g. Evohome) and (ventilation) **HVAC** (e.g. Spider).
 
 This includes some Honeywell CH/DHW systems such as **evohome**, **Sundial**, **Hometronic**, **Chronotherm** and many others. 
 
