@@ -314,4 +314,49 @@ SENSOR_ATTRS = {
         DEVICE_CLASS: SensorDeviceClass.CO2,
         DEVICE_UNITS: CONCENTRATION_PARTS_PER_MILLION,
     },
+    "exhaust_fan_speed": {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "air_quality": {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "air_quality_base": {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "outdoor_humidity": {
+        DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "exhaust_temperature": {
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    "supply_temperature": {
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    "speed_cap": {
+        DEVICE_UNITS: "units",
+    },
+    "bypass_pos": {
+        DEVICE_UNITS: "units",
+    },
+    "fan_info": {
+        DEVICE_UNITS: None,
+    },
+    "supply_fan_speed": {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "post_heat": {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "pre_heat": {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    "supply_flow": {
+        DEVICE_UNITS: VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
+    },
+    "exhaust_flow": {
+        DEVICE_UNITS: VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
+    },
 }
