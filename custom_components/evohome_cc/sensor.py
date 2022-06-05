@@ -20,6 +20,7 @@ from homeassistant.const import (
     PERCENTAGE,
     TEMP_CELSIUS,
     TIME_MINUTES,
+    VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
