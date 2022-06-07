@@ -20,7 +20,6 @@ from homeassistant.const import (
     PERCENTAGE,
     TEMP_CELSIUS,
     TIME_MINUTES,
-    VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -336,6 +335,14 @@ SENSOR_ATTRS = {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
+    "indoor_temperature": {
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    "outdoor_temperature": {
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
     "speed_cap": {
         DEVICE_UNITS: "units",
     },
@@ -355,9 +362,9 @@ SENSOR_ATTRS = {
         DEVICE_UNITS: PERCENTAGE,
     },
     "supply_flow": {
-        DEVICE_UNITS: VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
+        DEVICE_UNITS: None,
     },
     "exhaust_flow": {
-        DEVICE_UNITS: VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR,
+        DEVICE_UNITS: None,
     },
 }
