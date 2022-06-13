@@ -6,7 +6,7 @@
 ### HACS-specific ignores
 evohome_cc
 custom_components/*
-!custom_components/evohome_cc/
+!custom_components/ramses_cc/
 
 .HA_VERSION
 .storage/
