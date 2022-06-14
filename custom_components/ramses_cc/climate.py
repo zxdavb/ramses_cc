@@ -320,6 +320,7 @@ class EvoController(EvoZoneBase, ClimateEntity):
         Controllers do not have a current temp, but one is expected by HA.
         """
         temps = [z.temperature for z in self._device.zones if z.temperature is not None]
+        temps = [t for t in temps if t is not None]  # above is buggy, why?
         try:
             return round(sum(temps) / len(temps), 1) if temps else None
         except TypeError:
