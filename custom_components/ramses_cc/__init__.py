@@ -88,7 +88,7 @@ async def async_setup(
     broker = EvoBroker(hass, client, store, hass_config)
     hass.data[DOMAIN] = {BROKER: broker}
 
-    if hass_config[DOMAIN][CONF_RESTORE_CACHE]:
+    if hass_config[DOMAIN][CONF_RESTORE_CACHE]:  # TODO: move this out of setup()
         _LOGGER.debug("Restoring the client state (packets)...")
         await broker.async_load_client_state(app_storage)
 
