@@ -25,6 +25,28 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
+from ramses_rf.protocol.const import (
+    SZ_AIR_QUALITY,
+    SZ_AIR_QUALITY_BASE,
+    SZ_BYPASS_POSITION,
+    SZ_CO2_LEVEL,
+    SZ_EXHAUST_FAN_SPEED,
+    SZ_EXHAUST_FLOW,
+    SZ_EXHAUST_TEMPERATURE,
+    SZ_FAN_INFO,
+    SZ_INDOOR_HUMIDITY,
+    SZ_INDOOR_TEMPERATURE,
+    SZ_OUTDOOR_HUMIDITY,
+    SZ_OUTDOOR_TEMPERATURE,
+    SZ_POST_HEAT,
+    SZ_PRE_HEAT,
+    SZ_REMAINING_TIME,
+    SZ_SPEED_CAP,
+    SZ_SUPPLY_FAN_SPEED,
+    SZ_SUPPLY_FLOW,
+    SZ_SUPPLY_TEMPERATURE,
+)
+
 from . import EvoDeviceBase
 from .const import ATTR_SETPOINT, BROKER, DOMAIN, VOLUME_FLOW_RATE_LITERS_PER_MINUTE
 
@@ -65,14 +87,14 @@ async def async_setup_platform(
             hass.data[DOMAIN][BROKER], device, f"{k}_ot", **v
         )
         for device in discovery_info.get("devices", [])
-        for k, v in SENSOR_ATTRS.items()
+        for k, v in SENSOR_ATTRS_HEAT.items()
         if device._SLUG == "OTB" and hasattr(device, f"{k}_ot")
     ]
 
     domains = [
         v.get(ENTITY_CLASS, EvoSensor)(hass.data[DOMAIN][BROKER], domain, k, **v)
         for domain in discovery_info.get("domains", [])
-        for k, v in SENSOR_ATTRS.items()
+        for k, v in SENSOR_ATTRS_HEAT.items()
         if k == "heat_demand" and hasattr(domain, k)
     ]
 
@@ -215,7 +237,7 @@ DEVICE_CLASS = "device_class"
 DEVICE_UNITS = "device_units"
 ENTITY_CLASS = "entity_class"
 
-SENSOR_ATTRS = {
+SENSOR_ATTRS_HEAT = {
     # Special projects
     "oem_code": {  # 3220/73
         DEVICE_UNITS: None,
@@ -241,19 +263,19 @@ SENSOR_ATTRS = {
         ENTITY_CLASS: EvoModLevel,
     },
     # SENSOR_ATTRS_OTB = {  # excl. actuator
-    "boiler_output_temp": {  # 3220
+    "boiler_output_temp": {  # 3200, 3220|19
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "boiler_return_temp": {  # 3220
+    "boiler_return_temp": {  # 3210, 3220|1C
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "boiler_setpoint": {  # 3220
+    "boiler_setpoint": {  # 22D9, 3220|01
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "ch_max_setpoint": {  # 3220
+    "ch_max_setpoint": {  # 1081, 3220|39
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
@@ -261,30 +283,30 @@ SENSOR_ATTRS = {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "ch_water_pressure": {  # 3220
+    "ch_water_pressure": {  # 1300, 3220|12
         DEVICE_CLASS: SensorDeviceClass.PRESSURE,
         DEVICE_UNITS: "bar",
     },
-    "dhw_flow_rate": {  # 3220
+    "dhw_flow_rate": {  # 12F0, 3220|13
         DEVICE_UNITS: VOLUME_FLOW_RATE_LITERS_PER_MINUTE,
     },
-    "dhw_setpoint": {  # 3220
+    "dhw_setpoint": {  # 10A0, 3220|38
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "dhw_temp": {  # 3220
+    "dhw_temp": {  # 1290, 3220|1A
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "max_rel_modulation": {  # 3200
+    "max_rel_modulation": {  # 3200|0E
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: EvoModLevel,
     },
-    "outside_temp": {  # 3220
+    "outside_temp": {  # 1290, 3220|1B
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "rel_modulation_level": {  # 3200
+    "rel_modulation_level": {  # 3EFx, 3200|11
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: EvoModLevel,
     },
@@ -299,19 +321,75 @@ SENSOR_ATTRS = {
         ENTITY_CLASS: EvoTemperature,
         "fakable": True,
     },
-    # SENSOR_ATTRS_FAN = {
-    "boost_timer": {
-        DEVICE_UNITS: TIME_MINUTES,
-    },
-    "fan_rate": {
+}
+
+SENSOR_ATTRS_HVAC = {
+    # "boost_timer": {DEVICE_UNITS: TIME_MINUTES,},
+    # "fan_rate":    {DEVICE_UNITS: PERCENTAGE,},
+    SZ_AIR_QUALITY: {
         DEVICE_UNITS: PERCENTAGE,
     },
-    "indoor_humidity": {
-        DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
+    SZ_AIR_QUALITY_BASE: {
         DEVICE_UNITS: PERCENTAGE,
     },
-    "co2_level": {
+    SZ_BYPASS_POSITION: {
+        DEVICE_UNITS: "units",
+    },
+    SZ_CO2_LEVEL: {
         DEVICE_CLASS: SensorDeviceClass.CO2,
         DEVICE_UNITS: CONCENTRATION_PARTS_PER_MILLION,
     },
+    SZ_EXHAUST_FAN_SPEED: {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    SZ_EXHAUST_FLOW: {
+        DEVICE_UNITS: None,
+    },
+    SZ_EXHAUST_TEMPERATURE: {
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    SZ_FAN_INFO: {
+        DEVICE_UNITS: None,
+    },
+    SZ_INDOOR_HUMIDITY: {
+        DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    SZ_INDOOR_TEMPERATURE: {
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    SZ_OUTDOOR_HUMIDITY: {
+        DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    SZ_OUTDOOR_TEMPERATURE: {
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
+    SZ_POST_HEAT: {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    SZ_PRE_HEAT: {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    SZ_REMAINING_TIME: {
+        DEVICE_UNITS: TIME_MINUTES,
+    },
+    SZ_SPEED_CAP: {
+        DEVICE_UNITS: "units",
+    },
+    SZ_SUPPLY_FAN_SPEED: {
+        DEVICE_UNITS: PERCENTAGE,
+    },
+    SZ_SUPPLY_FLOW: {
+        DEVICE_UNITS: None,
+    },
+    SZ_SUPPLY_TEMPERATURE: {
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+        DEVICE_UNITS: TEMP_CELSIUS,
+    },
 }
+
+SENSOR_ATTRS = SENSOR_ATTRS_HEAT | SENSOR_ATTRS_HVAC
