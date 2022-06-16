@@ -21,11 +21,11 @@ from ramses_rf.protocol.schema import (
     SERIAL_PORT,
 )
 from ramses_rf.schema import (
-    CONFIG_SCHEMA,
-    EVOFW_FLAG,
-    DEV_REGEX_ANY,
-    PACKET_LOG,
     _SCHEMA_DEV,
+    CONFIG_SCHEMA,
+    DEV_REGEX_ANY,
+    EVOFW_FLAG,
+    PACKET_LOG,
     SERIAL_CONFIG,
     SERIAL_CONFIG_SCHEMA,
     SZ_BLOCK_LIST,

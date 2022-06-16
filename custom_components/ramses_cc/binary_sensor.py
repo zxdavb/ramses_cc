@@ -51,9 +51,7 @@ async def async_setup_platform(
     ]
 
     systems = [
-        v.get(ENTITY_CLASS, EvoBinarySensor)(
-            hass.data[DOMAIN][BROKER], ctl.tcs, k, **v
-        )
+        v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], ctl.tcs, k, **v)
         for ctl in discovery_info.get("devices", [])
         for k, v in BINARY_SENSOR_ATTRS["systems"].items()
         if hasattr(ctl, "_tcs") and hasattr(ctl.tcs, k)
