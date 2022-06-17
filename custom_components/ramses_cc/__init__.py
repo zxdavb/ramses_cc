@@ -88,11 +88,11 @@ async def async_setup(
     broker = EvoBroker(hass, client, store, hass_config)
     hass.data[DOMAIN] = {BROKER: broker}
 
-    if hass_config[DOMAIN][CONF_RESTORE_CACHE]:  # TODO: move this out of setup()
+    if hass_config[DOMAIN][CONF_RESTORE_CACHE]:  # TODO: move this out of setup?
         _LOGGER.debug("Restoring the client state (packets)...")
         await broker.async_load_client_state(app_storage)
 
-    _LOGGER.debug("Starting the RF monitor...")
+    _LOGGER.debug("Starting the RF monitor...")  # TODO: move this out of setup?
     broker.loop_task = hass.loop.create_task(async_handle_exceptions(client.start()))
 
     hass.helpers.event.async_track_time_interval(
@@ -209,21 +209,20 @@ class EvoBroker:
         self._store = store
         self.hass_config = config
         self.config = config[DOMAIN]
-
         self.status = None
 
-        self.binary_sensors = []
-        self.climates = []
-        self.water_heater = None
-        self.sensors = []
-        self.services = {}
+        self._services = {}
 
         self.loop_task = None
         self._last_update = dt.min
 
-        self._hgi = None
-        self._devices = []
-        self._domains = []
+        self._hgi = None  # HGI, is distinct from devices (has no intrinsic sensors)
+        self._devices = []  # TRVs, FANs, OTBs, CTLs, CO2s, etc.
+        self._domains = []  # TCS, DHW, Zones
+        self._tcs = None
+        self._dhw = None
+        self._zones = []
+
         self._lock = Lock()
 
     @staticmethod
@@ -246,73 +245,68 @@ class EvoBroker:
         )
 
     @callback
-    def new_domains(self) -> bool:
-        tcs = self.client.tcs
-        if tcs is None:
-            _LOGGER.info("Schema = %s", {})
+    def new_heat_entities(self) -> bool:
+        """Discover & instantite Climate & WaterHeater entities."""
+
+        if self.client.tcs is None:  # assumes the primary TCS is the only TCS
+            _LOGGER.info("GWY Schema = %s", self.client.schema)
             return False
-
-        save_updated_schema = False
-        new_domains = [z for z in tcs.zones if z not in self.climates]
-        if new_domains:
-            self.hass.async_create_task(
-                async_load_platform(
-                    self.hass, Platform.CLIMATE, DOMAIN, {}, self.hass_config
-                )
-            )
-            # new_domains = {"new_domains": new_domains + [self.client.tcs]}
-            # self.hass.async_create_task(
-            #     async_load_platform(self.hass, Platform.SENSOR, DOMAIN, new_domains, self.config)
-            # )
-            save_updated_schema = True
-
-        if tcs.dhw and self.water_heater is None:
-            self.hass.async_create_task(
-                async_load_platform(
-                    self.hass, Platform.WATER_HEATER, DOMAIN, {}, self.hass_config
-                )
-            )
-            save_updated_schema = True
-
-        _LOGGER.info("Schema = %s", tcs.schema)
-        _LOGGER.info("Params = %s", tcs.params)
-        _LOGGER.info(
-            "Status = %s", {k: v for k, v in tcs.status.items() if k != "devices"}
-        )
-        return save_updated_schema
-
-    @callback
-    def new_devices(self) -> bool:
 
         discovery_info = {}
 
-        if self._hgi is None and self.client.hgi:
+        if not self._tcs:
+            discovery_info["tcs"] = self._tcs = self.client.tcs
+
+        if self.client.tcs.dhw and self._dhw is None:
+            discovery_info["dhw"] = self._dhw = self.client.tcs.dhw
+
+        if new_zones := [z for z in self.client.tcs.zones if z not in self._zones]:
+            discovery_info["zones"] = new_zones
+            self._zones.extend(new_zones)
+
+        if discovery_info:
+            for platform in (Platform.CLIMATE, Platform.WATER_HEATER):
+                self.hass.async_create_task(
+                    async_load_platform(
+                        self.hass, platform, DOMAIN, discovery_info, self.hass_config
+                    )
+                )
+
+        _LOGGER.info("TCS Schema = %s", self.client.tcs.schema)
+        _LOGGER.info("TCS Params = %s", self.client.tcs.params)
+        _LOGGER.info("TCS Status = %s", self.client.tcs.status)
+
+        return bool(discovery_info)
+
+    @callback
+    def new_sensors(self) -> bool:
+        """Discover & instantiate Sensor and BinarySensor entities."""
+
+        discovery_info = {}
+
+        if not self._hgi and self.client.hgi:  # TODO: check HGI is added as a device
             discovery_info["gateway"] = self._hgi = self.client.hgi
 
-        new_devices = [
-            d
-            for d in self.client.devices
-            if d not in self._devices
-            and (
-                self.client.config.enforce_known_list
-                and d.id in self.client._include
-                or d.id not in self.client._exclude
-            )
-        ]
+        new_devices = [d for d in self.client.devices if d not in self._devices]
+        assert not self.client.config.enforce_known_list or not [
+            d.id in self.client._include or d.id not in self.client._exclude
+            for d in new_devices
+        ], "Something went wrong with the filters"  # TODO: remove me
 
         if new_devices:
             discovery_info["devices"] = new_devices
             self._devices.extend(new_devices)
 
-        new_domains = []
-        if self.client.tcs:
+        if self.client.tcs:  # assumes the primary TCS is the only TCS
             new_domains = [d for d in self.client.tcs.zones if d not in self._domains]
             if self.client.tcs not in self._domains:
                 new_domains.append(self.client.tcs)
+            if self.client.tcs.dhw not in self._domains:  # TODO: confirm is needed?
+                new_domains.append(self.client.tcs.dhw)
 
-        if new_domains:
-            discovery_info["domains"] = new_domains
-            self._domains.extend(new_domains)
+            if new_domains:
+                discovery_info["domains"] = new_domains
+                self._domains.extend(new_domains)
 
         if discovery_info:
             for platform in (Platform.BINARY_SENSOR, Platform.SENSOR):
@@ -322,7 +316,7 @@ class EvoBroker:
                     )
                 )
 
-        _LOGGER.info("Devices = %s", [d.id for d in self._devices])
+        _LOGGER.info("GWY Devices = %s", [d.id for d in self._devices])
         return bool(new_devices or new_domains)
 
     async def async_update(self, *args, **kwargs) -> None:
@@ -334,10 +328,10 @@ class EvoBroker:
         if self._last_update < dt_now - td(seconds=10):
             self._last_update = dt_now
 
-            new_domains = self.new_domains()
-            new_devices = self.new_devices()
+            new_entitys = self.new_heat_entities()
+            new_devices = self.new_sensors()
 
-            if new_domains or new_devices:
+            if new_entitys or new_devices:
                 self.hass.helpers.event.async_call_later(
                     5, self.async_save_client_state
                 )

@@ -117,27 +117,25 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
-    """Create the TCS Controller, and its Zones, if any."""
+    """Create the TCS Controller and its Zones, if any."""
     if discovery_info is None:
         return
 
     broker = hass.data[DOMAIN][BROKER]
     new_entities = []
 
-    if broker.client.tcs not in broker.climates:
-        new_entities.append(EvoController(broker, broker.client.tcs))
-        broker.climates.append(broker.client.tcs)
+    if tcs := discovery_info.get("tcs"):
+        new_entities.append(EvoController(broker, tcs))
 
-    for zone in [z for z in broker.client.tcs.zones if z not in broker.climates]:
+    for zone in [z for z in discovery_info.get("zones", [])]:
         new_entities.append(EvoZone(broker, zone))
-        broker.climates.append(zone)
 
     if new_entities:
         async_add_entities(new_entities)
 
-    if broker.services.get(PLATFORM):
+    if broker._services.get(PLATFORM):
         return
-    broker.services[PLATFORM] = True
+    broker._services[PLATFORM] = True
 
     register_svc = current_platform.get().async_register_entity_service
     [register_svc(k, v, f"svc_{k}") for k, v in CLIMATE_SERVICES.items()]

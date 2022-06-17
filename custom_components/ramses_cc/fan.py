@@ -6,33 +6,16 @@
 Provides support for climate entities.
 """
 import logging
-from datetime import datetime as dt
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from homeassistant.components.fan import DOMAIN as PLATFORM
 from homeassistant.components.fan import FanEntity
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import EvoZoneBase
-from .const import (
-    ATTR_SETPOINT,
-    BROKER,
-    DATA,
-    DOMAIN,
-    SERVICE,
-    UNIQUE_ID,
-    SystemMode,
-    ZoneMode,
-)
-from .schema import (
-    CLIMATE_SERVICES,
-    CONF_MODE,
-    CONF_SYSTEM_MODE,
-    SVC_RESET_SYSTEM_MODE,
-    SVC_SET_SYSTEM_MODE,
-)
+from .const import BROKER, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,9 +41,9 @@ async def async_setup_platform(
     if new_entities:
         async_add_entities(new_entities)
 
-    if broker.services.get(PLATFORM):
+    if broker._services.get(PLATFORM):
         return
-    broker.services[PLATFORM] = True
+    broker._services[PLATFORM] = True
 
 
 class RamsesFan(EvoZoneBase, FanEntity):

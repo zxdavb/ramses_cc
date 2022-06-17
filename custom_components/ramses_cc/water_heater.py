@@ -73,13 +73,18 @@ async def async_setup_platform(
         return
 
     broker = hass.data[DOMAIN][BROKER]
-    dhw = broker.water_heater = broker.client.tcs.dhw
 
-    async_add_entities([EvoDHW(broker, dhw)])
-
-    if broker.services.get(PLATFORM):
+    if not discovery_info.get("dhw"):
         return
-    broker.services[PLATFORM] = True
+
+    async_add_entities([EvoDHW(broker, discovery_info["dhw"])])
+
+    if broker._services.get(PLATFORM):
+        return
+    broker._services[PLATFORM] = True
+
+    # register_svc = current_platform.get().async_register_entity_service
+    # [register_svc(k, v, f"svc_{k}") for k, v in CLIMATE_SERVICES.items()]
 
 
 class EvoDHW(EvoZoneBase, WaterHeaterEntity):

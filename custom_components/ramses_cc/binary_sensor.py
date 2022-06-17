@@ -31,47 +31,39 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
-    """Set up the binary sensor entities."""
+    """Set up the binary sensor entities.
+
+    discovery_info keys:
+      gateway: is the ramses_rf protocol stack (gateway/protocol/transport/serial)
+      devices: heat (e.g. CTL, OTB, BDR, TRV) or hvac (e.g. FAN, CO2, SWI)
+      domains: TCS, DHW and Zones
+    """
 
     if discovery_info is None:
         return
 
-    devices = [
-        v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], device, k, **v)
-        for device in discovery_info.get("devices", [])
-        for k, v in BINARY_SENSOR_ATTRS["devices"].items()
-        if hasattr(device, k)
-    ]
+    broker = hass.data[DOMAIN][BROKER]
 
-    domains = [
-        v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], domain, k, **v)
-        for domain in discovery_info.get("domains", [])
-        for k, v in BINARY_SENSOR_ATTRS["devices"].items()
-        if k == "window_open" and hasattr(domain, k)
+    new_sensors = [
+        v.get(ENTITY_CLASS)(broker, device, k, **v)
+        for k, v in BINARY_SENSOR_ATTRS["gateway"].items()
+        if (device := discovery_info.get("gateway"))
     ]
-
-    systems = [
-        v.get(ENTITY_CLASS, EvoBinarySensor)(hass.data[DOMAIN][BROKER], ctl.tcs, k, **v)
-        for ctl in discovery_info.get("devices", [])
+    new_sensors += [
+        v.get(ENTITY_CLASS, EvoBinarySensor)(broker, attr, k, **v)
+        for key in ("devices", "domains")
+        for attr in discovery_info.get(key, [])
+        for k, v in BINARY_SENSOR_ATTRS[key].items()
+        if hasattr(attr, k)
+    ]
+    new_sensors += [
+        v.get(ENTITY_CLASS)(broker, tcs, k, **v)
+        for tcs in discovery_info.get("domains", [])
         for k, v in BINARY_SENSOR_ATTRS["systems"].items()
-        if hasattr(ctl, "_tcs") and hasattr(ctl.tcs, k)
+        if getattr(tcs, "tcs") is tcs
     ]
 
-    gateway = (
-        []
-        if not discovery_info.get("gateway")
-        else [
-            EvoGateway(
-                hass.data[DOMAIN][BROKER],
-                discovery_info["gateway"],
-                None,
-                attr_name="gateway",
-                device_class=BinarySensorDeviceClass.PROBLEM,
-            )
-        ]
-    )
-
-    async_add_entities(devices + domains + systems + gateway)
+    async_add_entities(new_sensors)
 
 
 class EvoBinarySensor(EvoDeviceBase, BinarySensorEntity):
@@ -208,7 +200,9 @@ class EvoGateway(EvoBinarySensor):
             "config": {"enforce_known_list": gwy.config.enforce_known_list},
             "known_list": [{k: shrink(v)} for k, v in gwy._include.items()],
             "block_list": [{k: shrink(v)} for k, v in gwy._exclude.items()],
-            "other_list": sorted(gwy.pkt_protocol._unwanted),
+            "other_list": sorted(
+                d for d in gwy.pkt_protocol._unwanted if d not in gwy._exclude
+            ),
             "_is_evofw3": gwy.pkt_protocol._hgi80["is_evofw3"],
         }
 
@@ -224,16 +218,7 @@ ENTITY_CLASS = "entity_class"
 STATE_ICONS = "state_icons"  # TBA
 
 BINARY_SENSOR_ATTRS = {
-    "systems": {
-        "active_fault": {
-            ENTITY_CLASS: EvoFaultLog,
-            DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
-        },  # CTL
-        "schema": {
-            ENTITY_CLASS: EvoSystem,
-        },  # CTL
-    },
-    "devices": {
+    "devices": {  # the devices
         # Special projects
         "bit_2_4": {},
         "bit_2_5": {},
@@ -251,9 +236,6 @@ BINARY_SENSOR_ATTRS = {
             ENTITY_CLASS: EvoActuator,
             STATE_ICONS: ("mdi:electric-switch-closed", "mdi:electric-switch"),
         },
-        "window_open": {
-            DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
-        },
         "ch_active": {
             STATE_ICONS: ("mdi:circle-outline", "mdi:fire-circle"),
         },
@@ -270,9 +252,24 @@ BINARY_SENSOR_ATTRS = {
         "bit_3_7": {},
         "bit_6_6": {},
     },
-    "domains": {
+    "domains": {  # the non-devices: TCS, DHW, & Zones
         "window_open": {
             DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
+        },
+    },
+    "systems": {  # the TCS specials (faults, schedule & schema)
+        "active_fault": {
+            ENTITY_CLASS: EvoFaultLog,
+            DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
+        },
+        "schema": {
+            ENTITY_CLASS: EvoSystem,
+        },
+    },
+    "gateway": {  # the gateway (not the HGI, which is a device)
+        "status": {
+            ENTITY_CLASS: EvoGateway,
+            DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
         },
     },
 }

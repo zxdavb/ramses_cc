@@ -71,35 +71,39 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
-    """Set up the sensor entities."""
+    """Set up the sensor entities.
+
+    discovery_info keys:
+      gateway: is the ramses_rf protocol stack (gateway/protocol/transport/serial)
+      devices: heat (e.g. CTL, OTB, BDR, TRV) or hvac (e.g. FAN, CO2, SWI)
+      domains: TCS, DHW and Zones
+    """
 
     if discovery_info is None:
         return
 
-    devices = [
-        v.get(ENTITY_CLASS, EvoSensor)(hass.data[DOMAIN][BROKER], device, k, **v)
+    broker = hass.data[DOMAIN][BROKER]
+
+    new_sensors = [
+        v.get(ENTITY_CLASS, EvoSensor)(broker, device, k, **v)
         for device in discovery_info.get("devices", [])
         for k, v in SENSOR_ATTRS.items()
         if hasattr(device, k)
     ]  # and (not device._is_faked or device["fakable"])
-
-    devices += [
-        v.get(ENTITY_CLASS, EvoSensor)(
-            hass.data[DOMAIN][BROKER], device, f"{k}_ot", **v
-        )
+    new_sensors += [
+        v.get(ENTITY_CLASS, EvoSensor)(broker, device, f"{k}_ot", **v)
         for device in discovery_info.get("devices", [])
         for k, v in SENSOR_ATTRS_HEAT.items()
         if device._SLUG == "OTB" and hasattr(device, f"{k}_ot")
     ]
-
-    domains = [
-        v.get(ENTITY_CLASS, EvoSensor)(hass.data[DOMAIN][BROKER], domain, k, **v)
+    new_sensors += [
+        v.get(ENTITY_CLASS, EvoSensor)(broker, domain, k, **v)
         for domain in discovery_info.get("domains", [])
         for k, v in SENSOR_ATTRS_HEAT.items()
         if k == "heat_demand" and hasattr(domain, k)
     ]
 
-    async_add_entities(devices + domains)
+    async_add_entities(new_sensors)
 
 
 class EvoSensor(EvoDeviceBase, SensorEntity):
