@@ -16,6 +16,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import EvoZoneBase
 from .const import BROKER, DOMAIN
+from .helpers import migrate_to_ramses_rf
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,13 +28,18 @@ async def async_setup_platform(
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
     """Create the HVAC devices, if any."""
+
+    def entity_factory(entity_class, broker, device):
+        migrate_to_ramses_rf(hass, "fan", f"{device.id}")
+        return entity_class(broker, device)
+
     if discovery_info is None:
         return
 
     broker = hass.data[DOMAIN][BROKER]
 
     new_entities = [
-        RamsesFan(hass.data[DOMAIN][BROKER], device)
+        entity_factory(RamsesFan, broker, device)
         for device in discovery_info.get("devices", [])
         if hasattr(device, "fan_rate")
     ]

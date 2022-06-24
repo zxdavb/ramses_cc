@@ -50,6 +50,7 @@ from ramses_rf.protocol.const import (
 
 from . import EvoDeviceBase
 from .const import ATTR_SETPOINT, BROKER, DOMAIN, VOLUME_FLOW_RATE_LITERS_PER_MINUTE
+from .helpers import migrate_to_ramses_rf
 
 SENSOR_KEY_TEMPERATURE = "temperature"
 
@@ -79,25 +80,29 @@ async def async_setup_platform(
       domains: TCS, DHW and Zones
     """
 
+    def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
+        migrate_to_ramses_rf(hass, "sensor", f"{device.id}-{attr}")
+        return (entity_class or EvoSensor)(broker, device, attr, **kwargs)
+
     if discovery_info is None:
         return
 
     broker = hass.data[DOMAIN][BROKER]
 
     new_sensors = [
-        v.get(ENTITY_CLASS, EvoSensor)(broker, device, k, **v)
+        entity_factory(broker, device, k, **v)
         for device in discovery_info.get("devices", [])
         for k, v in SENSOR_ATTRS.items()
         if hasattr(device, k)
     ]  # and (not device._is_faked or device["fakable"])
     new_sensors += [
-        v.get(ENTITY_CLASS, EvoSensor)(broker, device, f"{k}_ot", **v)
+        entity_factory(broker, device, f"{k}_ot", **v)
         for device in discovery_info.get("devices", [])
         for k, v in SENSOR_ATTRS_HEAT.items()
         if device._SLUG == "OTB" and hasattr(device, f"{k}_ot")
     ]
     new_sensors += [
-        v.get(ENTITY_CLASS, EvoSensor)(broker, domain, k, **v)
+        entity_factory(broker, domain, k, **v)
         for domain in discovery_info.get("domains", [])
         for k, v in SENSOR_ATTRS_HEAT.items()
         if k == "heat_demand" and hasattr(domain, k)

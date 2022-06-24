@@ -21,6 +21,8 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import EvoDeviceBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
+from .helpers import migrate_to_ramses_rf
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,25 +41,29 @@ async def async_setup_platform(
       domains: TCS, DHW and Zones
     """
 
+    def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
+        migrate_to_ramses_rf(hass, "binary_sensor", f"{device.id}-{attr}")
+        return (entity_class or EvoBinarySensor)(broker, device, attr, **kwargs)
+
     if discovery_info is None:
         return
 
     broker = hass.data[DOMAIN][BROKER]
 
     new_sensors = [
-        v.get(ENTITY_CLASS)(broker, device, k, **v)
+        entity_factory(broker, device, k, **v)
         for k, v in BINARY_SENSOR_ATTRS["gateway"].items()
         if (device := discovery_info.get("gateway"))
     ]
     new_sensors += [
-        v.get(ENTITY_CLASS, EvoBinarySensor)(broker, attr, k, **v)
+        entity_factory(broker, attr, k, **v)
         for key in ("devices", "domains")
         for attr in discovery_info.get(key, [])
         for k, v in BINARY_SENSOR_ATTRS[key].items()
         if hasattr(attr, k)
     ]
     new_sensors += [
-        v.get(ENTITY_CLASS)(broker, tcs, k, **v)
+        entity_factory(broker, tcs, k, **v)
         for tcs in discovery_info.get("domains", [])
         for k, v in BINARY_SENSOR_ATTRS["systems"].items()
         if getattr(tcs, "tcs") is tcs

@@ -49,6 +49,7 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
+from .helpers import migrate_to_ramses_rf
 from .schema import (
     CLIMATE_SERVICES,
     CONF_MODE,
@@ -118,6 +119,11 @@ async def async_setup_platform(
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
     """Create the TCS Controller and its Zones, if any."""
+
+    def entity_factory(entity_class, broker, device):
+        migrate_to_ramses_rf(hass, "climate", f"{device.id}")
+        return entity_class(broker, device)
+
     if discovery_info is None:
         return
 
@@ -125,10 +131,10 @@ async def async_setup_platform(
     new_entities = []
 
     if tcs := discovery_info.get("tcs"):
-        new_entities.append(EvoController(broker, tcs))
+        new_entities.append(entity_factory(EvoController, broker, tcs))
 
     for zone in [z for z in discovery_info.get("zones", [])]:
-        new_entities.append(EvoZone(broker, zone))
+        new_entities.append(entity_factory(EvoZone, broker, zone))
 
     if new_entities:
         async_add_entities(new_entities)
@@ -145,11 +151,10 @@ class EvoZone(EvoZoneBase, ClimateEntity):
     """Base for a Honeywell TCS Zone."""
 
     def __init__(self, broker, device) -> None:
-        """Initialize a Zone."""
+        """Initialize a TCS Zone."""
         _LOGGER.info("Found a Zone: %r", device)
         super().__init__(broker, device)
 
-        self._unique_id = device.id
         self._icon = "mdi:radiator"
         self._hvac_modes = list(MODE_TO_ZONE)
         self._preset_modes = list(PRESET_TO_ZONE)
@@ -301,11 +306,10 @@ class EvoController(EvoZoneBase, ClimateEntity):
     """Base for a Honeywell Controller/Location."""
 
     def __init__(self, broker, device) -> None:
-        """Initialize a Controller."""
+        """Initialize a TCS Controller."""
         _LOGGER.info("Found a Controller: %r", device)
         super().__init__(broker, device)
 
-        self._unique_id = device.id
         self._icon = "mdi:thermostat"
         self._hvac_modes = list(MODE_TO_TCS)
         self._preset_modes = list(PRESET_TO_TCS)

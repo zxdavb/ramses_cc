@@ -485,6 +485,8 @@ class EvoZoneBase(EvoEntity):
         """Initialize the sensor."""
         super().__init__(broker, device)
 
+        self._unique_id = device.id
+
         self._hvac_modes = None
         self._preset_modes = None
         self._supported_features = None

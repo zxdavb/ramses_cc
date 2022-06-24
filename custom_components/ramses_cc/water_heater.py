@@ -30,6 +30,7 @@ from ramses_rf.systems import StoredHw
 
 from . import EvoZoneBase
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
+from .helpers import migrate_to_ramses_rf
 from .schema import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE
 
 _LOGGER = logging.getLogger(__name__)
@@ -69,6 +70,11 @@ async def async_setup_platform(
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
     """Create a DHW controller."""
+
+    def entity_factory(entity_class, broker, device):
+        migrate_to_ramses_rf(hass, "water_heater", f"{device.id}")
+        return entity_class(broker, device)
+
     if discovery_info is None:
         return
 
@@ -77,7 +83,7 @@ async def async_setup_platform(
     if not discovery_info.get("dhw"):
         return
 
-    async_add_entities([EvoDHW(broker, discovery_info["dhw"])])
+    async_add_entities([entity_factory(EvoDHW, broker, discovery_info["dhw"])])
 
     if broker._services.get(PLATFORM):
         return
@@ -95,7 +101,6 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
         _LOGGER.info("Found a DHW controller: %s", device)  # TODO: info
         super().__init__(broker, device)
 
-        self._unique_id = device.id
         # self._icon = "mdi:thermometer-lines"
         self._operation_list = list(MODE_HA_TO_EVO)
 
