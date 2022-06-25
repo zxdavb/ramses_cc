@@ -1,0 +1,13 @@
+{
+    "domain": "evohome_cc",
+    "name": "RAMSES RF",
+    "documentation": "https://github.com/zxdavb/ramses_cc",
+    "requirements": [
+      "ramses-rf==0.18.8",
+      "pyserial-asyncio==0.5"
+    ],
+    "dependencies": [],
+    "issue_tracker": "https://github.com/zxdavb/ramses_cc/issues",
+    "codeowners": ["@zxdavb"],
+    "version": "0.0.1"
+  }
