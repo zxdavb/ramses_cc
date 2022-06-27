@@ -288,10 +288,6 @@ class EvoBroker:
             discovery_info["gateway"] = self._hgi = self.client.hgi
 
         new_devices = [d for d in self.client.devices if d not in self._devices]
-        assert not self.client.config.enforce_known_list or not [
-            d.id in self.client._include or d.id not in self.client._exclude
-            for d in new_devices
-        ], "Something went wrong with the filters"  # TODO: remove me
 
         if new_devices:
             discovery_info["devices"] = new_devices
