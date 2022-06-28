@@ -39,11 +39,12 @@ from .schema import CONFIG_SCHEMA  # noqa: F401
 from .schema import (
     ADVANCED_FEATURES,
     CONF_RESTORE_CACHE,
+    CONF_RESTORE_STATE,
     DOMAIN_SERVICES,
     MESSAGE_EVENTS,
     SVC_SEND_PACKET,
     WATER_HEATER_SERVICES,
-    normalise_config_schema,
+    normalise_hass_config,
 )
 from .version import __version__ as VERSION
 
@@ -72,36 +73,39 @@ async def async_setup(
             _LOGGER.exception("There is a problem with the serial port: %s", exc)
             raise exc
 
-    _LOGGER.debug(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
+    _LOGGER.info(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
+
+    _LOGGER.debug("\r\n\nConfig = %s\r\n", hass_config[DOMAIN])
 
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
     app_storage = await EvoBroker.async_load_store(store)
 
-    if hass_config[DOMAIN][CONF_RESTORE_CACHE]:
-        _LOGGER.debug("Restoring the client state (schema)...")
+    _LOGGER.debug("\r\n\nStore = %s\r\n", store)
 
-    serial_port, config, schema = normalise_config_schema(
+    serial_port, config, schema = normalise_hass_config(
         hass_config[DOMAIN], app_storage
-    )
+    )  # modifies hass_config[DOMAIN]
 
     client = ramses_rf.Gateway(serial_port, loop=hass.loop, **config, **schema)
     broker = EvoBroker(hass, client, store, hass_config)
     hass.data[DOMAIN] = {BROKER: broker}
 
-    if hass_config[DOMAIN][CONF_RESTORE_CACHE]:  # TODO: move this out of setup?
-        _LOGGER.debug("Restoring the client state (packets)...")
+    if hass_config[DOMAIN][CONF_RESTORE_CACHE][
+        CONF_RESTORE_STATE
+    ]:  # TODO: move this out of setup?
         await broker.async_load_client_state(app_storage)
 
     _LOGGER.debug("Starting the RF monitor...")  # TODO: move this out of setup?
     broker.loop_task = hass.loop.create_task(async_handle_exceptions(client.start()))
 
+    # TODO: all this scheduling needs sorting out
     hass.helpers.event.async_track_time_interval(
         broker.async_save_client_state, SAVE_STATE_INTERVAL
     )
     hass.helpers.event.async_track_time_interval(
         broker.async_update, hass_config[DOMAIN][CONF_SCAN_INTERVAL]
     )
-    # hass.helpers.event.async_call_later(30, broker.async_update)
+    hass.helpers.event.async_call_later(15, broker.async_update)  # HACK: to remove
 
     register_service_functions(hass, broker)
     register_trigger_events(hass, broker)
@@ -233,12 +237,14 @@ class EvoBroker:
 
     async def async_load_client_state(self, app_storage) -> None:
         """Restore the client state from the app store."""
+        _LOGGER.info("Restoring the client state cache, (packets only)...")
         # app_storage = await self.async_load_store(self._store)
         if client_state := app_storage.get("client_state"):
             await self.client._set_state(packets=client_state["packets"])
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
         """Save the client state to the app store"""
+        _LOGGER.info("Saving the client state cache (packets, schema)...")
         (schema, packets) = self.client._get_state()
         await self._store.async_save(
             {"client_state": {"schema": schema, "packets": packets}}
@@ -246,10 +252,10 @@ class EvoBroker:
 
     @callback
     def new_heat_entities(self) -> bool:
-        """Discover & instantite Climate & WaterHeater entities."""
+        """Discover & instantiate Climate & WaterHeater entities."""
 
         if self.client.tcs is None:  # assumes the primary TCS is the only TCS
-            _LOGGER.info("GWY Schema = %s", self.client.schema)
+            _LOGGER.debug("GWY Schema = %s", self.client.schema)
             return False
 
         discovery_info = {}
@@ -272,9 +278,9 @@ class EvoBroker:
                     )
                 )
 
-        _LOGGER.info("TCS Schema = %s", self.client.tcs.schema)
-        _LOGGER.info("TCS Params = %s", self.client.tcs.params)
-        _LOGGER.info("TCS Status = %s", self.client.tcs.status)
+        _LOGGER.debug("TCS Schema = %s", self.client.tcs.schema)
+        _LOGGER.debug("TCS Params = %s", self.client.tcs.params)
+        _LOGGER.debug("TCS Status = %s", self.client.tcs.status)
 
         return bool(discovery_info)
 
@@ -312,7 +318,7 @@ class EvoBroker:
                     )
                 )
 
-        _LOGGER.info("GWY Devices = %s", [d.id for d in self._devices])
+        _LOGGER.debug("GWY Devices = %s", [d.id for d in self._devices])
         return bool(new_devices or new_domains)
 
     async def async_update(self, *args, **kwargs) -> None:
