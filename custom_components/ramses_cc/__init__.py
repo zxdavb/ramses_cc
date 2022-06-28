@@ -237,7 +237,7 @@ class EvoBroker:
 
     async def async_load_client_state(self, app_storage) -> None:
         """Restore the client state from the app store."""
-        _LOGGER.info("Restoring the client state cache, (packets only)...")
+        _LOGGER.info("Restoring the client state cache (packets only)...")
         # app_storage = await self.async_load_store(self._store)
         if client_state := app_storage.get("client_state"):
             await self.client._set_state(packets=client_state["packets"])
