@@ -98,7 +98,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
 
     def __init__(self, broker, device) -> None:
         """Initialize an TCS DHW controller."""
-        _LOGGER.info("Found a DHW controller: %s", device)  # TODO: info
+        _LOGGER.info("Found a DHW controller: %s", device)
         super().__init__(broker, device)
 
         # self._icon = "mdi:thermometer-lines"
