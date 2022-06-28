@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import EvoZoneBase
+from . import EvoEntity
 from .const import BROKER, DOMAIN
 from .helpers import migrate_to_ramses_rf
 
@@ -23,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_platform(
     hass: HomeAssistant,
-    config: ConfigType,
+    _: ConfigType,
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
@@ -52,8 +52,8 @@ async def async_setup_platform(
     broker._services[PLATFORM] = True
 
 
-class RamsesFan(EvoZoneBase, FanEntity):
-    """Base for a Honeywell TCS Zone."""
+class RamsesFan(EvoEntity, FanEntity):
+    """Base for a HVAC FAN."""
 
     def __init__(self, broker, device) -> None:
         """Initialize a Zone."""

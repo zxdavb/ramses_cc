@@ -23,13 +23,12 @@ from . import EvoDeviceBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
 from .helpers import migrate_to_ramses_rf
 
-
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
     hass: HomeAssistant,
-    config: ConfigType,
+    _: ConfigType,
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
@@ -54,7 +53,7 @@ async def async_setup_platform(
         entity_factory(broker, device, k, **v)
         for k, v in BINARY_SENSOR_ATTRS["gateway"].items()
         if (device := discovery_info.get("gateway"))
-    ]
+    ]  # 18:xxxxxx - status
     new_sensors += [
         entity_factory(broker, attr, k, **v)
         for key in ("devices", "domains")
@@ -67,7 +66,7 @@ async def async_setup_platform(
         for tcs in discovery_info.get("domains", [])
         for k, v in BINARY_SENSOR_ATTRS["systems"].items()
         if getattr(tcs, "tcs") is tcs
-    ]
+    ]  # 01:xxxxxx - active_fault, schema
 
     async_add_entities(new_sensors)
 

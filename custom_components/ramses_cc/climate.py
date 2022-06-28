@@ -114,7 +114,7 @@ PRESET_TO_ZONE = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
 
 async def async_setup_platform(
     hass: HomeAssistant,
-    config: ConfigType,
+    _: ConfigType,
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
