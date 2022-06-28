@@ -408,7 +408,8 @@ class EvoEntity(Entity):
             for a in self._entity_state_attrs
             if hasattr(self._device, a)
         }
-        attrs["controller_id"] = self._device.ctl.id if self._device.ctl else None
+        # TODO: use self._device._parent?
+        # attrs["controller_id"] = self._device.ctl.id if self._device.ctl else None
         return attrs
 
     async def async_added_to_hass(self) -> None:
