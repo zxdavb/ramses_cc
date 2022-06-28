@@ -90,7 +90,7 @@ class EvoBinarySensor(EvoDeviceBase, BinarySensorEntity):
         attr_name = attr_name or state_attr
         device_id = device_id or device.id
 
-        _LOGGER.info("Creating a Binary Sensor (%s) for %s", attr_name, device_id)
+        _LOGGER.info("Found a Binary Sensor for %s: %s", device_id, attr_name)
 
         super().__init__(
             broker,
