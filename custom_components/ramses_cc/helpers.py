@@ -7,10 +7,9 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 
 import logging
-from typing import Iterable
 
-from homeassistant.core import HomeAssistant, callback
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_registry import EntityRegistry, async_get
 
 from .const import DOMAIN as PLATFORM
@@ -34,9 +33,13 @@ def migrate_to_ramses_rf(hass: HomeAssistant, domain: str, unique_id: str):
         try:
             registry.async_update_entity_platform(entity_id, PLATFORM)
         except ValueError as exc:
-            _LOGGER.error(f"migrating {entity_id} ({unique_id}) to {PLATFORM} failed: {exc}")
+            _LOGGER.error(
+                f"migrating {entity_id} ({unique_id}) to {PLATFORM} failed: {exc}"
+            )
         else:
-            _LOGGER.warning(f"migrating {entity_id} ({unique_id}) to {PLATFORM}: success")
+            _LOGGER.warning(
+                f"migrating {entity_id} ({unique_id}) to {PLATFORM}: success"
+            )
 
     # if (
     #     state := hass.states.get(entity_id)
