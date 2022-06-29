@@ -50,16 +50,16 @@ async def async_setup_platform(
     broker = hass.data[DOMAIN][BROKER]
 
     new_sensors = [
-        entity_factory(broker, device, k, **v)
+        entity_factory(broker, dev, k, **v)
         for k, v in BINARY_SENSOR_ATTRS["gateway"].items()
-        if (device := discovery_info.get("gateway"))
+        if (dev := discovery_info.get("gateway"))
     ]  # 18:xxxxxx - status
     new_sensors += [
-        entity_factory(broker, attr, k, **v)
+        entity_factory(broker, dev, k, **v)
         for key in ("devices", "domains")
-        for attr in discovery_info.get(key, [])
+        for dev in discovery_info.get(key, [])
         for k, v in BINARY_SENSOR_ATTRS[key].items()
-        if hasattr(attr, k)
+        if hasattr(dev, k)
     ]
     new_sensors += [
         entity_factory(broker, tcs, k, **v)
@@ -229,6 +229,8 @@ BINARY_SENSOR_ATTRS = {
         "bit_2_5": {},
         "bit_2_6": {},
         "bit_2_7": {},
+        "bit_3_7": {},
+        "bit_6_6": {},
         "fault_present": {
             DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
         },  # OTB
@@ -254,8 +256,9 @@ BINARY_SENSOR_ATTRS = {
         "flame_active": {
             STATE_ICONS: ("mdi:circle-outline", "mdi:fire-circle"),
         },
-        "bit_3_7": {},
-        "bit_6_6": {},
+        "window_open": {
+            DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
+        },
     },
     "domains": {  # the non-devices: TCS, DHW, & Zones
         "window_open": {
