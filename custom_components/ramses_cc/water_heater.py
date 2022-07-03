@@ -161,7 +161,7 @@ class EvoDHW(EvoZoneBase, WaterHeaterEntity):
             return STATE_OFF
         try:
             return STATE_EVO_TO_HA[self._device.mode[CONF_ACTIVE]]
-        except TypeError:
+        except (KeyError, TypeError):
             return
 
     @property
