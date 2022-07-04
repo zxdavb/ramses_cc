@@ -7,14 +7,12 @@ Provides support for climate entities.
 """
 
 import logging
-from datetime import datetime as dt
 from typing import Any, Dict, Optional
 
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.core import callback
 
 from . import EvoZoneBase
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +23,7 @@ class RamsesHvac(EvoZoneBase, ClimateEntity):
     def __init__(self, broker, device) -> None:
         """Initialize a HVAC system."""
         _LOGGER.info("Found a HVAC system: %r", device)
-        
+
         super().__init__(broker, device)
 
         self._icon = "mdi:fan"

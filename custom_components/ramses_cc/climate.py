@@ -13,12 +13,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
+from .climate_heat import EvoController, EvoZone
+from .climate_hvac import RamsesHvac
 from .const import BROKER, DOMAIN
 from .helpers import migrate_to_ramses_rf
 from .schema import CLIMATE_SERVICES
-from .climate_heat import EvoController, EvoZone
-from .climate_hvac import RamsesHvac
-
 
 _LOGGER = logging.getLogger(__name__)
 
