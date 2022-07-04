@@ -299,6 +299,7 @@ class EvoBroker:
             discovery_info["devices"] = new_devices
             self._devices.extend(new_devices)
 
+        new_domains = []
         if self.client.tcs:  # assumes the primary TCS is the only TCS
             new_domains = [d for d in self.client.tcs.zones if d not in self._domains]
             if self.client.tcs not in self._domains:
@@ -308,9 +309,9 @@ class EvoBroker:
             # for domain in ("F9", "FA", "FC"):
             #     if f"{self.client.tcs}_{domain}" not in
 
-            if new_domains:
-                discovery_info["domains"] = new_domains
-                self._domains.extend(new_domains)
+        if new_domains:
+            discovery_info["domains"] = new_domains
+            self._domains.extend(new_domains)
 
         if discovery_info:
             for platform in (Platform.BINARY_SENSOR, Platform.SENSOR):
