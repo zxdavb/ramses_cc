@@ -59,13 +59,22 @@ async def async_setup_platform(
         for key in ("devices", "domains")
         for dev in discovery_info.get(key, [])
         for k, v in BINARY_SENSOR_ATTRS[key].items()
-        if hasattr(dev, k)
+        if dev and hasattr(dev, k)
     ]
+    # TODO: has a bug:
+    # Traceback (most recent call last):
+    # File "/usr/src/homeassistant/homeassistant/helpers/entity_platform.py", line 249, in _async_setup_platform
+    #     await asyncio.shield(task)
+    # File "/config/custom_components/ramses_cc/binary_sensor.py", line 64, in async_setup_platform
+    #     new_sensors += [
+    # File "/config/custom_components/ramses_cc/binary_sensor.py", line 68, in <listcomp>
+    #     if getattr(tcs, "tcs") is tcs
+    # AttributeError: 'NoneType' object has no attribute 'tcs'
     new_sensors += [
-        entity_factory(broker, tcs, k, **v)
-        for tcs in discovery_info.get("domains", [])
+        entity_factory(broker, dev, k, **v)
+        for dev in discovery_info.get("domains", [])  # not "devices"
         for k, v in BINARY_SENSOR_ATTRS["systems"].items()
-        if getattr(tcs, "tcs") is tcs
+        if dev and getattr(dev, "tcs") is dev  # HACK
     ]  # 01:xxxxxx - active_fault, schema
 
     async_add_entities(new_sensors)
