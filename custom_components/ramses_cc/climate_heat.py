@@ -24,20 +24,12 @@ from homeassistant.components.climate.const import (
     PRESET_NONE,
     SUPPORT_PRESET_MODE,
     SUPPORT_TARGET_TEMPERATURE,
-    ATTR_TEMPERATURE
 )
+from homeassistant.const import ATTR_TEMPERATURE
 from homeassistant.core import callback
 
 from . import EvoZoneBase
-from .const import (
-    ATTR_SETPOINT,
-    DATA,
-    SERVICE,
-    UNIQUE_ID,
-    SystemMode,
-    ZoneMode,
-)
-from .helpers import migrate_to_ramses_rf
+from .const import ATTR_SETPOINT, DATA, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
 from .schema import (
     CONF_MODE,
     CONF_SYSTEM_MODE,
