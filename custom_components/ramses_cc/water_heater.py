@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC.
+"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW (heat).
 
 Provides support for water_heater entities.
 """
