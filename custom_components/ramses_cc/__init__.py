@@ -303,8 +303,10 @@ class EvoBroker:
             new_domains = [d for d in self.client.tcs.zones if d not in self._domains]
             if self.client.tcs not in self._domains:
                 new_domains.append(self.client.tcs)
-            if self.client.tcs.dhw not in self._domains:  # TODO: confirm is needed?
+            if self.client.tcs.dhw and self.client.tcs.dhw not in self._domains:
                 new_domains.append(self.client.tcs.dhw)
+            # for domain in ("F9", "FA", "FC"):
+            #     if f"{self.client.tcs}_{domain}" not in
 
             if new_domains:
                 discovery_info["domains"] = new_domains
