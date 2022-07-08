@@ -3,4 +3,4 @@
 #
 """Support for Honeywell's RAMSES-II RF protocol, as used by TCS & others."""
 
-__version__ = "0.20.9"
+__version__ = "0.20.10"
