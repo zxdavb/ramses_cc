@@ -87,10 +87,12 @@ async def async_setup(
         hass_config[DOMAIN], app_storage
     )  # modifies hass_config[DOMAIN]
 
+    # any restore_schema is done here...
     client = ramses_rf.Gateway(serial_port, loop=hass.loop, **config, **schema)
     broker = EvoBroker(hass, client, store, hass_config)
     hass.data[DOMAIN] = {BROKER: broker}
 
+    # any restore_cache is done here...
     if hass_config[DOMAIN][SZ_RESTORE_CACHE][
         SZ_RESTORE_STATE
     ]:  # TODO: move this out of setup?

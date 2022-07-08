@@ -16,8 +16,7 @@ from ramses_rf.helpers import shrink
 from ramses_rf.protocol.schema import LOG_FILE_NAME, LOG_ROTATE_BYTES, LOG_ROTATE_COUNT
 from ramses_rf.protocol.schema import PORT_NAME as SZ_PORT_NAME
 from ramses_rf.protocol.schema import SERIAL_PORT as SZ_SERIAL_PORT
-from ramses_rf.schema import _SCHEMA_DEV as SCH_DEVICE
-from ramses_rf.schema import CONFIG_SCHEMA, DEV_REGEX_ANY
+from ramses_rf.schema import CONFIG_SCHEMA, DEV_REGEX_ANY, SCH_DEVICE
 from ramses_rf.schema import EVOFW_FLAG as SZ_EVOFW_FLAG
 from ramses_rf.schema import PACKET_LOG as SZ_PACKET_LOG
 from ramses_rf.schema import SERIAL_CONFIG as SZ_SERIAL_CONFIG
