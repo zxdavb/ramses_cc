@@ -13,25 +13,16 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from ramses_rf.const import SZ_DEVICE_ID
 from ramses_rf.helpers import shrink
-from ramses_rf.protocol.schema import (
-    LOG_FILE_NAME,
-    LOG_ROTATE_BYTES,
-    LOG_ROTATE_COUNT,
-    PORT_NAME,
-    SERIAL_PORT,
-)
-from ramses_rf.schema import (
-    _SCHEMA_DEV,
-    CONFIG_SCHEMA,
-    DEV_REGEX_ANY,
-    EVOFW_FLAG,
-    PACKET_LOG,
-    SERIAL_CONFIG,
-    SERIAL_CONFIG_SCHEMA,
-    SZ_BLOCK_LIST,
-    SZ_CONFIG,
-    SZ_KNOWN_LIST,
-)
+from ramses_rf.protocol.schema import LOG_FILE_NAME, LOG_ROTATE_BYTES, LOG_ROTATE_COUNT
+from ramses_rf.protocol.schema import PORT_NAME as SZ_PORT_NAME
+from ramses_rf.protocol.schema import SERIAL_PORT as SZ_SERIAL_PORT
+from ramses_rf.schema import _SCHEMA_DEV as SCH_DEVICE
+from ramses_rf.schema import CONFIG_SCHEMA, DEV_REGEX_ANY
+from ramses_rf.schema import EVOFW_FLAG as SZ_EVOFW_FLAG
+from ramses_rf.schema import PACKET_LOG as SZ_PACKET_LOG
+from ramses_rf.schema import SERIAL_CONFIG as SZ_SERIAL_CONFIG
+from ramses_rf.schema import SERIAL_CONFIG_SCHEMA as SCH_SERIAL_CONFIG
+from ramses_rf.schema import SZ_BLOCK_LIST, SZ_CONFIG, SZ_KNOWN_LIST
 
 from .const import DOMAIN, SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
 
@@ -60,7 +51,7 @@ CONF_OVERRUN = "overrun"
 SCAN_INTERVAL_DEFAULT = td(seconds=300)
 SCAN_INTERVAL_MINIMUM = td(seconds=1)
 
-PACKET_LOG_SCHEMA = vol.Schema(
+SCH_PACKET_LOG = vol.Schema(
     {
         vol.Required(LOG_FILE_NAME): str,
         vol.Optional(LOG_ROTATE_BYTES, default=None): vol.Any(None, int),
@@ -76,14 +67,14 @@ SVC_RESET_SYSTEM_MODE = "reset_system_mode"
 SVC_SEND_PACKET = "send_packet"
 SVC_SET_SYSTEM_MODE = "set_system_mode"
 
-FAKE_DEVICE_SCHEMA = vol.Schema(
+SCH_FAKE_DEVICE = vol.Schema(
     {
         vol.Required(SZ_DEVICE_ID): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
         vol.Optional("create_device", default=False): vol.Any(None, bool),
         vol.Optional("start_binding", default=False): vol.Any(None, bool),
     }
 )
-SEND_PACKET_SCHEMA = vol.Schema(
+SCH_SEND_PACKET = vol.Schema(
     {
         vol.Required(SZ_DEVICE_ID): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
         vol.Required("verb"): vol.In((" I", "I", "RQ", "RP", " W", "W")),
@@ -91,12 +82,12 @@ SEND_PACKET_SCHEMA = vol.Schema(
         vol.Required("payload"): vol.Match(r"^[0-9A-F]{1,48}$"),
     }
 )
-SET_SYSTEM_MODE_SCHEMA = vol.Schema(
+SCH_SYSTEM_MODE = vol.Schema(
     {
         vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),  # incl. DAY_OFF_ECO
     }
 )
-SET_SYSTEM_MODE_SCHEMA_HOURS = vol.Schema(
+SCH_SYSTEM_MODE_HOURS = vol.Schema(
     {
         vol.Required(CONF_MODE): vol.In([SystemMode.ECO_BOOST]),
         vol.Optional(CONF_DURATION, default=td(hours=1)): vol.All(
@@ -104,7 +95,7 @@ SET_SYSTEM_MODE_SCHEMA_HOURS = vol.Schema(
         ),
     }
 )
-SET_SYSTEM_MODE_SCHEMA_DAYS = vol.Schema(
+SCH_SYSTEM_MODE_DAYS = vol.Schema(
     {
         vol.Required(CONF_MODE): vol.In(
             [SystemMode.AWAY, SystemMode.CUSTOM, SystemMode.DAY_OFF]
@@ -114,16 +105,17 @@ SET_SYSTEM_MODE_SCHEMA_DAYS = vol.Schema(
         ),  # 0 means until the end of the day
     }
 )
-SET_SYSTEM_MODE_SCHEMA = vol.Any(
-    SET_SYSTEM_MODE_SCHEMA, SET_SYSTEM_MODE_SCHEMA_HOURS, SET_SYSTEM_MODE_SCHEMA_DAYS
-)
+SCH_SYSTEM_MODE = vol.Any(SCH_SYSTEM_MODE, SCH_SYSTEM_MODE_HOURS, SCH_SYSTEM_MODE_DAYS)
 
-DOMAIN_SERVICES = {
-    SVC_FAKE_DEVICE: FAKE_DEVICE_SCHEMA,
+SVCS_DOMAIN = {
+    SVC_FAKE_DEVICE: SCH_FAKE_DEVICE,
     SVC_REFRESH_SYSTEM: None,
+    SVC_SEND_PACKET: SCH_SEND_PACKET,
+}
+
+SVCS_DOMAIN_EVOHOME = {
     SVC_RESET_SYSTEM_MODE: None,
-    SVC_SEND_PACKET: SEND_PACKET_SCHEMA,
-    SVC_SET_SYSTEM_MODE: SET_SYSTEM_MODE_SCHEMA,
+    SVC_SET_SYSTEM_MODE: SCH_SYSTEM_MODE,
 }
 
 # Climate platform services for Zone
@@ -140,9 +132,9 @@ CONF_ZONE_MODES = (
     ZoneMode.TEMPORARY,
 )
 
-SET_ZONE_BASE_SCHEMA = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
+SCH_SET_ZONE_BASE = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
 
-SET_ZONE_CONFIG_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
+SCH_SET_ZONE_CONFIG = SCH_SET_ZONE_BASE.extend(
     {
         vol.Optional(CONF_MAX_TEMP, default=35): vol.All(
             cv.positive_float,
@@ -158,12 +150,12 @@ SET_ZONE_CONFIG_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
     }
 )
 
-SET_ZONE_MODE_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
+SCH_SET_ZONE_MODE = SCH_SET_ZONE_BASE.extend(
     {
         vol.Optional(CONF_MODE): vol.In([ZoneMode.SCHEDULE]),
     }
 )
-SET_ZONE_MODE_SCHEMA_SETPOINT = SET_ZONE_BASE_SCHEMA.extend(
+SCH_SET_ZONE_MODE_SETPOINT = SCH_SET_ZONE_BASE.extend(
     {
         vol.Optional(CONF_MODE): vol.In([ZoneMode.PERMANENT, ZoneMode.ADVANCED]),
         vol.Optional(CONF_SETPOINT, default=21): vol.All(
@@ -172,7 +164,7 @@ SET_ZONE_MODE_SCHEMA_SETPOINT = SET_ZONE_BASE_SCHEMA.extend(
         ),
     }
 )
-SET_ZONE_MODE_SCHEMA_UNTIL = SET_ZONE_BASE_SCHEMA.extend(
+SCH_SET_ZONE_MODE_UNTIL = SCH_SET_ZONE_BASE.extend(
     {
         vol.Optional(CONF_MODE): vol.In([ZoneMode.TEMPORARY]),
         vol.Optional(CONF_SETPOINT, default=21): vol.All(
@@ -186,13 +178,13 @@ SET_ZONE_MODE_SCHEMA_UNTIL = SET_ZONE_BASE_SCHEMA.extend(
         ),
     }
 )
-SET_ZONE_MODE_SCHEMA = vol.Any(
-    SET_ZONE_MODE_SCHEMA,
-    SET_ZONE_MODE_SCHEMA_SETPOINT,
-    SET_ZONE_MODE_SCHEMA_UNTIL,
+SCH_SET_ZONE_MODE = vol.Any(
+    SCH_SET_ZONE_MODE,
+    SCH_SET_ZONE_MODE_SETPOINT,
+    SCH_SET_ZONE_MODE_UNTIL,
 )
 
-PUT_ZONE_TEMP_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
+SCH_PUT_ZONE_TEMP = SCH_SET_ZONE_BASE.extend(
     {
         vol.Required(CONF_TEMPERATURE): vol.All(
             vol.Coerce(float), vol.Range(min=-20, max=99)
@@ -200,12 +192,12 @@ PUT_ZONE_TEMP_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
     }
 )
 
-CLIMATE_SERVICES = {
-    SVC_RESET_ZONE_CONFIG: SET_ZONE_BASE_SCHEMA,
-    SVC_RESET_ZONE_MODE: SET_ZONE_BASE_SCHEMA,
-    SVC_SET_ZONE_CONFIG: SET_ZONE_CONFIG_SCHEMA,
-    SVC_SET_ZONE_MODE: SET_ZONE_MODE_SCHEMA,
-    SVC_PUT_ZONE_TEMP: PUT_ZONE_TEMP_SCHEMA,
+SVCS_CLIMATE_EVOHOME = {
+    SVC_RESET_ZONE_CONFIG: SCH_SET_ZONE_BASE,
+    SVC_RESET_ZONE_MODE: SCH_SET_ZONE_BASE,
+    SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
+    SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,
+    SVC_PUT_ZONE_TEMP: SCH_PUT_ZONE_TEMP,
 }
 
 # WaterHeater platform services for DHW
@@ -216,15 +208,15 @@ SVC_SET_DHW_BOOST = "set_dhw_boost"
 SVC_SET_DHW_MODE = "set_dhw_mode"
 SVC_SET_DHW_PARAMS = "set_dhw_params"
 
-CONF_DHW_MODES = (
-    ZoneMode.PERMANENT,
-    ZoneMode.ADVANCED,
-    ZoneMode.TEMPORARY,
-)
+# CONF_DHW_MODES = (
+#     ZoneMode.PERMANENT,
+#     ZoneMode.ADVANCED,
+#     ZoneMode.TEMPORARY,
+# )
 
-SET_DHW_BASE_SCHEMA = vol.Schema({})
+SCH_SET_DHW_BASE = vol.Schema({})
 
-SET_DHW_MODE_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
+SCH_SET_DHW_MODE = SCH_SET_DHW_BASE.extend(
     {
         vol.Optional(CONF_MODE): vol.In(
             [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
@@ -238,7 +230,7 @@ SET_DHW_MODE_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
     }
 )
 
-SET_DHW_CONFIG_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
+SCH_SET_DHW_CONFIG = SCH_SET_DHW_BASE.extend(
     {
         vol.Optional(CONF_SETPOINT, default=50): vol.All(
             cv.positive_float,
@@ -255,7 +247,7 @@ SET_DHW_CONFIG_SCHEMA = SET_DHW_BASE_SCHEMA.extend(
     }
 )
 
-PUT_DHW_TEMP_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
+SCH_PUT_DHW_TEMP = SCH_SET_ZONE_BASE.extend(
     {
         vol.Required(CONF_TEMPERATURE): vol.All(
             vol.Coerce(float), vol.Range(min=-20, max=99)  # TODO: check limits
@@ -263,65 +255,69 @@ PUT_DHW_TEMP_SCHEMA = SET_ZONE_BASE_SCHEMA.extend(
     }
 )
 
-WATER_HEATER_SERVICES = {
-    SVC_RESET_DHW_MODE: SET_DHW_BASE_SCHEMA,
-    SVC_RESET_DHW_PARAMS: SET_DHW_BASE_SCHEMA,
-    SVC_SET_DHW_BOOST: SET_DHW_BASE_SCHEMA,
-    SVC_SET_DHW_MODE: SET_DHW_MODE_SCHEMA,
-    SVC_SET_DHW_PARAMS: SET_DHW_CONFIG_SCHEMA,
-    SVC_PUT_DHW_TEMP: PUT_DHW_TEMP_SCHEMA,
+SVCS_WATER_HEATER_EVOHOME = {
+    SVC_RESET_DHW_MODE: SCH_SET_DHW_BASE,
+    SVC_RESET_DHW_PARAMS: SCH_SET_DHW_BASE,
+    SVC_SET_DHW_BOOST: SCH_SET_DHW_BASE,
+    SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,
+    SVC_SET_DHW_PARAMS: SCH_SET_DHW_CONFIG,
+    SVC_PUT_DHW_TEMP: SCH_PUT_DHW_TEMP,
 }
 
-DEVICE_LIST = vol.Schema(
-    vol.All([vol.Any(DEV_REGEX_ANY, _SCHEMA_DEV)], vol.Length(min=0))
+SCH_DEVICE_LIST = vol.Schema(
+    vol.All([vol.Any(DEV_REGEX_ANY, SCH_DEVICE)], vol.Length(min=0))
 )
 
-ADVANCED_FEATURES = "advanced_features"
-MESSAGE_EVENTS = "message_events"
-DEV_MODE = "dev_mode"
-UNKNOWN_CODES = "unknown_codes"
-ADVANCED_FEATURES_SCHEMA = vol.Schema(
+SZ_ADVANCED_FEATURES = "advanced_features"
+SZ_MESSAGE_EVENTS = "message_events"
+SZ_DEV_MODE = "dev_mode"
+SZ_UNKNOWN_CODES = "unknown_codes"
+
+SCH_ADVANCED_FEATURES = vol.Schema(
     {
         vol.Optional(SVC_SEND_PACKET, default=False): bool,
-        vol.Optional(MESSAGE_EVENTS, default=False): bool,
-        vol.Optional(DEV_MODE, default=False): bool,
-        vol.Optional(UNKNOWN_CODES, default=False): bool,
+        vol.Optional(SZ_MESSAGE_EVENTS, default=False): bool,
+        vol.Optional(SZ_DEV_MODE, default=False): bool,
+        vol.Optional(SZ_UNKNOWN_CODES, default=False): bool,
     }
 )
 
-CONF_RESTORE_CACHE = "restore_cache"
-CONF_RESTORE_SCHEMA = "restore_schema"
-CONF_RESTORE_STATE = "restore_state"
-RESTORE_CACHE_SCHEMA = vol.Schema(
+SZ_RESTORE_CACHE = "restore_cache"
+SZ_RESTORE_SCHEMA = "restore_schema"
+SZ_RESTORE_STATE = "restore_state"
+
+SCH_RESTORE_CACHE = vol.Schema(
     {
-        vol.Optional(CONF_RESTORE_SCHEMA, default=True): bool,
-        vol.Optional(CONF_RESTORE_STATE, default=True): bool,
+        vol.Optional(SZ_RESTORE_SCHEMA, default=True): bool,
+        vol.Optional(SZ_RESTORE_STATE, default=True): bool,
     }
 )
-CONFIG_SCHEMA = vol.Schema(
+
+SZ_SCHEMA = "schema"
+SCH_CONFIG = vol.Schema(
     {
         DOMAIN: vol.Schema(
             {
-                vol.Required(SERIAL_PORT): vol.Any(
+                vol.Required(SZ_SERIAL_PORT): vol.Any(
                     cv.string,
-                    SERIAL_CONFIG_SCHEMA.extend({vol.Required(PORT_NAME): cv.string}),
+                    SCH_SERIAL_CONFIG.extend({vol.Required(SZ_PORT_NAME): cv.string}),
                 ),
-                vol.Optional(SZ_KNOWN_LIST, default=[]): DEVICE_LIST,
-                vol.Optional(SZ_BLOCK_LIST, default=[]): DEVICE_LIST,
+                vol.Optional(SZ_KNOWN_LIST, default=[]): SCH_DEVICE_LIST,
+                vol.Optional(SZ_BLOCK_LIST, default=[]): SCH_DEVICE_LIST,
                 cv.deprecated(SZ_CONFIG, "ramses_rf"): vol.Any(),
                 vol.Optional("ramses_rf", default={}): CONFIG_SCHEMA,
-                cv.deprecated(CONF_RESTORE_STATE, CONF_RESTORE_CACHE): vol.Any(),
-                vol.Optional(CONF_RESTORE_CACHE, default=True): vol.Any(
-                    bool, RESTORE_CACHE_SCHEMA
+                cv.deprecated(SZ_RESTORE_STATE, SZ_RESTORE_CACHE): vol.Any(),
+                vol.Optional(SZ_RESTORE_CACHE, default=True): vol.Any(
+                    bool, SCH_RESTORE_CACHE
                 ),
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
                 ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
-                vol.Optional(PACKET_LOG): vol.Any(str, PACKET_LOG_SCHEMA),
-                cv.deprecated(SVC_SEND_PACKET, ADVANCED_FEATURES): vol.Any(),
-                vol.Optional(ADVANCED_FEATURES, default={}): ADVANCED_FEATURES_SCHEMA,
+                vol.Optional(SZ_PACKET_LOG): vol.Any(str, SCH_PACKET_LOG),
+                cv.deprecated(SVC_SEND_PACKET, SZ_ADVANCED_FEATURES): vol.Any(),
+                vol.Optional(SZ_ADVANCED_FEATURES, default={}): SCH_ADVANCED_FEATURES,
             },
-            extra=vol.ALLOW_EXTRA,  # will be system schemas
+            extra=vol.ALLOW_EXTRA,  # will be system, orphan schemas for ramses_rf
         )
     },
     extra=vol.ALLOW_EXTRA,
@@ -344,7 +340,7 @@ def _is_subset(subset, superset) -> bool:  # TODO: move to ramses_rf?
 
 
 def _merge(src: dict, dst: dict) -> dict:  # TODO: move to ramses_rf?
-    """Merge src dict into the dst dict and return the result.
+    """Merge src dict (precident) into the dst dict and return the result.
 
     run me with nosetests --with-doctest file.py
 
@@ -360,9 +356,12 @@ def _merge(src: dict, dst: dict) -> dict:  # TODO: move to ramses_rf?
         if isinstance(value, dict):
             node = dst.setdefault(key, {})  # get node or create one
             _merge(value, node)
+        elif isinstance(value, list):
+            dst[key] = list(set(src[key] + dst[key]))
         else:
-            dst[key] = value
+            dst[key] = value  # src takes precidence
 
+    assert _is_subset(src, dst)
     return dst
 
 
@@ -372,37 +371,40 @@ def normalise_hass_config(hass_config: dict, storage: dict) -> dict:
 
     hass_config[SZ_CONFIG] = hass_config.pop("ramses_rf")
 
-    if isinstance(hass_config[SERIAL_PORT], dict):
-        serial_port = hass_config[SERIAL_PORT].pop(PORT_NAME)
-        hass_config[SZ_CONFIG][EVOFW_FLAG] = hass_config[SERIAL_PORT].pop(
-            EVOFW_FLAG, None
+    if isinstance(hass_config[SZ_SERIAL_PORT], dict):
+        serial_port = hass_config[SZ_SERIAL_PORT].pop(SZ_PORT_NAME)
+        hass_config[SZ_CONFIG][SZ_EVOFW_FLAG] = hass_config[SZ_SERIAL_PORT].pop(
+            SZ_EVOFW_FLAG, None
         )
-        hass_config[SZ_CONFIG][SERIAL_CONFIG] = hass_config.pop(SERIAL_PORT)
+        hass_config[SZ_CONFIG][SZ_SERIAL_CONFIG] = hass_config.pop(SZ_SERIAL_PORT)
     else:
-        serial_port = hass_config.pop(SERIAL_PORT)
+        serial_port = hass_config.pop(SZ_SERIAL_PORT)
 
     hass_config[SZ_KNOWN_LIST] = _normalise_device_list(hass_config[SZ_KNOWN_LIST])
     hass_config[SZ_BLOCK_LIST] = _normalise_device_list(hass_config[SZ_BLOCK_LIST])
 
-    if PACKET_LOG not in hass_config:
-        hass_config[SZ_CONFIG][PACKET_LOG] = {}
-    elif isinstance(hass_config[PACKET_LOG], dict):
-        hass_config[SZ_CONFIG][PACKET_LOG] = hass_config.pop(PACKET_LOG)
+    if SZ_PACKET_LOG not in hass_config:
+        hass_config[SZ_CONFIG][SZ_PACKET_LOG] = {}
+    elif isinstance(hass_config[SZ_PACKET_LOG], dict):
+        hass_config[SZ_CONFIG][SZ_PACKET_LOG] = hass_config.pop(SZ_PACKET_LOG)
     else:
-        hass_config[SZ_CONFIG][PACKET_LOG] = PACKET_LOG_SCHEMA(
-            {LOG_FILE_NAME: hass_config.pop(PACKET_LOG)}
-        )
+        hass_config[SZ_CONFIG][SZ_PACKET_LOG] = {
+            LOG_FILE_NAME: hass_config.pop(SZ_PACKET_LOG)
+        }
 
-    if isinstance(hass_config[CONF_RESTORE_CACHE], bool):
-        hass_config[CONF_RESTORE_CACHE] = RESTORE_CACHE_SCHEMA(
-            {
-                CONF_RESTORE_SCHEMA: hass_config[CONF_RESTORE_CACHE],
-                CONF_RESTORE_STATE: hass_config[CONF_RESTORE_CACHE],
-            }
-        )
-    schema = _normalise_schema(hass_config, storage)
+    if isinstance(hass_config[SZ_RESTORE_CACHE], bool):
+        hass_config[SZ_RESTORE_CACHE] = {
+            SZ_RESTORE_SCHEMA: hass_config[SZ_RESTORE_CACHE],
+            SZ_RESTORE_STATE: hass_config[SZ_RESTORE_CACHE],
+        }
 
-    unwanted_keys = (CONF_SCAN_INTERVAL, ADVANCED_FEATURES, CONF_RESTORE_CACHE)
+    schema = _normalise_schema(
+        hass_config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA],
+        hass_config.get(SZ_SCHEMA),
+        storage["client_state"].get(SZ_SCHEMA, {}) if "client_state" in storage else {},
+    )
+
+    unwanted_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
     library_config = {k: v for k, v in hass_config.items() if k not in unwanted_keys}
 
     return serial_port, library_config, schema
@@ -425,39 +427,46 @@ def _normalise_device_list(device_list) -> dict:
 
 
 @callback
-def _normalise_schema(config, store) -> dict:
-    """Return a schema extracted from the config/store."""
+def _normalise_schema(restore_cache, config_schema, cached_schema) -> dict:
+    """Return a ramses system schema extracted from the merged config/store."""
 
-    cached_schema = {}
-    if config[CONF_RESTORE_CACHE][CONF_RESTORE_SCHEMA]:
-        cached_schema = (
-            store["client_state"].get("schema") if "client_state" in store else {}
-        )
+    if not restore_cache:
+        _LOGGER.debug("A cached schema was not enabled (not recommended)")
+        # cached_schema = {}  # in case is None
+    else:
         _LOGGER.debug("Loaded a cached schema: %s", cached_schema)
-    else:
-        _LOGGER.debug("Not using a cached schema (restore_schema not enabled)")
 
-    config_schema = {}
-    if (_sch := config.get("schema")) and (_ctl := _sch.pop("controller", None)):
-        config_schema = {"main_controller": _ctl, _ctl: _sch}
+    if not config_schema:
+        _LOGGER.debug("A config schema was not provided")
+        config_schema = {}  # in case is None
+    else:  # normalise config_schema
         _LOGGER.debug("Loaded a config schema: %s", config_schema)
-    else:
-        _LOGGER.debug("Using a null config schema (no valid schema)")
+        orphans_heat = config_schema.pop("orphans_heat", [])
+        orphans_hvac = config_schema.pop("orphans_hvac", [])
+        if _ctl := config_schema.pop("controller", None):
+            config_schema = {"main_controller": _ctl, _ctl: config_schema}
+        config_schema["orphans_heat"] = orphans_heat
+        config_schema["orphans_hvac"] = orphans_hvac
 
     if not cached_schema:
-        _LOGGER.info("Using the config schema (cached schema is not enabled/invalid)")
+        _LOGGER.info(
+            "Using a config schema (cached schema is not enabled/invalid)"
+            f", consider using '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: true'"
+        )
         return config_schema
 
     elif _is_subset(shrink(config_schema), shrink(cached_schema)):
         _LOGGER.info(
-            "Using the cached schema (cached schema is a superset of config schema)"
+            "Using a cached schema (cached schema is a superset of config schema)"
         )
         return cached_schema
 
-    schema = _merge(config_schema, cached_schema)
-    _LOGGER.debug("Loaded a merged schema: %s", schema)
+    schema = _merge(config_schema, cached_schema)  # config takes precidence
+    assert _is_subset(shrink(config_schema), shrink(schema))
+
+    _LOGGER.debug("Created a merged schema: %s", schema)
     _LOGGER.warning(
         "Using a merged schema (cached schema is not a superset of config schema)"
-        f", consider using '{CONF_RESTORE_CACHE}: {CONF_RESTORE_SCHEMA}: false'"
+        f", if required, use '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: false'"
     )
     return schema

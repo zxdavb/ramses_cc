@@ -35,15 +35,16 @@ from .const import (
     STORAGE_VERSION,
     UNIQUE_ID,
 )
-from .schema import CONFIG_SCHEMA  # noqa: F401
+from .schema import SCH_CONFIG as CONFIG_SCHEMA  # noqa: F401
 from .schema import (
-    ADVANCED_FEATURES,
-    CONF_RESTORE_CACHE,
-    CONF_RESTORE_STATE,
-    DOMAIN_SERVICES,
-    MESSAGE_EVENTS,
     SVC_SEND_PACKET,
-    WATER_HEATER_SERVICES,
+    SVCS_DOMAIN,
+    SVCS_DOMAIN_EVOHOME,
+    SVCS_WATER_HEATER_EVOHOME,
+    SZ_ADVANCED_FEATURES,
+    SZ_MESSAGE_EVENTS,
+    SZ_RESTORE_CACHE,
+    SZ_RESTORE_STATE,
     normalise_hass_config,
 )
 from .version import __version__ as VERSION
@@ -90,8 +91,8 @@ async def async_setup(
     broker = EvoBroker(hass, client, store, hass_config)
     hass.data[DOMAIN] = {BROKER: broker}
 
-    if hass_config[DOMAIN][CONF_RESTORE_CACHE][
-        CONF_RESTORE_STATE
+    if hass_config[DOMAIN][SZ_RESTORE_CACHE][
+        SZ_RESTORE_STATE
     ]:  # TODO: move this out of setup?
         await broker.async_load_client_state(app_storage)
 
@@ -130,7 +131,7 @@ def register_trigger_events(hass: HomeAssistantType, broker):
         }
         hass.bus.async_fire(f"{DOMAIN}_message", event_data)
 
-    if broker.config[ADVANCED_FEATURES].get(MESSAGE_EVENTS):
+    if broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS]:
         broker.client.create_client(process_msg)
 
 
@@ -188,17 +189,18 @@ def register_service_functions(hass: HomeAssistantType, broker):
 
     [
         hass.services.async_register(DOMAIN, k, svc_call_dhw_svc, schema=v)
-        for k, v in WATER_HEATER_SERVICES.items()
+        for k, v in SVCS_WATER_HEATER_EVOHOME.items()
     ]
 
-    domain_service = DOMAIN_SERVICES
-    if not broker.config[ADVANCED_FEATURES].get(SVC_SEND_PACKET):
+    domain_service = SVCS_DOMAIN
+    if not broker.config[SZ_ADVANCED_FEATURES].get(SVC_SEND_PACKET):
         del domain_service[SVC_SEND_PACKET]
+    domain_service |= SVCS_DOMAIN_EVOHOME
 
     services = {k: v for k, v in locals().items() if k.startswith("svc")}
     [
         hass.services.async_register(DOMAIN, k, services[f"svc_{k}"], schema=v)
-        for k, v in DOMAIN_SERVICES.items()
+        for k, v in SVCS_DOMAIN.items()
         if f"svc_{k}" in services
     ]
 
