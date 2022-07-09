@@ -18,6 +18,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from ramses_rf.protocol.const import SZ_BYPASS_POSITION
 
 from . import EvoDeviceBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
@@ -158,7 +159,7 @@ class EvoFaultLog(EvoBinarySensor):
 
     @property
     def is_on(self) -> Optional[bool]:
-        """Return True if the controller has a fault"""
+        """Return True if the controller has a fault."""
         return bool(self._device.tcs.active_fault)
 
 
@@ -268,6 +269,7 @@ BINARY_SENSOR_ATTRS = {
         "window_open": {
             DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
         },
+        SZ_BYPASS_POSITION: {},
     },
     "domains": {  # the non-devices: TCS, DHW, & Zones
         "window_open": {

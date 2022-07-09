@@ -14,8 +14,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_p
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .climate_heat import EvoController, EvoZone
-
-# from .climate_hvac import RamsesHvac
+from .climate_hvac import RamsesHvac
 from .const import BROKER, DOMAIN
 from .helpers import migrate_to_ramses_rf
 from .schema import SVCS_CLIMATE_EVOHOME
@@ -53,11 +52,8 @@ async def async_setup_platform(
     for zone in [z for z in discovery_info.get("zones", [])]:
         new_entities.append(entity_factory(EvoZone, broker, zone))
 
-    # new_entities += [
-    #     entity_factory(RamsesHvac, broker, device)
-    #     for device in discovery_info.get("devices", [])
-    #     if hasattr(device, "fan_rate")
-    # ]
+    for fan in [f for f in discovery_info.get("fans", [])]:
+        new_entities.append(RamsesHvac(broker, fan))
 
     if new_entities:
         async_add_entities(new_entities)

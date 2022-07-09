@@ -5,9 +5,10 @@
 
 Provides support for climate entities.
 """
+from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
@@ -16,18 +17,19 @@ from homeassistant.components.climate.const import (
     FAN_LOW,
     FAN_MEDIUM,
     FAN_OFF,
+    PRESET_NONE,
     ClimateEntityFeature,
+    HVACAction,
     HVACMode,
 )
 from homeassistant.const import TEMP_CELSIUS  # "°C"
-from homeassistant.core import callback
 
-from . import EvoZoneBase
+from . import EvoEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class RamsesHvac(EvoZoneBase, ClimateEntity):
+class RamsesHvac(EvoEntity, ClimateEntity):
     """Base for a Honeywell HVAC unit (Fan, HRU, MVHR, PIV, etc)."""
 
     # PRESET_AWAY = away
@@ -35,18 +37,24 @@ class RamsesHvac(EvoZoneBase, ClimateEntity):
     # PRESET_COMFORT: auto with lower CO2
     # PRESET_NONE: off, low/med/high or auto
 
-    # fan states....
-    _attr_fan_modes = [FAN_OFF, FAN_AUTO, FAN_LOW, FAN_MEDIUM, FAN_HIGH]
-    _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-    _attr_supported_features = (
-        ClimateEntityFeature.TARGET_TEMPERATURE
-        | ClimateEntityFeature.TARGET_HUMIDITY
-        | ClimateEntityFeature.FAN_MODE
-        | ClimateEntityFeature.PRESET_MODE
-    )
+    # Entity attrs...
+    _attr_icon = "mdi:hvac"
 
-    _attr_target_temperature_step = 0.1
-    _attr_temperature_unit = TEMP_CELSIUS
+    # Climate attrs....
+    _attr_precision: float = 0.1
+    _attr_temperature_unit: str = TEMP_CELSIUS
+    _attr_fan_modes: list[str] | None = [
+        FAN_OFF,
+        FAN_AUTO,
+        FAN_LOW,
+        FAN_MEDIUM,
+        FAN_HIGH,
+    ]
+    _attr_hvac_modes: list[HVACMode] | list[str] = [HVACMode.AUTO, HVACMode.OFF]
+    _attr_preset_modes: list[str] | None = None
+    _attr_supported_features: int = (
+        ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.PRESET_MODE
+    )
 
     def __init__(self, broker, device) -> None:
         """Initialize a HVAC system."""
@@ -54,10 +62,50 @@ class RamsesHvac(EvoZoneBase, ClimateEntity):
 
         super().__init__(broker, device)
 
-        self._icon = "mdi:fan"
-        self._hvac_modes = None
-        self._preset_modes = None
-        self._supported_features = None
+        self._unique_id = device.id
+
+    @property
+    def current_humidity(self) -> int | None:
+        """Return the current humidity."""
+        if self._device.indoor_humidity is not None:
+            return int(self._device.indoor_humidity * 100)
+
+    @property
+    def current_temperature(self) -> float | None:
+        """Return the current temperature."""
+        return self._device.indoor_temperature
+
+    @property
+    def fan_mode(self) -> str | None:
+        """Return the fan setting."""
+        return None
+
+    @property
+    def hvac_action(self) -> HVACAction | str | None:
+        """Return the current running hvac operation if supported."""
+        if self._device.fan_info is not None:
+            return self._device.fan_info
+
+    @property
+    def hvac_mode(self) -> HVACMode | str | None:
+        """Return hvac operation ie. heat, cool mode."""
+        if self._device.fan_info is not None:
+            return HVACMode.OFF if self._device.fan_info == "off" else HVACMode.AUTO
+
+    @property
+    def icon(self) -> str | None:
+        """Return the icon to use in the frontend, if any."""
+        return "mdi:hvac-off" if self._device.fan_info == "off" else "mdi:hvac"
+
+    @property
+    def preset_mode(self) -> str | None:
+        """Return the current preset mode, e.g., home, away, temp."""
+        return PRESET_NONE
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self._device.id
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
@@ -65,28 +113,3 @@ class RamsesHvac(EvoZoneBase, ClimateEntity):
         return {
             **super().extra_state_attributes,
         }
-
-    @property
-    def hvac_action(self) -> Optional[str]:
-        """Return the Zone's current running hvac operation."""
-        return
-
-    @property
-    def hvac_mode(self) -> Optional[str]:
-        """Return the Zone's hvac operation ie. heat, cool mode."""
-        return
-
-    @property
-    def preset_mode(self) -> Optional[str]:
-        """Return the Zone's current preset mode, e.g., home, away, temp."""
-        return
-
-    @callback
-    def set_hvac_mode(self, hvac_mode: str) -> None:
-        """Set a Zone to one of its native operating modes."""
-        return
-
-    @callback
-    def set_preset_mode(self, preset_mode: Optional[str]) -> None:
-        """Set the preset mode; if None, then revert to following the schedule."""
-        return

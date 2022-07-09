@@ -29,7 +29,6 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from ramses_rf.protocol.const import (
     SZ_AIR_QUALITY,
     SZ_AIR_QUALITY_BASE,
-    SZ_BYPASS_POSITION,
     SZ_CO2_LEVEL,
     SZ_EXHAUST_FAN_SPEED,
     SZ_EXHAUST_FLOW,
@@ -341,9 +340,6 @@ SENSOR_ATTRS_HVAC = {
     },
     SZ_AIR_QUALITY_BASE: {
         DEVICE_UNITS: PERCENTAGE,
-    },
-    SZ_BYPASS_POSITION: {
-        DEVICE_UNITS: "units",
     },
     SZ_CO2_LEVEL: {
         DEVICE_CLASS: SensorDeviceClass.CO2,

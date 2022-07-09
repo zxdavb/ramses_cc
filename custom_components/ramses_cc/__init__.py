@@ -25,6 +25,7 @@ from homeassistant.helpers.dispatcher import (
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from ramses_rf.devices import HvacVentilator
 
 from .const import (
     BROKER,
@@ -230,6 +231,7 @@ class EvoBroker:
         self._tcs = None
         self._dhw = None
         self._zones = []
+        self._fans = []
 
         self._lock = Lock()
 
@@ -247,7 +249,7 @@ class EvoBroker:
             await self.client._set_state(packets=client_state["packets"])
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
-        """Save the client state to the app store"""
+        """Save the client state to the app store."""
         _LOGGER.info("Saving the client state cache (packets, schema)...")
         (schema, packets) = self.client._get_state()
         await self._store.async_save(
@@ -256,7 +258,7 @@ class EvoBroker:
 
     @callback
     def new_heat_entities(self) -> bool:
-        """Discover & instantiate Climate & WaterHeater entities."""
+        """Discover & instantiate Climate & WaterHeater entities (Heat)."""
 
         if self.client.tcs is None:  # assumes the primary TCS is the only TCS
             _LOGGER.debug("GWY Schema = %s", self.client.schema)
@@ -285,7 +287,31 @@ class EvoBroker:
         _LOGGER.debug("TCS Schema = %s", self.client.tcs.schema)
         _LOGGER.debug("TCS Params = %s", self.client.tcs.params)
         _LOGGER.debug("TCS Status = %s", self.client.tcs.status)
+        return bool(discovery_info)
 
+    @callback
+    def new_hvac_entities(self) -> bool:
+        """Discover & instantiate Climate entities (HVAC)."""
+
+        discovery_info = {}
+
+        if new_fans := [
+            f
+            for f in self.client.devices
+            if isinstance(f, HvacVentilator) and f not in self._fans
+        ]:
+            discovery_info["fans"] = new_fans
+            self._fans.extend(new_fans)
+
+        if discovery_info:
+            for platform in (Platform.CLIMATE, Platform.FAN):
+                self.hass.async_create_task(
+                    async_load_platform(
+                        self.hass, platform, DOMAIN, discovery_info, self.hass_config
+                    )
+                )
+
+        _LOGGER.debug("GWY Devices = %s", [d.id for d in self._devices])
         return bool(discovery_info)
 
     @callback
@@ -337,10 +363,11 @@ class EvoBroker:
         if self._last_update < dt_now - td(seconds=10):
             self._last_update = dt_now
 
-            new_entitys = self.new_heat_entities()
-            new_devices = self.new_sensors()
-
-            if new_entitys or new_devices:
+            if (
+                self.new_sensors()
+                or self.new_heat_entities()
+                or self.new_hvac_entities()
+            ):
                 self.hass.helpers.event.async_call_later(
                     5, self.async_save_client_state
                 )
