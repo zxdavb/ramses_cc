@@ -19,10 +19,19 @@ from ramses_rf.protocol.schema import SERIAL_PORT as SZ_SERIAL_PORT
 from ramses_rf.schema import CONFIG_SCHEMA, DEV_REGEX_ANY
 from ramses_rf.schema import EVOFW_FLAG as SZ_EVOFW_FLAG
 from ramses_rf.schema import PACKET_LOG as SZ_PACKET_LOG
-from ramses_rf.schema import SCH_DEVICE
+from ramses_rf.schema import SCH_DEVICE, SCH_SYS
 from ramses_rf.schema import SERIAL_CONFIG as SZ_SERIAL_CONFIG
 from ramses_rf.schema import SERIAL_CONFIG_SCHEMA as SCH_SERIAL_CONFIG
-from ramses_rf.schema import SZ_BLOCK_LIST, SZ_CONFIG, SZ_KNOWN_LIST
+from ramses_rf.schema import (
+    SZ_BLOCK_LIST,
+    SZ_CONFIG,
+    SZ_CONTROLLER,
+    SZ_KNOWN_LIST,
+    SZ_MAIN_CONTROLLER,
+    SZ_ORPHANS_HEAT,
+    SZ_ORPHANS_HVAC,
+    SZ_SCHEMA,
+)
 
 from .const import DOMAIN, SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
 
@@ -293,7 +302,7 @@ SCH_RESTORE_CACHE = vol.Schema(
     }
 )
 
-SZ_SCHEMA = "schema"
+# SCH_SCHEMA = SCH_SYS.extend({vol.Required(SZ_CONTROLLER): cv.string})
 SCH_CONFIG = vol.Schema(
     {
         DOMAIN: vol.Schema(
@@ -441,12 +450,14 @@ def _normalise_schema(restore_cache, config_schema, cached_schema) -> dict:
         config_schema = {}  # in case is None
     else:  # normalise config_schema
         _LOGGER.debug("Loaded a config schema: %s", config_schema)
-        orphans_heat = config_schema.pop("orphans_heat", [])
-        orphans_hvac = config_schema.pop("orphans_hvac", [])
-        if _ctl := config_schema.pop("controller", None):
-            config_schema = {"main_controller": _ctl, _ctl: config_schema}
-        config_schema["orphans_heat"] = orphans_heat
-        config_schema["orphans_hvac"] = orphans_hvac
+        orphans_heat = config_schema.pop(SZ_ORPHANS_HEAT, [])
+        orphans_hvac = config_schema.pop(SZ_ORPHANS_HVAC, [])
+        if _ctl := config_schema.pop(SZ_CONTROLLER, None):
+            config_schema = {SZ_MAIN_CONTROLLER: _ctl, _ctl: SCH_SYS(config_schema)}
+        else:
+            SCH_SYS(config_schema)  # should be {}
+        config_schema[SZ_ORPHANS_HEAT] = orphans_heat
+        config_schema[SZ_ORPHANS_HVAC] = orphans_hvac
 
     if not cached_schema:
         _LOGGER.info(

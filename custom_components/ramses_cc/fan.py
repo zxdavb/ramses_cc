@@ -8,18 +8,17 @@ Provides support for fan entities.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from homeassistant.components.climate.const import (
     FAN_AUTO,
     FAN_HIGH,
     FAN_LOW,
-    FAN_MEDIUM
+    FAN_MEDIUM,
 )
 from homeassistant.components.fan import FanEntity, FanEntityFeature
-from homeassistant.components.fan import DOMAIN as PLATFORM
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import EvoEntity
