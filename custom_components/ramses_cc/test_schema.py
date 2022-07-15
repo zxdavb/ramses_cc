@@ -13,53 +13,55 @@ assert _normalise_schema(False, None, {}) == {}
 assert _normalise_schema(False, {}, {}) == {}
 assert _normalise_schema(False, {"controller": None}, {}) == (
     {
-        'orphans_heat': [],
-        'orphans_hvac': [],
+        "orphans_heat": [],
+        "orphans_hvac": [],
     }
 )
 assert _normalise_schema(False, {"controller": "01:123456"}, {}) == (
     {
-        'main_controller': '01:123456',
-        '01:123456': {
-            'system': {},
-            'stored_hotwater': {},
-            'underfloor_heating': {},
-            'zones': {},
-            'orphans': [],
+        "main_controller": "01:123456",
+        "01:123456": {
+            "system": {},
+            "stored_hotwater": {},
+            "underfloor_heating": {},
+            "zones": {},
+            "orphans": [],
         },
-        'orphans_heat': [],
-        'orphans_hvac': [],
+        "orphans_heat": [],
+        "orphans_hvac": [],
     }
 )
 assert _normalise_schema(False, {"controller": "01:123456", "system": {}}, {}) == (
     {
-        'main_controller': '01:123456',
-        '01:123456': {
-            'system': {},
-            'stored_hotwater': {},
-            'underfloor_heating': {},
-            'zones': {},
-            'orphans': [],
+        "main_controller": "01:123456",
+        "01:123456": {
+            "system": {},
+            "stored_hotwater": {},
+            "underfloor_heating": {},
+            "zones": {},
+            "orphans": [],
         },
-        'orphans_heat': [],
-        'orphans_hvac': [],
+        "orphans_heat": [],
+        "orphans_hvac": [],
     }
 )
-assert _normalise_schema(False, {"controller": "01:123456", "system": {"appliance_control": "10:123456"}}, {}) == (
+assert _normalise_schema(
+    False, {"controller": "01:123456", "system": {"appliance_control": "10:123456"}}, {}
+) == (
     {
-        'main_controller': '01:123456',
-        '01:123456': {
-            'system': {
+        "main_controller": "01:123456",
+        "01:123456": {
+            "system": {
                 "appliance_control": "10:123456",
                 "class": "evohome",
             },
-            'stored_hotwater': {},
-            'underfloor_heating': {},
-            'zones': {},
-            'orphans': [],
+            "stored_hotwater": {},
+            "underfloor_heating": {},
+            "zones": {},
+            "orphans": [],
         },
-        'orphans_heat': [],
-        'orphans_hvac': [],
+        "orphans_heat": [],
+        "orphans_hvac": [],
     }
 )
 
@@ -68,6 +70,7 @@ def _test_set(src, dst, result):
     assert _merge(src, dst) == result
     assert _is_subset(src, result)
     # assert _is_subset(dst, result)
+
 
 def test_helpers():
     _test_set({}, {}, {})

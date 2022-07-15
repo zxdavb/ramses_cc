@@ -26,7 +26,7 @@ from homeassistant.const import (  # PRECISION_TENTHS,; PRECISION_WHOLE,
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from ramses_rf.system import StoredHw
+from ramses_rf.system.heat import StoredHw
 
 from . import EvoZoneBase
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
