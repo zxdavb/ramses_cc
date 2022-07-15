@@ -13,24 +13,30 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from ramses_rf.const import SZ_DEVICE_ID
 from ramses_rf.helpers import shrink
-from ramses_rf.protocol.schema import LOG_FILE_NAME, LOG_ROTATE_BYTES, LOG_ROTATE_COUNT
-from ramses_rf.protocol.schema import PORT_NAME as SZ_PORT_NAME
-from ramses_rf.protocol.schema import SERIAL_PORT as SZ_SERIAL_PORT
-from ramses_rf.schema import CONFIG_SCHEMA, DEV_REGEX_ANY
-from ramses_rf.schema import EVOFW_FLAG as SZ_EVOFW_FLAG
-from ramses_rf.schema import PACKET_LOG as SZ_PACKET_LOG
-from ramses_rf.schema import SCH_DEVICE, SCH_SYS
-from ramses_rf.schema import SERIAL_CONFIG as SZ_SERIAL_CONFIG
-from ramses_rf.schema import SERIAL_CONFIG_SCHEMA as SCH_SERIAL_CONFIG
-from ramses_rf.schema import (
+from ramses_rf.protocol.schemas import (
+    SZ_LOG_FILE_NAME,
+    SZ_LOG_ROTATE_BACKUPS,
+    SZ_LOG_ROTATE_BYTES,
+    SZ_PORT_NAME,
+    SZ_SERIAL_PORT,
+)
+from ramses_rf.schemas import (
+    SCH_CONFIG,
+    SCH_DEVICE,
+    SCH_DEVICE_ANY,
+    SCH_SERIAL_CONFIG,
+    SCH_SYS,
     SZ_BLOCK_LIST,
     SZ_CONFIG,
     SZ_CONTROLLER,
+    SZ_EVOFW_FLAG,
     SZ_KNOWN_LIST,
     SZ_MAIN_CONTROLLER,
     SZ_ORPHANS_HEAT,
     SZ_ORPHANS_HVAC,
+    SZ_PACKET_LOG,
     SZ_SCHEMA,
+    SZ_SERIAL_CONFIG,
 )
 
 from .const import DOMAIN, SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
@@ -62,9 +68,9 @@ SCAN_INTERVAL_MINIMUM = td(seconds=1)
 
 SCH_PACKET_LOG = vol.Schema(
     {
-        vol.Required(LOG_FILE_NAME): str,
-        vol.Optional(LOG_ROTATE_BYTES, default=None): vol.Any(None, int),
-        vol.Optional(LOG_ROTATE_COUNT, default=7): int,
+        vol.Required(SZ_LOG_FILE_NAME): str,
+        vol.Optional(SZ_LOG_ROTATE_BYTES, default=None): vol.Any(None, int),
+        vol.Optional(SZ_LOG_ROTATE_BACKUPS, default=7): int,
     },
     extra=vol.PREVENT_EXTRA,
 )
@@ -274,7 +280,7 @@ SVCS_WATER_HEATER_EVOHOME = {
 }
 
 SCH_DEVICE_LIST = vol.Schema(
-    vol.All([vol.Any(DEV_REGEX_ANY, SCH_DEVICE)], vol.Length(min=0))
+    vol.All([vol.Any(SCH_DEVICE_ANY, SCH_DEVICE)], vol.Length(min=0))
 )
 
 SZ_ADVANCED_FEATURES = "advanced_features"
@@ -314,7 +320,7 @@ SCH_CONFIG = vol.Schema(
                 vol.Optional(SZ_KNOWN_LIST, default=[]): SCH_DEVICE_LIST,
                 vol.Optional(SZ_BLOCK_LIST, default=[]): SCH_DEVICE_LIST,
                 cv.deprecated(SZ_CONFIG, "ramses_rf"): vol.Any(),
-                vol.Optional("ramses_rf", default={}): CONFIG_SCHEMA,
+                vol.Optional("ramses_rf", default={}): SCH_CONFIG,
                 cv.deprecated(SZ_RESTORE_STATE, SZ_RESTORE_CACHE): vol.Any(),
                 vol.Optional(SZ_RESTORE_CACHE, default=True): vol.Any(
                     bool, SCH_RESTORE_CACHE
@@ -348,7 +354,7 @@ def _is_subset(subset, superset) -> bool:  # TODO: move to ramses_rf?
     return subset == superset  # not dict, list nor set
 
 
-def _merge(src: dict, dst: dict) -> dict:  # TODO: move to ramses_rf?
+def _merge(src: dict, dst: dict, _dc: bool = None) -> dict:  # TODO: move to ramses_rf?
     """Merge src dict (precident) into the dst dict and return the result.
 
     run me with nosetests --with-doctest file.py
@@ -358,63 +364,70 @@ def _merge(src: dict, dst: dict) -> dict:  # TODO: move to ramses_rf?
     >>> _merge(b, a) == {'first': {'all_rows': {'pass': 'dog', 'fail': 'cat', 'number': '5'}}}
     True
     """
+
     from copy import deepcopy
 
-    dst = deepcopy(dst)
-    for key, value in src.items():
-        if isinstance(value, dict):
-            node = dst.setdefault(key, {})  # get node or create one
-            _merge(value, node)
-        elif isinstance(value, list):
-            dst[key] = list(set(src[key] + dst[key]))
-        else:
-            dst[key] = value  # src takes precidence
+    new_dst = dst if _dc else deepcopy(dst)  # start with copy of dst, merge src into it
+    for key, value in src.items():  # values are only: dict, list, value or None
 
-    assert _is_subset(src, dst)
-    return dst
+        if isinstance(value, dict):  # is dict
+            node = new_dst.setdefault(key, {})  # get node or create one
+            _merge(value, node, _dc=True)
+
+        elif not isinstance(value, list):  # is value
+            new_dst[key] = value  # src takes precidence, assert will fail
+
+        elif key not in new_dst or not isinstance(new_dst[key], list):  # is list
+            new_dst[key] = src[key]  # shouldn't happen: assert will fail
+
+        else:
+            new_dst[key] = list(set(src[key] + new_dst[key]))  # will sort
+
+    # assert _is_subset(shrink(src), shrink(new_dst))
+    return new_dst
 
 
 @callback
-def normalise_hass_config(hass_config: dict, storage: dict) -> dict:
+def normalise_domain_config(domain_config: dict, storage: dict) -> dict:
     """Return a port/config/schema for the library (modifies hass_config)."""
 
-    hass_config[SZ_CONFIG] = hass_config.pop("ramses_rf")
+    domain_config[SZ_CONFIG] = domain_config.pop("ramses_rf")
 
-    if isinstance(hass_config[SZ_SERIAL_PORT], dict):
-        serial_port = hass_config[SZ_SERIAL_PORT].pop(SZ_PORT_NAME)
-        hass_config[SZ_CONFIG][SZ_EVOFW_FLAG] = hass_config[SZ_SERIAL_PORT].pop(
+    if isinstance(domain_config[SZ_SERIAL_PORT], dict):
+        serial_port = domain_config[SZ_SERIAL_PORT].pop(SZ_PORT_NAME)
+        domain_config[SZ_CONFIG][SZ_EVOFW_FLAG] = domain_config[SZ_SERIAL_PORT].pop(
             SZ_EVOFW_FLAG, None
         )
-        hass_config[SZ_CONFIG][SZ_SERIAL_CONFIG] = hass_config.pop(SZ_SERIAL_PORT)
+        domain_config[SZ_CONFIG][SZ_SERIAL_CONFIG] = domain_config.pop(SZ_SERIAL_PORT)
     else:
-        serial_port = hass_config.pop(SZ_SERIAL_PORT)
+        serial_port = domain_config.pop(SZ_SERIAL_PORT)
 
-    hass_config[SZ_KNOWN_LIST] = _normalise_device_list(hass_config[SZ_KNOWN_LIST])
-    hass_config[SZ_BLOCK_LIST] = _normalise_device_list(hass_config[SZ_BLOCK_LIST])
+    domain_config[SZ_KNOWN_LIST] = _normalise_device_list(domain_config[SZ_KNOWN_LIST])
+    domain_config[SZ_BLOCK_LIST] = _normalise_device_list(domain_config[SZ_BLOCK_LIST])
 
-    if SZ_PACKET_LOG not in hass_config:
-        hass_config[SZ_CONFIG][SZ_PACKET_LOG] = {}
-    elif isinstance(hass_config[SZ_PACKET_LOG], dict):
-        hass_config[SZ_CONFIG][SZ_PACKET_LOG] = hass_config.pop(SZ_PACKET_LOG)
+    if SZ_PACKET_LOG not in domain_config:
+        domain_config[SZ_CONFIG][SZ_PACKET_LOG] = {}
+    elif isinstance(domain_config[SZ_PACKET_LOG], dict):
+        domain_config[SZ_CONFIG][SZ_PACKET_LOG] = domain_config.pop(SZ_PACKET_LOG)
     else:
-        hass_config[SZ_CONFIG][SZ_PACKET_LOG] = {
-            LOG_FILE_NAME: hass_config.pop(SZ_PACKET_LOG)
+        domain_config[SZ_CONFIG][SZ_PACKET_LOG] = {
+            SZ_LOG_FILE_NAME: domain_config.pop(SZ_PACKET_LOG)
         }
 
-    if isinstance(hass_config[SZ_RESTORE_CACHE], bool):
-        hass_config[SZ_RESTORE_CACHE] = {
-            SZ_RESTORE_SCHEMA: hass_config[SZ_RESTORE_CACHE],
-            SZ_RESTORE_STATE: hass_config[SZ_RESTORE_CACHE],
+    if isinstance(domain_config[SZ_RESTORE_CACHE], bool):
+        domain_config[SZ_RESTORE_CACHE] = {
+            SZ_RESTORE_SCHEMA: domain_config[SZ_RESTORE_CACHE],
+            SZ_RESTORE_STATE: domain_config[SZ_RESTORE_CACHE],
         }
 
     schema = _normalise_schema(
-        hass_config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA],
-        hass_config.get(SZ_SCHEMA),
+        domain_config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA],
+        domain_config.get(SZ_SCHEMA),
         storage["client_state"].get(SZ_SCHEMA, {}) if "client_state" in storage else {},
     )
 
     unwanted_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
-    library_config = {k: v for k, v in hass_config.items() if k not in unwanted_keys}
+    library_config = {k: v for k, v in domain_config.items() if k not in unwanted_keys}
 
     return serial_port, library_config, schema
 
@@ -445,7 +458,7 @@ def _normalise_schema(restore_cache, config_schema, cached_schema) -> dict:
     else:
         _LOGGER.debug("Loaded a cached schema: %s", cached_schema)
 
-    if not config_schema:
+    if not config_schema:  # could be None
         _LOGGER.debug("A config schema was not provided")
         config_schema = {}  # in case is None
     else:  # normalise config_schema
@@ -459,16 +472,16 @@ def _normalise_schema(restore_cache, config_schema, cached_schema) -> dict:
         config_schema[SZ_ORPHANS_HEAT] = orphans_heat
         config_schema[SZ_ORPHANS_HVAC] = orphans_hvac
 
-    if not cached_schema:
+    if not restore_cache or not cached_schema:
         _LOGGER.info(
-            "Using a config schema (cached schema is not enabled/invalid)"
+            "Using the config schema (cached schema is not enabled / is invalid)"
             f", consider using '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: true'"
         )
         return config_schema
 
     elif _is_subset(shrink(config_schema), shrink(cached_schema)):
         _LOGGER.info(
-            "Using a cached schema (cached schema is a superset of config schema)"
+            "Using the cached schema (cached schema is a superset of config schema)"
         )
         return cached_schema
 

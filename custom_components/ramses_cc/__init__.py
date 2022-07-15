@@ -25,7 +25,8 @@ from homeassistant.helpers.dispatcher import (
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
-from ramses_rf.devices import HvacVentilator
+from ramses_rf import Gateway
+from ramses_rf.device import HvacVentilator
 
 from .const import (
     BROKER,
@@ -46,7 +47,7 @@ from .schema import (
     SZ_MESSAGE_EVENTS,
     SZ_RESTORE_CACHE,
     SZ_RESTORE_STATE,
-    normalise_hass_config,
+    normalise_domain_config,
 )
 from .version import __version__ as VERSION
 
@@ -82,14 +83,14 @@ async def async_setup(
     store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
     app_storage = await EvoBroker.async_load_store(store)
 
-    _LOGGER.debug("\r\n\nStore = %s\r\n", store)
+    _LOGGER.debug("\r\n\nStore = %s\r\n", app_storage)
 
-    serial_port, config, schema = normalise_hass_config(
+    serial_port, config, schema = normalise_domain_config(
         hass_config[DOMAIN], app_storage
     )  # modifies hass_config[DOMAIN]
 
     # any restore_schema is done here...
-    client = ramses_rf.Gateway(serial_port, loop=hass.loop, **config, **schema)
+    client = Gateway(serial_port, loop=hass.loop, **config, **schema)
     broker = EvoBroker(hass, client, store, hass_config)
     hass.data[DOMAIN] = {BROKER: broker}
 
