@@ -8,6 +8,7 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 
 import asyncio
 import logging
+from copy import deepcopy
 from datetime import datetime as dt
 from datetime import timedelta as td
 from threading import Lock
@@ -37,8 +38,8 @@ from .const import (
     STORAGE_VERSION,
     UNIQUE_ID,
 )
-from .schema import SCH_CONFIG as CONFIG_SCHEMA  # noqa: F401
-from .schema import (
+from .schemas import SCH_CONFIG as CONFIG_SCHEMA  # noqa: F401
+from .schemas import (
     SVC_SEND_PACKET,
     SVCS_DOMAIN,
     SVCS_DOMAIN_EVOHOME,
@@ -46,8 +47,11 @@ from .schema import (
     SZ_ADVANCED_FEATURES,
     SZ_MESSAGE_EVENTS,
     SZ_RESTORE_CACHE,
+    SZ_RESTORE_SCHEMA,
     SZ_RESTORE_STATE,
-    normalise_domain_config,
+    SZ_SCHEMA,
+    merge_schemas,
+    normalise_config,
 )
 from .version import __version__ as VERSION
 
@@ -66,7 +70,7 @@ async def async_setup(
     hass: HomeAssistant,
     hass_config: ConfigType,
 ) -> bool:
-    """Create a Honeywell RF (RAMSES_II)-based system."""
+    """Create a ramses_rf (RAMSES_II)-based system."""
 
     async def async_handle_exceptions(awaitable):
         """Wrap the serial port interface to catch/report exceptions."""
@@ -77,32 +81,25 @@ async def async_setup(
             raise exc
 
     _LOGGER.info(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
-
     _LOGGER.debug("\r\n\nConfig = %s\r\n", hass_config[DOMAIN])
 
-    store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
-    app_storage = await EvoBroker.async_load_store(store)
+    broker = EvoBroker(hass, hass_config)
 
-    _LOGGER.debug("\r\n\nStore = %s\r\n", app_storage)
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        app_storage = await broker.async_load_storage()
+        _LOGGER.debug("\r\n\nStore = %s\r\n", app_storage)
 
-    serial_port, config, schema = normalise_domain_config(
-        hass_config[DOMAIN], app_storage
-    )  # modifies hass_config[DOMAIN]
+    await broker.create_client()  # start with a merged/cached, config, null schema
+    if broker.client is None:
+        return False
 
-    # any restore_schema is done here...
-    client = Gateway(serial_port, loop=hass.loop, **config, **schema)
-    broker = EvoBroker(hass, client, store, hass_config)
     hass.data[DOMAIN] = {BROKER: broker}
-
-    # any restore_cache is done here...
-    if hass_config[DOMAIN][SZ_RESTORE_CACHE][
-        SZ_RESTORE_STATE
-    ]:  # TODO: move this out of setup?
-        await broker.async_load_client_state(app_storage)
+    await broker.restore_state()  # load a cached packet log
 
     _LOGGER.debug("Starting the RF monitor...")  # TODO: move this out of setup?
-    broker.loop_task = hass.loop.create_task(async_handle_exceptions(client.start()))
-
+    broker.loop_task = hass.loop.create_task(
+        async_handle_exceptions(broker.client.start())
+    )
     # TODO: all this scheduling needs sorting out
     hass.helpers.event.async_track_time_interval(
         broker.async_save_client_state, SAVE_STATE_INTERVAL
@@ -212,15 +209,16 @@ def register_service_functions(hass: HomeAssistantType, broker):
 class EvoBroker:
     """Container for client and data."""
 
-    def __init__(self, hass, client, store, config) -> None:
+    def __init__(self, hass, hass_config) -> None:
         """Initialize the client and its data structure(s)."""
-        self.hass = hass
-        self.client = client
-        self._store = store
-        self.hass_config = config
-        self.config = config[DOMAIN]
-        self.status = None
 
+        self.hass = hass
+        self._store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
+        self.hass_config = hass_config
+        self.config = hass_config[DOMAIN]
+
+        self.status = None
+        self.client = None
         self._services = {}
 
         self.loop_task = None
@@ -236,21 +234,57 @@ class EvoBroker:
 
         self._lock = Lock()
 
-    @staticmethod
-    async def async_load_store(store) -> Dict:
-        """May return an empty dict."""
-        app_storage = await store.async_load()  # return None if no store
-        return dict(app_storage or {})
+    async def create_client(self) -> None:
+        """Create a client with an initial schema, possibly a cached schema."""
 
-    async def async_load_client_state(self, app_storage) -> None:
-        """Restore the client state from the app store."""
+        storage = await self.async_load_storage()
+
+        serial_port, config = normalise_config(deepcopy(self.config))
+
+        schemas = merge_schemas(
+            self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA],
+            config[SZ_SCHEMA],
+            storage.get("client_state", {}).get(SZ_SCHEMA, {}),
+        )
+        for msg, schema in schemas.items():
+            try:
+                self.client = Gateway(
+                    serial_port, loop=self.hass.loop, **config, **schema
+                )
+            except LookupError as exc:  # ...in the schema, but also in the block_list
+                _LOGGER.warning(f"Failed to initialise with {msg} schema: %s", exc)
+            else:
+                _LOGGER.info(f"Success initialising with {msg} schema: %s", schema)
+                break
+        else:
+            self.client = Gateway(serial_port, loop=self.hass.loop, **config)
+            _LOGGER.warning("Required to initialise with an empty schema: {}")
+
+    async def restore_state(self) -> None:
+        """Restore a cached state (a packet log) to the client."""
+
+        if self.config[SZ_RESTORE_CACHE][SZ_RESTORE_STATE]:
+            await self.async_load_client_state()
+            _LOGGER.info("Restored the cached state.")
+        else:
+            _LOGGER.info("Not restoring any cached state (disabled).")
+
+    async def async_load_storage(self) -> dict:
+        """May return an empty dict."""
+        app_storage = await self._store.async_load()  # return None if no store
+        return app_storage or {}
+
+    async def async_load_client_state(self) -> None:
+        """Restore the client state from the application store."""
+
         _LOGGER.info("Restoring the client state cache (packets only)...")
-        # app_storage = await self.async_load_store(self._store)
+        app_storage = await self.async_load_storage()
         if client_state := app_storage.get("client_state"):
             await self.client._set_state(packets=client_state["packets"])
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
-        """Save the client state to the app store."""
+        """Save the client state to the application store."""
+
         _LOGGER.info("Saving the client state cache (packets, schema)...")
         (schema, packets) = self.client._get_state()
         await self._store.async_save(
@@ -376,8 +410,8 @@ class EvoBroker:
         self._lock.release()
 
         # inform the devices that their state data may have changed
+        # FIXME: no good here, as async_setup_platform will be called later
         async_dispatcher_send(self.hass, DOMAIN)
-        # TODO: no good here, as async_setup_platform will be called later
 
 
 class EvoEntity(Entity):

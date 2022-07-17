@@ -31,7 +31,7 @@ from ramses_rf.system.heat import StoredHw
 from . import EvoZoneBase
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
 from .helpers import migrate_to_ramses_rf
-from .schema import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE
+from .schemas import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE
 
 _LOGGER = logging.getLogger(__name__)
 

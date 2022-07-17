@@ -3,6 +3,7 @@
 #
 """Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC."""
 
+from copy import deepcopy
 import logging
 from datetime import timedelta as td
 
@@ -25,7 +26,7 @@ from ramses_rf.schemas import (
     SCH_DEVICE,
     SCH_DEVICE_ANY,
     SCH_SERIAL_CONFIG,
-    SCH_SYS,
+    SCH_TCS,
     SZ_BLOCK_LIST,
     SZ_CONFIG,
     SZ_CONTROLLER,
@@ -292,8 +293,8 @@ SCH_ADVANCED_FEATURES = vol.Schema(
     {
         vol.Optional(SVC_SEND_PACKET, default=False): bool,
         vol.Optional(SZ_MESSAGE_EVENTS, default=False): bool,
-        vol.Optional(SZ_DEV_MODE, default=False): bool,
-        vol.Optional(SZ_UNKNOWN_CODES, default=False): bool,
+        vol.Optional(SZ_DEV_MODE): bool,
+        vol.Optional(SZ_UNKNOWN_CODES): bool,
     }
 )
 
@@ -308,7 +309,7 @@ SCH_RESTORE_CACHE = vol.Schema(
     }
 )
 
-# SCH_SCHEMA = SCH_SYS.extend({vol.Required(SZ_CONTROLLER): cv.string})
+# SCH_SCHEMA = SCH_TCS.extend({vol.Required(SZ_CONTROLLER): cv.string})
 SCH_CONFIG = vol.Schema(
     {
         DOMAIN: vol.Schema(
@@ -365,8 +366,6 @@ def _merge(src: dict, dst: dict, _dc: bool = None) -> dict:  # TODO: move to ram
     True
     """
 
-    from copy import deepcopy
-
     new_dst = dst if _dc else deepcopy(dst)  # start with copy of dst, merge src into it
     for key, value in src.items():  # values are only: dict, list, value or None
 
@@ -388,48 +387,43 @@ def _merge(src: dict, dst: dict, _dc: bool = None) -> dict:  # TODO: move to ram
 
 
 @callback
-def normalise_domain_config(domain_config: dict, storage: dict) -> dict:
-    """Return a port/config/schema for the library (modifies hass_config)."""
+def normalise_config(config: dict) -> tuple[str, dict]:
+    """Return a port/config/schema for the library."""
 
-    domain_config[SZ_CONFIG] = domain_config.pop("ramses_rf")
+    config[SZ_CONFIG] = config.pop("ramses_rf")
 
-    if isinstance(domain_config[SZ_SERIAL_PORT], dict):
-        serial_port = domain_config[SZ_SERIAL_PORT].pop(SZ_PORT_NAME)
-        domain_config[SZ_CONFIG][SZ_EVOFW_FLAG] = domain_config[SZ_SERIAL_PORT].pop(
+    if isinstance(config[SZ_SERIAL_PORT], dict):
+        serial_port = config[SZ_SERIAL_PORT].pop(SZ_PORT_NAME)
+        config[SZ_CONFIG][SZ_EVOFW_FLAG] = config[SZ_SERIAL_PORT].pop(
             SZ_EVOFW_FLAG, None
         )
-        domain_config[SZ_CONFIG][SZ_SERIAL_CONFIG] = domain_config.pop(SZ_SERIAL_PORT)
+        config[SZ_CONFIG][SZ_SERIAL_CONFIG] = config.pop(SZ_SERIAL_PORT)
     else:
-        serial_port = domain_config.pop(SZ_SERIAL_PORT)
+        serial_port = config.pop(SZ_SERIAL_PORT)
+    # config[SZ_SERIAL_PORT] = serial_port
 
-    domain_config[SZ_KNOWN_LIST] = _normalise_device_list(domain_config[SZ_KNOWN_LIST])
-    domain_config[SZ_BLOCK_LIST] = _normalise_device_list(domain_config[SZ_BLOCK_LIST])
+    config[SZ_KNOWN_LIST] = _normalise_device_list(config[SZ_KNOWN_LIST])
+    config[SZ_BLOCK_LIST] = _normalise_device_list(config[SZ_BLOCK_LIST])
 
-    if SZ_PACKET_LOG not in domain_config:
-        domain_config[SZ_CONFIG][SZ_PACKET_LOG] = {}
-    elif isinstance(domain_config[SZ_PACKET_LOG], dict):
-        domain_config[SZ_CONFIG][SZ_PACKET_LOG] = domain_config.pop(SZ_PACKET_LOG)
+    if SZ_PACKET_LOG not in config:
+        config[SZ_CONFIG][SZ_PACKET_LOG] = {}
+    elif isinstance(config[SZ_PACKET_LOG], dict):
+        config[SZ_CONFIG][SZ_PACKET_LOG] = config.pop(SZ_PACKET_LOG)
     else:
-        domain_config[SZ_CONFIG][SZ_PACKET_LOG] = {
-            SZ_LOG_FILE_NAME: domain_config.pop(SZ_PACKET_LOG)
+        config[SZ_CONFIG][SZ_PACKET_LOG] = {
+            SZ_LOG_FILE_NAME: config.pop(SZ_PACKET_LOG)
         }
 
-    if isinstance(domain_config[SZ_RESTORE_CACHE], bool):
-        domain_config[SZ_RESTORE_CACHE] = {
-            SZ_RESTORE_SCHEMA: domain_config[SZ_RESTORE_CACHE],
-            SZ_RESTORE_STATE: domain_config[SZ_RESTORE_CACHE],
+    if isinstance(config[SZ_RESTORE_CACHE], bool):
+        config[SZ_RESTORE_CACHE] = {
+            SZ_RESTORE_SCHEMA: config[SZ_RESTORE_CACHE],
+            SZ_RESTORE_STATE: config[SZ_RESTORE_CACHE],
         }
 
-    schema = _normalise_schema(
-        domain_config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA],
-        domain_config.get(SZ_SCHEMA),
-        storage["client_state"].get(SZ_SCHEMA, {}) if "client_state" in storage else {},
-    )
+    config[SZ_SCHEMA] = _normalise_schema(config.pop(SZ_SCHEMA, {}))
 
     unwanted_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
-    library_config = {k: v for k, v in domain_config.items() if k not in unwanted_keys}
-
-    return serial_port, library_config, schema
+    return serial_port, {k: v for k, v in config.items() if k not in unwanted_keys}
 
 
 @callback
@@ -449,10 +443,30 @@ def _normalise_device_list(device_list) -> dict:
 
 
 @callback
-def _normalise_schema(restore_cache, config_schema, cached_schema) -> dict:
-    """Return a ramses system schema extracted from the merged config/store."""
+def _normalise_schema(config_schema: dict) -> dict:
+    """Normalise a config schema to a ramses_rf-compatible schema."""
 
-    if not restore_cache:
+    orphans_heat = config_schema.pop(SZ_ORPHANS_HEAT, [])
+    orphans_hvac = config_schema.pop(SZ_ORPHANS_HVAC, [])
+
+    if _ctl := config_schema.pop(SZ_CONTROLLER, None):
+        result = {SZ_MAIN_CONTROLLER: _ctl, _ctl: SCH_TCS(config_schema)}
+    else:
+        result = config_schema  # would usually be be {}
+
+    result[SZ_ORPHANS_HEAT] = orphans_heat
+    result[SZ_ORPHANS_HVAC] = orphans_hvac
+
+    return result
+
+
+@callback
+def merge_schemas(
+    merge_cache: bool, config_schema: dict, cached_schema: dict
+) -> dict:
+    """Return a hierarchy of schema to try (merged, config, {})."""
+
+    if not merge_cache:
         _LOGGER.debug("A cached schema was not enabled (not recommended)")
         # cached_schema = {}  # in case is None
     else:
@@ -463,34 +477,35 @@ def _normalise_schema(restore_cache, config_schema, cached_schema) -> dict:
         config_schema = {}  # in case is None
     else:  # normalise config_schema
         _LOGGER.debug("Loaded a config schema: %s", config_schema)
-        orphans_heat = config_schema.pop(SZ_ORPHANS_HEAT, [])
-        orphans_hvac = config_schema.pop(SZ_ORPHANS_HVAC, [])
-        if _ctl := config_schema.pop(SZ_CONTROLLER, None):
-            config_schema = {SZ_MAIN_CONTROLLER: _ctl, _ctl: SCH_SYS(config_schema)}
-        else:
-            SCH_SYS(config_schema)  # should be {}
-        config_schema[SZ_ORPHANS_HEAT] = orphans_heat
-        config_schema[SZ_ORPHANS_HVAC] = orphans_hvac
 
-    if not restore_cache or not cached_schema:
+    if not merge_cache or not cached_schema:
         _LOGGER.info(
             "Using the config schema (cached schema is not enabled / is invalid)"
             f", consider using '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: true'"
         )
-        return config_schema
+        return {"the config": config_schema}  # maybe config = {}
 
-    elif _is_subset(shrink(config_schema), shrink(cached_schema)):
+    if _is_subset(shrink(config_schema), shrink(cached_schema)):
         _LOGGER.info(
             "Using the cached schema (cached schema is a superset of config schema)"
         )
-        return cached_schema
+        return {
+            "the cached": cached_schema, "the config": config_schema
+        }  # maybe cached = config
 
-    schema = _merge(config_schema, cached_schema)  # config takes precidence
-    assert _is_subset(shrink(config_schema), shrink(schema))
+    merged_schema = _merge(config_schema, cached_schema)  # config takes precidence
+    _LOGGER.debug("Created a merged schema: %s", merged_schema)
 
-    _LOGGER.debug("Created a merged schema: %s", schema)
+    if not _is_subset(shrink(config_schema), shrink(merged_schema)):
+        _LOGGER.info(
+            "Using the config schema (merged schema not a superset of config schema)"
+        )  # something went wrong!
+        return {"the config": config_schema}  # maybe config = {}
+
     _LOGGER.warning(
         "Using a merged schema (cached schema is not a superset of config schema)"
         f", if required, use '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: false'"
     )
-    return schema
+    return {
+        "a merged (cached)": merged_schema, "the config": config_schema
+    }  # maybe merged = config

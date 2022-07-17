@@ -30,7 +30,7 @@ from homeassistant.core import callback
 
 from . import EvoZoneBase
 from .const import ATTR_SETPOINT, DATA, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
-from .schema import (
+from .schemas import (
     CONF_MODE,
     CONF_SYSTEM_MODE,
     SVC_RESET_SYSTEM_MODE,

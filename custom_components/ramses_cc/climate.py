@@ -17,7 +17,7 @@ from .climate_heat import EvoController, EvoZone
 from .climate_hvac import RamsesHvac
 from .const import BROKER, DOMAIN
 from .helpers import migrate_to_ramses_rf
-from .schema import SVCS_CLIMATE_EVOHOME
+from .schemas import SVCS_CLIMATE_EVOHOME
 
 _LOGGER = logging.getLogger(__name__)
 
