@@ -214,11 +214,14 @@ class EvoBroker:
 
         self.hass = hass
         self._store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
+
         self.hass_config = hass_config
-        self.config = hass_config[DOMAIN]
+        self._ser_name, self._client_config, self.config = normalise_config(
+            deepcopy(hass_config[DOMAIN])
+        )
 
         self.status = None
-        self.client = None
+        self.client: Gateway = None  # type: ignore[assignment]
         self._services = {}
 
         self.loop_task = None
@@ -239,17 +242,15 @@ class EvoBroker:
 
         storage = await self.async_load_storage()
 
-        serial_port, config = normalise_config(deepcopy(self.config))
-
         schemas = merge_schemas(
             self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA],
-            config[SZ_SCHEMA],
+            self._client_config[SZ_SCHEMA],
             storage.get("client_state", {}).get(SZ_SCHEMA, {}),
         )
         for msg, schema in schemas.items():
             try:
                 self.client = Gateway(
-                    serial_port, loop=self.hass.loop, **config, **schema
+                    self._ser_name, loop=self.hass.loop, **self._client_config, **schema
                 )
             except LookupError as exc:  # ...in the schema, but also in the block_list
                 _LOGGER.warning(f"Failed to initialise with {msg} schema: %s", exc)
@@ -257,7 +258,9 @@ class EvoBroker:
                 _LOGGER.info(f"Success initialising with {msg} schema: %s", schema)
                 break
         else:
-            self.client = Gateway(serial_port, loop=self.hass.loop, **config)
+            self.client = Gateway(
+                self._ser_name, loop=self.hass.loop, **self._client_config
+            )
             _LOGGER.warning("Required to initialise with an empty schema: {}")
 
     async def restore_state(self) -> None:

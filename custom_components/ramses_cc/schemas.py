@@ -3,8 +3,8 @@
 #
 """Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC."""
 
-from copy import deepcopy
 import logging
+from copy import deepcopy
 from datetime import timedelta as td
 
 import voluptuous as vol
@@ -387,7 +387,7 @@ def _merge(src: dict, dst: dict, _dc: bool = None) -> dict:  # TODO: move to ram
 
 
 @callback
-def normalise_config(config: dict) -> tuple[str, dict]:
+def normalise_config(config: dict) -> tuple[str, dict, dict]:
     """Return a port/config/schema for the library."""
 
     config[SZ_CONFIG] = config.pop("ramses_rf")
@@ -400,7 +400,6 @@ def normalise_config(config: dict) -> tuple[str, dict]:
         config[SZ_CONFIG][SZ_SERIAL_CONFIG] = config.pop(SZ_SERIAL_PORT)
     else:
         serial_port = config.pop(SZ_SERIAL_PORT)
-    # config[SZ_SERIAL_PORT] = serial_port
 
     config[SZ_KNOWN_LIST] = _normalise_device_list(config[SZ_KNOWN_LIST])
     config[SZ_BLOCK_LIST] = _normalise_device_list(config[SZ_BLOCK_LIST])
@@ -410,9 +409,7 @@ def normalise_config(config: dict) -> tuple[str, dict]:
     elif isinstance(config[SZ_PACKET_LOG], dict):
         config[SZ_CONFIG][SZ_PACKET_LOG] = config.pop(SZ_PACKET_LOG)
     else:
-        config[SZ_CONFIG][SZ_PACKET_LOG] = {
-            SZ_LOG_FILE_NAME: config.pop(SZ_PACKET_LOG)
-        }
+        config[SZ_CONFIG][SZ_PACKET_LOG] = {SZ_LOG_FILE_NAME: config.pop(SZ_PACKET_LOG)}
 
     if isinstance(config[SZ_RESTORE_CACHE], bool):
         config[SZ_RESTORE_CACHE] = {
@@ -422,8 +419,12 @@ def normalise_config(config: dict) -> tuple[str, dict]:
 
     config[SZ_SCHEMA] = _normalise_schema(config.pop(SZ_SCHEMA, {}))
 
-    unwanted_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
-    return serial_port, {k: v for k, v in config.items() if k not in unwanted_keys}
+    broker_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
+    return (
+        serial_port,
+        {k: v for k, v in config.items() if k not in broker_keys},
+        {k: v for k, v in config.items() if k in broker_keys},
+    )
 
 
 @callback
@@ -461,9 +462,7 @@ def _normalise_schema(config_schema: dict) -> dict:
 
 
 @callback
-def merge_schemas(
-    merge_cache: bool, config_schema: dict, cached_schema: dict
-) -> dict:
+def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -> dict:
     """Return a hierarchy of schema to try (merged, config, {})."""
 
     if not merge_cache:
@@ -490,7 +489,8 @@ def merge_schemas(
             "Using the cached schema (cached schema is a superset of config schema)"
         )
         return {
-            "the cached": cached_schema, "the config": config_schema
+            "the cached": cached_schema,
+            "the config": config_schema,
         }  # maybe cached = config
 
     merged_schema = _merge(config_schema, cached_schema)  # config takes precidence
@@ -507,5 +507,6 @@ def merge_schemas(
         f", if required, use '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: false'"
     )
     return {
-        "a merged (cached)": merged_schema, "the config": config_schema
+        "a merged (cached)": merged_schema,
+        "the config": config_schema,
     }  # maybe merged = config
