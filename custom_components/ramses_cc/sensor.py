@@ -167,7 +167,7 @@ class RamsesSensor(RamsesDeviceBase, SensorEntity):
         return self._unit_of_measurement
 
 
-class RamsesCo2Sensor(RamsesDeviceBase, SensorEntity):
+class RamsesCo2Sensor(RamsesSensor):
     """Representation of a generic sensor."""
 
     @callback
@@ -176,7 +176,7 @@ class RamsesCo2Sensor(RamsesDeviceBase, SensorEntity):
         self._device.co2_level = co2_level
 
 
-class RamsesIndoorHumidity(RamsesDeviceBase, SensorEntity):
+class RamsesIndoorHumidity(RamsesSensor):
     """Representation of a generic sensor."""
 
     @callback
@@ -388,7 +388,7 @@ SENSOR_ATTRS_HVAC = {
     SZ_INDOOR_HUMIDITY: {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: RamsesCo2Sensor,
+        ENTITY_CLASS: RamsesIndoorHumidity,
     },
     SZ_INDOOR_TEMPERATURE: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
