@@ -21,7 +21,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import EvoEntity
+from . import RamsesEntity
 from .const import BROKER, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ async def async_setup_platform(
         async_add_entities(new_entities)
 
 
-class RamsesFan(EvoEntity, FanEntity):
+class RamsesFan(RamsesEntity, FanEntity):
     """Base for a Honeywell HVAC unit (Fan, HRU, MVHR, PIV, etc)."""
 
     # Entity attrs...

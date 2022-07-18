@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .climate_heat import EvoController, EvoZone
+from .climate_heat import EvohomeController, EvohomeZone
 from .climate_hvac import RamsesHvac
 from .const import BROKER, DOMAIN
 from .helpers import migrate_to_ramses_rf
@@ -41,7 +41,7 @@ async def async_setup_platform(
     new_entities = []
 
     if tcs := discovery_info.get("tcs"):
-        new_entities.append(entity_factory(EvoController, broker, tcs))
+        new_entities.append(entity_factory(EvohomeController, broker, tcs))
 
         if not broker._services.get(PLATFORM):
             broker._services[PLATFORM] = True
@@ -50,7 +50,7 @@ async def async_setup_platform(
             [register_svc(k, v, f"svc_{k}") for k, v in SVCS_CLIMATE_EVOHOME.items()]
 
     for zone in [z for z in discovery_info.get("zones", [])]:
-        new_entities.append(entity_factory(EvoZone, broker, zone))
+        new_entities.append(entity_factory(EvohomeZone, broker, zone))
 
     for fan in [f for f in discovery_info.get("fans", [])]:
         new_entities.append(RamsesHvac(broker, fan))

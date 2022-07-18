@@ -24,12 +24,12 @@ from homeassistant.components.climate.const import (
 )
 from homeassistant.const import TEMP_CELSIUS  # "°C"
 
-from . import EvoEntity
+from . import RamsesEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class RamsesHvac(EvoEntity, ClimateEntity):
+class RamsesHvac(RamsesEntity, ClimateEntity):
     """Base for a Honeywell HVAC unit (Fan, HRU, MVHR, PIV, etc)."""
 
     # PRESET_AWAY = away

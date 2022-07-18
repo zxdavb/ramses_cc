@@ -28,7 +28,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from ramses_rf.system.heat import StoredHw
 
-from . import EvoZoneBase
+from . import EvohomeZoneBase
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
 from .helpers import migrate_to_ramses_rf
 from .schemas import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE
@@ -83,7 +83,7 @@ async def async_setup_platform(
     if not discovery_info.get("dhw"):
         return
 
-    async_add_entities([entity_factory(EvoDHW, broker, discovery_info["dhw"])])
+    async_add_entities([entity_factory(EvohomeDHW, broker, discovery_info["dhw"])])
 
     if broker._services.get(PLATFORM):
         return
@@ -93,7 +93,7 @@ async def async_setup_platform(
     # [register_svc(k, v, f"svc_{k}") for k, v in CLIMATE_SERVICES.items()]
 
 
-class EvoDHW(EvoZoneBase, WaterHeaterEntity):
+class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
     """Base for a DHW controller (aka boiler)."""
 
     def __init__(self, broker, device) -> None:

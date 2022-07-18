@@ -83,7 +83,7 @@ async def async_setup(
     _LOGGER.info(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
     _LOGGER.debug("\r\n\nConfig = %s\r\n", hass_config[DOMAIN])
 
-    broker = EvoBroker(hass, hass_config)
+    broker = RamsesBroker(hass, hass_config)
 
     if _LOGGER.isEnabledFor(logging.DEBUG):
         app_storage = await broker.async_load_storage()
@@ -206,7 +206,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
     ]
 
 
-class EvoBroker:
+class RamsesBroker:
     """Container for client and data."""
 
     def __init__(self, hass, hass_config) -> None:
@@ -417,7 +417,7 @@ class EvoBroker:
         async_dispatcher_send(self.hass, DOMAIN)
 
 
-class EvoEntity(Entity):
+class RamsesEntity(Entity):
     """Base for any RAMSES II-compatible entity (e.g. Climate, Sensor)."""
 
     def __init__(self, broker, device) -> None:
@@ -489,7 +489,7 @@ class EvoEntity(Entity):
         async_dispatcher_connect(self.hass, DOMAIN, self.async_handle_dispatch)
 
 
-class EvoDeviceBase(EvoEntity):
+class RamsesDeviceBase(RamsesEntity):
     """Base for any RAMSES II-compatible entity (e.g. BinarySensor, Sensor)."""
 
     def __init__(
@@ -553,7 +553,7 @@ class EvoDeviceBase(EvoEntity):
         return f"{self._device.name} {self._state_attr_friendly_name}"
 
 
-class EvoZoneBase(EvoEntity):
+class EvohomeZoneBase(RamsesEntity):
     """Base for any RAMSES RF-compatible entity (e.g. Controller, DHW, Zones)."""
 
     def __init__(self, broker, device) -> None:

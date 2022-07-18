@@ -28,7 +28,7 @@ from homeassistant.components.climate.const import (
 from homeassistant.const import ATTR_TEMPERATURE
 from homeassistant.core import callback
 
-from . import EvoZoneBase
+from . import EvohomeZoneBase
 from .const import ATTR_SETPOINT, DATA, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
 from .schemas import (
     CONF_MODE,
@@ -91,7 +91,7 @@ PRESET_ZONE_TO_HA = {
 PRESET_TO_ZONE = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
 
 
-class EvoZone(EvoZoneBase, ClimateEntity):
+class EvohomeZone(EvohomeZoneBase, ClimateEntity):
     """Base for a Honeywell TCS Zone."""
 
     def __init__(self, broker, device) -> None:
@@ -246,7 +246,7 @@ class EvoZone(EvoZoneBase, ClimateEntity):
         self.update_ha_state()
 
 
-class EvoController(EvoZoneBase, ClimateEntity):
+class EvohomeController(EvohomeZoneBase, ClimateEntity):
     """Base for a Honeywell Controller/Location."""
 
     def __init__(self, broker, device) -> None:

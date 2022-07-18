@@ -9,6 +9,7 @@ Provides support for sensors.
 import logging
 from typing import Any, Dict, Optional
 
+from homeassistant.components.sensor import DOMAIN as PLATFORM
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -21,8 +22,8 @@ from homeassistant.const import (
     TEMP_CELSIUS,
     TIME_MINUTES,
 )
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 #
@@ -47,9 +48,12 @@ from ramses_rf.protocol.const import (
     SZ_SUPPLY_TEMPERATURE,
 )
 
-from . import EvoDeviceBase
+from . import RamsesDeviceBase as RamsesDeviceBase
 from .const import ATTR_SETPOINT, BROKER, DOMAIN, VOLUME_FLOW_RATE_LITERS_PER_MINUTE
 from .helpers import migrate_to_ramses_rf
+from .schemas import SVCS_SENSOR
+
+_LOGGER = logging.getLogger(__name__)
 
 SENSOR_KEY_TEMPERATURE = "temperature"
 
@@ -61,8 +65,6 @@ SENSOR_DESCRIPTION_TEMPERATURE = SensorEntityDescription(
     state_class=SensorStateClass.MEASUREMENT,
 )
 # sensor.entity_description = SENSOR_DESCRIPTION_TEMPERATURE
-
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
@@ -81,7 +83,7 @@ async def async_setup_platform(
 
     def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
         migrate_to_ramses_rf(hass, "sensor", f"{device.id}-{attr}")
-        return (entity_class or EvoSensor)(broker, device, attr, **kwargs)
+        return (entity_class or RamsesSensor)(broker, device, attr, **kwargs)
 
     if discovery_info is None:
         return
@@ -109,8 +111,14 @@ async def async_setup_platform(
 
     async_add_entities(new_sensors)
 
+    if not broker._services.get(PLATFORM) and new_sensors:
+        broker._services[PLATFORM] = True
 
-class EvoSensor(EvoDeviceBase, SensorEntity):
+        register_svc = current_platform.get().async_register_entity_service
+        [register_svc(k, v, f"svc_{k}") for k, v in SVCS_SENSOR.items()]
+
+
+class RamsesSensor(RamsesDeviceBase, SensorEntity):
     """Representation of a generic sensor."""
 
     # _attr_state_class = SensorStateClass.MEASUREMENT  # oem_code is not a measurement
@@ -159,7 +167,25 @@ class EvoSensor(EvoDeviceBase, SensorEntity):
         return self._unit_of_measurement
 
 
-class EvoHeatDemand(EvoSensor):
+class RamsesCo2Sensor(RamsesDeviceBase, SensorEntity):
+    """Representation of a generic sensor."""
+
+    @callback
+    def svc_put_co2_level(self, co2_level: int = None, **kwargs) -> None:
+        """Set the state of the Sensor."""
+        self._device.co2_level = co2_level
+
+
+class RamsesIndoorHumidity(RamsesDeviceBase, SensorEntity):
+    """Representation of a generic sensor."""
+
+    @callback
+    def svc_put_indoor_humidity(self, indoor_humidity: float = None, **kwargs) -> None:
+        """Set the state of the Sensor."""
+        self._device.indoor_humidity = indoor_humidity / 100
+
+
+class RamsesHeatDemand(RamsesSensor):
     """Representation of a heat demand sensor."""
 
     @property
@@ -168,7 +194,7 @@ class EvoHeatDemand(EvoSensor):
         return "mdi:radiator-off" if self.state == 0 else "mdi:radiator"
 
 
-class EvoModLevel(EvoSensor):
+class RamsesModLevel(RamsesSensor):
     """Representation of a heat demand sensor."""
 
     @property
@@ -185,7 +211,7 @@ class EvoModLevel(EvoSensor):
         return attrs
 
 
-class EvoRelayDemand(EvoSensor):
+class RamsesRelayDemand(RamsesSensor):
     """Representation of a relay demand sensor."""
 
     @property
@@ -194,7 +220,7 @@ class EvoRelayDemand(EvoSensor):
         return "mdi:power-plug" if self.state else "mdi:power-plug-off"
 
 
-class EvoTemperature(EvoSensor):
+class RamsesTemperature(RamsesSensor):
     """Representation of a temperature sensor (incl. DHW sensor)."""
 
     @property
@@ -206,7 +232,7 @@ class EvoTemperature(EvoSensor):
         return attrs
 
 
-class EvoFaultLog(EvoDeviceBase):
+class RamsesFaultLog(RamsesDeviceBase):
     """Representation of a system's fault log."""
 
     # DEVICE_CLASS = DEVICE_CLASS_PROBLEM
@@ -253,7 +279,7 @@ SENSOR_ATTRS_HEAT = {
     },
     "percent": {  # 2401
         DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: EvoRelayDemand,
+        ENTITY_CLASS: RamsesRelayDemand,
     },
     "value": {  # 2401
         DEVICE_UNITS: "units",
@@ -261,15 +287,15 @@ SENSOR_ATTRS_HEAT = {
     # SENSOR_ATTRS_BDR = {  # incl: actuator
     "relay_demand": {  # 0008
         DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: EvoRelayDemand,
+        ENTITY_CLASS: RamsesRelayDemand,
     },
     "relay_demand_fa": {  # 0008
         DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: EvoRelayDemand,
+        ENTITY_CLASS: RamsesRelayDemand,
     },
     "modulation_level": {  # 3EF0/3EF1
         DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: EvoModLevel,
+        ENTITY_CLASS: RamsesModLevel,
     },
     # SENSOR_ATTRS_OTB = {  # excl. actuator
     "boiler_output_temp": {  # 3200, 3220|19
@@ -309,7 +335,7 @@ SENSOR_ATTRS_HEAT = {
     },
     "max_rel_modulation": {  # 3200|0E
         DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: EvoModLevel,
+        ENTITY_CLASS: RamsesModLevel,
     },
     "outside_temp": {  # 1290, 3220|1B
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
@@ -317,17 +343,17 @@ SENSOR_ATTRS_HEAT = {
     },
     "rel_modulation_level": {  # 3EFx, 3200|11
         DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: EvoModLevel,
+        ENTITY_CLASS: RamsesModLevel,
     },
     # SENSOR_ATTRS_OTH = {
     "heat_demand": {  # 3150
         DEVICE_UNITS: PERCENTAGE,
-        ENTITY_CLASS: EvoHeatDemand,
+        ENTITY_CLASS: RamsesHeatDemand,
     },
     "temperature": {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
-        ENTITY_CLASS: EvoTemperature,
+        ENTITY_CLASS: RamsesTemperature,
         "fakable": True,
     },
 }
@@ -344,6 +370,7 @@ SENSOR_ATTRS_HVAC = {
     SZ_CO2_LEVEL: {
         DEVICE_CLASS: SensorDeviceClass.CO2,
         DEVICE_UNITS: CONCENTRATION_PARTS_PER_MILLION,
+        ENTITY_CLASS: RamsesCo2Sensor,
     },
     SZ_EXHAUST_FAN_SPEED: {
         DEVICE_UNITS: PERCENTAGE,
@@ -361,6 +388,7 @@ SENSOR_ATTRS_HVAC = {
     SZ_INDOOR_HUMIDITY: {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         DEVICE_UNITS: PERCENTAGE,
+        ENTITY_CLASS: RamsesCo2Sensor,
     },
     SZ_INDOOR_TEMPERATURE: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,

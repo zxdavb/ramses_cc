@@ -11,18 +11,22 @@ from datetime import datetime as dt
 from datetime import timedelta as td
 from typing import Any, Dict, Optional
 
+from homeassistant.components.binary_sensor import DOMAIN as PLATFORM
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+
+#
 from ramses_rf.protocol.const import SZ_BYPASS_POSITION
 
-from . import EvoDeviceBase
+from . import RamsesDeviceBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
 from .helpers import migrate_to_ramses_rf
+from .schemas import SVCS_BINARY_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,7 +47,7 @@ async def async_setup_platform(
 
     def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
         migrate_to_ramses_rf(hass, "binary_sensor", f"{device.id}-{attr}")
-        return (entity_class or EvoBinarySensor)(broker, device, attr, **kwargs)
+        return (entity_class or RamsesBinarySensor)(broker, device, attr, **kwargs)
 
     if discovery_info is None:
         return
@@ -80,8 +84,14 @@ async def async_setup_platform(
 
     async_add_entities(new_sensors)
 
+    if not broker._services.get(PLATFORM) and new_sensors:
+        broker._services[PLATFORM] = True
 
-class EvoBinarySensor(EvoDeviceBase, BinarySensorEntity):
+        register_svc = current_platform.get().async_register_entity_service
+        [register_svc(k, v, f"svc_{k}") for k, v in SVCS_BINARY_SENSOR.items()]
+
+
+class RamsesBinarySensor(RamsesDeviceBase, BinarySensorEntity):
     """Representation of a generic binary sensor."""
 
     #
@@ -117,7 +127,7 @@ class EvoBinarySensor(EvoDeviceBase, BinarySensorEntity):
         return getattr(self._device, self._state_attr)
 
 
-class EvoActuator(EvoBinarySensor):
+class RamsesActuator(RamsesBinarySensor):
     """Representation of an actuator sensor; on means active."""
 
     @property
@@ -126,7 +136,7 @@ class EvoActuator(EvoBinarySensor):
         return "mdi:electric-switch-closed" if self.is_on else "mdi:electric-switch"
 
 
-class EvoBattery(EvoBinarySensor):
+class RamsesBattery(RamsesBinarySensor):
     """Representation of a low battery sensor; on means low."""
 
     @property
@@ -139,7 +149,7 @@ class EvoBattery(EvoBinarySensor):
         }
 
 
-class EvoFaultLog(EvoBinarySensor):
+class RamsesFaultLog(RamsesBinarySensor):
     """Representation of a system (a controller)."""
 
     @property
@@ -163,7 +173,7 @@ class EvoFaultLog(EvoBinarySensor):
         return bool(self._device.tcs.active_fault)
 
 
-class EvoSystem(EvoBinarySensor):
+class RamsesSystem(RamsesBinarySensor):
     """Representation of a system (a controller)."""
 
     @property
@@ -185,7 +195,7 @@ class EvoSystem(EvoBinarySensor):
         return self.available
 
 
-class EvoGateway(EvoBinarySensor):
+class RamsesGateway(RamsesBinarySensor):
     """Representation of a gateway (a HGI80)."""
 
     @property
@@ -247,10 +257,10 @@ BINARY_SENSOR_ATTRS = {
         # Standard sensors
         "battery_low": {
             DEVICE_CLASS: BinarySensorDeviceClass.BATTERY,
-            ENTITY_CLASS: EvoBattery,
+            ENTITY_CLASS: RamsesBattery,
         },
         "active": {
-            ENTITY_CLASS: EvoActuator,
+            ENTITY_CLASS: RamsesActuator,
             STATE_ICONS: ("mdi:electric-switch-closed", "mdi:electric-switch"),
         },
         "ch_active": {
@@ -278,16 +288,16 @@ BINARY_SENSOR_ATTRS = {
     },
     "systems": {  # the TCS specials (faults, schedule & schema)
         "active_fault": {
-            ENTITY_CLASS: EvoFaultLog,
+            ENTITY_CLASS: RamsesFaultLog,
             DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
         },
         "schema": {
-            ENTITY_CLASS: EvoSystem,
+            ENTITY_CLASS: RamsesSystem,
         },
     },
     "gateway": {  # the gateway (not the HGI, which is a device)
         "status": {
-            ENTITY_CLASS: EvoGateway,
+            ENTITY_CLASS: RamsesGateway,
             DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
         },
     },
