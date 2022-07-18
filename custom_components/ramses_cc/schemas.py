@@ -276,12 +276,12 @@ SVCS_WATER_HEATER_EVOHOME = {
 
 #
 # WaterHeater platform services for HVAC sensors
-SZ_CO2_LEVEL = "put_co2_level"
-SZ_INDOOR_HUMIDITY = "put_indoor_humidity"
-SZ_PRESENCE_DETECT = "put_presence_detect"
+SZ_CO2_LEVEL = "co2_level"
+SZ_INDOOR_HUMIDITY = "indoor_humidity"
+SZ_PRESENCE_DETECTED = "presence_detected"
 SVC_PUT_CO2_LEVEL = f"put_{SZ_CO2_LEVEL}"
 SVC_PUT_INDOOR_HUMIDITY = f"put_{SZ_INDOOR_HUMIDITY}"
-SVC_PUT_PRESENCE_DETECT = f"put_{SZ_PRESENCE_DETECT}"
+SVC_PUT_PRESENCE_DETECT = f"put_{SZ_PRESENCE_DETECTED}"
 
 SCH_PUT_SENSOR_BASE = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
 
@@ -305,7 +305,7 @@ SCH_PUT_INDOOR_HUMIDITY = SCH_PUT_SENSOR_BASE.extend(
 
 SCH_PUT_PRESENCE_DETECT = SCH_PUT_SENSOR_BASE.extend(
     {
-        vol.Required(SZ_PRESENCE_DETECT): cv.bool,
+        vol.Required(SZ_PRESENCE_DETECTED): cv.boolean,
     }
 )
 
