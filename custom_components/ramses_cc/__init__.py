@@ -442,7 +442,7 @@ class EvoEntity(Entity):
             self.update_ha_state()
 
     @callback
-    def update_ha_state(self, delay=1) -> None:
+    def update_ha_state(self, delay=3) -> None:
         """Update HA state after a short delay to allow system to quiesce.
 
         This routine is threadsafe.
