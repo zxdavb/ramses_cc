@@ -76,12 +76,10 @@ SCH_PACKET_LOG = vol.Schema(
     extra=vol.PREVENT_EXTRA,
 )
 
-# Integration domain services for System/Controller
+# Integration/domain generic services
 SVC_FAKE_DEVICE = "fake_device"
 SVC_REFRESH_SYSTEM = "refresh_system"
-SVC_RESET_SYSTEM_MODE = "reset_system_mode"
 SVC_SEND_PACKET = "send_packet"
-SVC_SET_SYSTEM_MODE = "set_system_mode"
 
 SCH_FAKE_DEVICE = vol.Schema(
     {
@@ -98,6 +96,17 @@ SCH_SEND_PACKET = vol.Schema(
         vol.Required("payload"): vol.Match(r"^[0-9A-F]{1,48}$"),
     }
 )
+
+SVCS_DOMAIN = {
+    SVC_FAKE_DEVICE: SCH_FAKE_DEVICE,
+    SVC_REFRESH_SYSTEM: None,
+    SVC_SEND_PACKET: SCH_SEND_PACKET,
+}
+
+# Integration/domain services for TCS
+SVC_RESET_SYSTEM_MODE = "reset_system_mode"
+SVC_SET_SYSTEM_MODE = "set_system_mode"
+
 SCH_SYSTEM_MODE = vol.Schema(
     {
         vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),  # incl. DAY_OFF_ECO
@@ -122,12 +131,6 @@ SCH_SYSTEM_MODE_DAYS = vol.Schema(
     }
 )
 SCH_SYSTEM_MODE = vol.Any(SCH_SYSTEM_MODE, SCH_SYSTEM_MODE_HOURS, SCH_SYSTEM_MODE_DAYS)
-
-SVCS_DOMAIN = {
-    SVC_FAKE_DEVICE: SCH_FAKE_DEVICE,
-    SVC_REFRESH_SYSTEM: None,
-    SVC_SEND_PACKET: SCH_SEND_PACKET,
-}
 
 SVCS_DOMAIN_EVOHOME = {
     SVC_RESET_SYSTEM_MODE: None,

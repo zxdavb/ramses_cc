@@ -1,4 +1,5 @@
-# system service calls
+#
+# generic service calls
 
 fake_device:
   name: Fake a device
@@ -44,12 +45,6 @@ refresh_system:
   description: >-
     Update the system state now, without waiting for the next scheduled update.
 
-reset_system_mode:
-  name: Fully reset the system mode
-  description: >-
-    The system will be in auto mode and all zones will be in follow_schedule mode,
-    including (if supported) those in permanent_override mode.
-
 send_packet:
   name: Send a packet
   description: Send a completely bespoke command packet.
@@ -66,6 +61,15 @@ send_packet:
     payload:
       description: The packet payload as a hexadecimal string.
       example: '00'
+
+#
+# evohome (CH/DHW) service calls
+
+reset_system_mode:
+  name: Fully reset the system mode
+  description: >-
+    The system will be in auto mode and all zones will be in follow_schedule mode,
+    including (if supported) those in permanent_override mode.
 
 set_system_mode:
   name: Set the system mode
@@ -86,7 +90,8 @@ set_system_mode:
         Optional. The duration in hours; used only with eco_boost (up to 24 hours).
       example: '{"hours": 18}'
 
-# zone service calls
+#
+# evohome (CH/DHW) zone service calls
 
 put_zone_temp:
   name: Fake a zone's temperature
@@ -94,7 +99,7 @@ put_zone_temp:
     Announce the current temperature of a zone's temperature sensor. The zone must have
     a faked sensor (see the `fake_device` service call).
   target:
-    integration: evohome_cc
+    integration: ramses_cc
     domain: climate
   fields:
     entity_id:
@@ -167,7 +172,8 @@ set_zone_mode:
         The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
 
-# dhw service calls
+#
+# evohome DHW service calls
 
 put_dhw_temp:
   name: Fake a DHW sensor's temperature
@@ -175,7 +181,7 @@ put_dhw_temp:
     Announce the current temperature of a DHW temperature sensor. The sensor must be
     faked (see the `fake_device` service call).
   target:
-    integration: evohome_cc
+    integration: ramses_cc
     domain: water_heater
   fields:
     entity_id:
@@ -264,6 +270,73 @@ set_dhw_params:
       description: >-
         The differential in degrees Celsius. Default is 1.
       example: 1
+
+#
+# sensor (HVAC) service calls
+
+put_co2_level:
+  name: Fake a CO2 sensor's reading
+  description: >-
+    Announce the CO2 level of a faked CO2 sensor (experimental).
+    To be useful, the sensor must bound to a fan (see the `fake_device` service call).
+  target:
+    integration: ramses_cc
+    domain: sensor
+  fields:
+    entity_id:
+      description: >-
+        The entity_id of the sensor. Raises an exception if it is not faked.
+        Does not raise an expception if not is not bound.
+      example: sensor.30_123456_co2_level
+      required: true
+    temperature:
+      description: >-
+        The current CO2 level in ppm.
+      example: 363
+      required: true
+
+put_indoor_humidity:
+  name: Fake a humidity sensor's reading
+  description: >-
+    Announce the relative humidity of a faked indoor sensor (experimental).
+    To be useful, the sensor must bound to a fan (see the `fake_device` service call).
+  target:
+    integration: ramses_cc
+    domain: sensor
+  fields:
+    entity_id:
+      description: >-
+        The entity_id of the sensor. Raises an exception if it is not faked.
+        Does not raise an expception if not is not bound.
+      example: sensor.30_123456_indoor_humidity
+      required: true
+    temperature:
+      description: >-
+        The current relative humidity as a perecentage (%).
+      example: 59.3
+      required: true
+
+put_presence_detect:
+  name: Fake a presence sensor's reading
+  description: >-
+    Announce the CO2 level of a faked presence sensor (experimental).
+    To be useful, the sensor must bound to a fan (see the `fake_device` service call).
+  target:
+    integration: ramses_cc
+    domain: sensor
+  fields:
+    entity_id:
+      description: >-
+        The entity_id of the sensor. Raises an exception if it is not faked.
+        Does not raise an expception if not is not bound.
+      example: sensor.30_123456_presence_detected
+      required: true
+    temperature:
+      description: >-
+        The current state.
+      example: True
+      required: true
+
 
 # If the service accepts entity IDs, target allows the user to specify entities by
 # entity, device, or area. If `target` is specified, `entity_id` should not be defined
