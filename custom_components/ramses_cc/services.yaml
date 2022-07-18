@@ -289,9 +289,8 @@ put_co2_level:
         Does not raise an expception if not is not bound.
       example: sensor.30_123456_co2_level
       required: true
-    temperature:
-      description: >-
-        The current CO2 level in ppm.
+    co2_level:
+      description: The current CO2 level in ppm.
       example: 363
       required: true
 
@@ -310,9 +309,8 @@ put_indoor_humidity:
         Does not raise an expception if not is not bound.
       example: sensor.30_123456_indoor_humidity
       required: true
-    temperature:
-      description: >-
-        The current relative humidity as a perecentage (%).
+    indoor_humidity:
+      description: The current relative humidity as a perecentage (%).
       example: 59.3
       required: true
 
@@ -331,9 +329,8 @@ put_presence_detect:
         Does not raise an expception if not is not bound.
       example: sensor.30_123456_presence_detected
       required: true
-    temperature:
-      description: >-
-        The current state.
+    presence_detected:
+      description: The current state.
       example: True
       required: true
 

@@ -63,19 +63,7 @@ CONF_ACTIVE = "active"
 CONF_DIFFERENTIAL = "differential"
 CONF_OVERRUN = "overrun"
 
-# Configuration schema
-SCAN_INTERVAL_DEFAULT = td(seconds=300)
-SCAN_INTERVAL_MINIMUM = td(seconds=1)
-
-SCH_PACKET_LOG = vol.Schema(
-    {
-        vol.Required(SZ_LOG_FILE_NAME): str,
-        vol.Optional(SZ_LOG_ROTATE_BYTES, default=None): vol.Any(None, int),
-        vol.Optional(SZ_LOG_ROTATE_BACKUPS, default=7): int,
-    },
-    extra=vol.PREVENT_EXTRA,
-)
-
+#
 # Integration/domain generic services
 SVC_FAKE_DEVICE = "fake_device"
 SVC_REFRESH_SYSTEM = "refresh_system"
@@ -103,6 +91,7 @@ SVCS_DOMAIN = {
     SVC_SEND_PACKET: SCH_SEND_PACKET,
 }
 
+#
 # Integration/domain services for TCS
 SVC_RESET_SYSTEM_MODE = "reset_system_mode"
 SVC_SET_SYSTEM_MODE = "set_system_mode"
@@ -137,6 +126,7 @@ SVCS_DOMAIN_EVOHOME = {
     SVC_SET_SYSTEM_MODE: SCH_SYSTEM_MODE,
 }
 
+#
 # Climate platform services for Zone
 SVC_PUT_ZONE_TEMP = "put_zone_temp"
 SVC_RESET_ZONE_CONFIG = "reset_zone_config"
@@ -219,6 +209,7 @@ SVCS_CLIMATE_EVOHOME = {
     SVC_PUT_ZONE_TEMP: SCH_PUT_ZONE_TEMP,
 }
 
+#
 # WaterHeater platform services for DHW
 SVC_PUT_DHW_TEMP = "put_dhw_temp"
 SVC_RESET_DHW_MODE = "reset_dhw_mode"
@@ -282,6 +273,64 @@ SVCS_WATER_HEATER_EVOHOME = {
     SVC_SET_DHW_PARAMS: SCH_SET_DHW_CONFIG,
     SVC_PUT_DHW_TEMP: SCH_PUT_DHW_TEMP,
 }
+
+#
+# WaterHeater platform services for HVAC sensors
+SZ_CO2_LEVEL = "put_co2_level"
+SZ_INDOOR_HUMIDITY = "put_indoor_humidity"
+SZ_PRESENCE_DETECT = "put_presence_detect"
+SVC_PUT_CO2_LEVEL = f"put_{SZ_CO2_LEVEL}"
+SVC_PUT_INDOOR_HUMIDITY = f"put_{SZ_INDOOR_HUMIDITY}"
+SVC_PUT_PRESENCE_DETECT = f"put_{SZ_PRESENCE_DETECT}"
+
+SCH_PUT_SENSOR_BASE = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
+
+SCH_PUT_CO2_LEVEL = SCH_PUT_SENSOR_BASE.extend(
+    {
+        vol.Required(SZ_CO2_LEVEL): vol.All(
+            cv.positive_int,
+            vol.Range(min=0, max=16384),
+        ),
+    }
+)
+
+SCH_PUT_INDOOR_HUMIDITY = SCH_PUT_SENSOR_BASE.extend(
+    {
+        vol.Required(SZ_INDOOR_HUMIDITY): vol.All(
+            cv.positive_float,
+            vol.Range(min=0, max=100),
+        ),
+    }
+)
+
+SCH_PUT_PRESENCE_DETECT = SCH_PUT_SENSOR_BASE.extend(
+    {
+        vol.Required(SZ_PRESENCE_DETECT): cv.bool,
+    }
+)
+
+SVCS_BINARY_SENSORS = {
+    SVC_PUT_PRESENCE_DETECT: SCH_PUT_PRESENCE_DETECT,
+}
+
+SVCS_SENSORS = {
+    SVC_PUT_CO2_LEVEL: SCH_PUT_CO2_LEVEL,
+    SVC_PUT_INDOOR_HUMIDITY: SCH_PUT_INDOOR_HUMIDITY,
+}
+
+#
+# Configuration schema
+SCAN_INTERVAL_DEFAULT = td(seconds=300)
+SCAN_INTERVAL_MINIMUM = td(seconds=1)
+
+SCH_PACKET_LOG = vol.Schema(
+    {
+        vol.Required(SZ_LOG_FILE_NAME): str,
+        vol.Optional(SZ_LOG_ROTATE_BYTES, default=None): vol.Any(None, int),
+        vol.Optional(SZ_LOG_ROTATE_BACKUPS, default=7): int,
+    },
+    extra=vol.PREVENT_EXTRA,
+)
 
 SCH_DEVICE_LIST = vol.Schema(
     vol.All([vol.Any(SCH_DEVICE_ANY, SCH_DEVICE)], vol.Length(min=0))
