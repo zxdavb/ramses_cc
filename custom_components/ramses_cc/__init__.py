@@ -8,7 +8,6 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 
 import asyncio
 import logging
-from copy import deepcopy
 from datetime import datetime as dt
 from datetime import timedelta as td
 from threading import Lock
@@ -16,6 +15,9 @@ from typing import Any, Dict, List, Optional
 
 import ramses_rf
 import serial
+import voluptuous as vol
+
+#
 from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.discovery import async_load_platform
@@ -28,6 +30,7 @@ from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from ramses_rf import Gateway
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
+from ramses_rf.schemas import extract_schema
 
 from .const import (
     BROKER,
@@ -38,8 +41,8 @@ from .const import (
     STORAGE_VERSION,
     UNIQUE_ID,
 )
-from .schemas import SCH_CONFIG as CONFIG_SCHEMA  # noqa: F401
 from .schemas import (
+    SCH_DOMAIN_CONFIG,
     SVC_SEND_PACKET,
     SVCS_DOMAIN,
     SVCS_DOMAIN_EVOHOME,
@@ -56,6 +59,9 @@ from .schemas import (
 from .version import __version__ as VERSION
 
 _LOGGER = logging.getLogger(__name__)
+
+
+CONFIG_SCHEMA = vol.Schema({DOMAIN: SCH_DOMAIN_CONFIG}, extra=vol.ALLOW_EXTRA)
 
 PLATFORMS = [
     Platform.BINARY_SENSOR,
@@ -217,7 +223,7 @@ class RamsesBroker:
 
         self.hass_config = hass_config
         self._ser_name, self._client_config, self.config = normalise_config(
-            deepcopy(hass_config[DOMAIN])
+            hass_config[DOMAIN]
         )
 
         self.status = None
@@ -232,8 +238,11 @@ class RamsesBroker:
         self._dhw = None
         self._zones = []
 
-        self._entities: dict[str: list] = {
-            "devices": [], "domains": [], "fans": [], "remotes": []
+        self._entities: dict[str, list] = {
+            "devices": [],
+            "domains": [],
+            "fans": [],
+            "remotes": [],
         }
 
         self._lock = Lock()
@@ -243,17 +252,22 @@ class RamsesBroker:
 
         storage = await self.async_load_storage()
 
+        schema = extract_schema(**self._client_config)
+        config = {k: v for k, v in self._client_config.items() if k not in schema}
+
         schemas = merge_schemas(
             self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA],
-            self._client_config[SZ_SCHEMA],
+            schema,
             storage.get("client_state", {}).get(SZ_SCHEMA, {}),
         )
         for msg, schema in schemas.items():
             try:
                 self.client = Gateway(
-                    self._ser_name, loop=self.hass.loop, **self._client_config, **schema
+                    self._ser_name, loop=self.hass.loop, **config, **schema
                 )
-            except LookupError as exc:  # ...in the schema, but also in the block_list
+            except (LookupError, vol.MultipleInvalid) as exc:
+                # LookupError: ...in the schema, but also in the block_list
+                # MultipleInvalid: ...extra keys not allowed @ data['???']
                 _LOGGER.warning(f"Failed to initialise with {msg} schema: %s", exc)
             else:
                 _LOGGER.info(f"Success initialising with {msg} schema: %s", schema)
@@ -313,14 +327,24 @@ class RamsesBroker:
 
         if discovery_info:
             self.hass.async_create_task(
-                async_load_platform(self.hass, Platform.CLIMATE, DOMAIN, discovery_info, self.hass_config)
+                async_load_platform(
+                    self.hass,
+                    Platform.CLIMATE,
+                    DOMAIN,
+                    discovery_info,
+                    self.hass_config,
+                )
             )
 
         if self.client.tcs.dhw and self._dhw is None:
             self._dhw = discovery_info["dhw"] = self.client.tcs.dhw
             self.hass.async_create_task(
                 async_load_platform(
-                    self.hass, Platform.WATER_HEATER, DOMAIN, {"dhw": self._dhw}, self.hass_config
+                    self.hass,
+                    Platform.WATER_HEATER,
+                    DOMAIN,
+                    {"dhw": self._dhw},
+                    self.hass_config,
                 )
             )
 
@@ -338,7 +362,11 @@ class RamsesBroker:
             self._entities["fans"].extend(new_fans)
             self.hass.async_create_task(
                 async_load_platform(
-                    self.hass, Platform.CLIMATE, DOMAIN, {"fans": new_fans}, self.hass_config
+                    self.hass,
+                    Platform.CLIMATE,
+                    DOMAIN,
+                    {"fans": new_fans},
+                    self.hass_config,
                 )
             )
 
@@ -348,11 +376,15 @@ class RamsesBroker:
             if isinstance(f, HvacRemoteBase) and f not in self._entities["remotes"]
         ]:
             self._entities["remotes"].extend(new_remotes)
-            self.hass.async_create_task(
-                async_load_platform(
-                    self.hass, Platform.REMOTE, DOMAIN, {"remotes": new_remotes}, self.hass_config
-                )
-            )
+            # self.hass.async_create_task(
+            #     async_load_platform(
+            #         self.hass,
+            #         Platform.REMOTE,
+            #         DOMAIN,
+            #         {"remotes": new_remotes},
+            #         self.hass_config,
+            #     )
+            # )
 
         return bool(new_fans or new_remotes)
 
@@ -390,7 +422,9 @@ class RamsesBroker:
         if discovery_info:
             for platform in (Platform.BINARY_SENSOR, Platform.SENSOR):
                 self.hass.async_create_task(
-                    async_load_platform(self.hass, platform, DOMAIN, discovery_info, self.hass_config)
+                    async_load_platform(
+                        self.hass, platform, DOMAIN, discovery_info, self.hass_config
+                    )
                 )
 
         return bool(discovery_info)

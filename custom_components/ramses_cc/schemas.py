@@ -14,33 +14,32 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from ramses_rf.const import SZ_DEVICE_ID
 from ramses_rf.helpers import shrink
+
+# from ramses_rf.protocol.const import DEVICE_ID_REGEX
 from ramses_rf.protocol.schemas import (
-    SZ_LOG_FILE_NAME,
-    SZ_LOG_ROTATE_BACKUPS,
-    SZ_LOG_ROTATE_BYTES,
-    SZ_PORT_NAME,
+    SCH_PACKET_LOG_NAME,
+    SCH_SERIAL_PORT_DICT,
+    SZ_FILE_NAME,
+    SZ_PACKET_LOG,
+    SZ_PORT_CONFIG,
+    SZ_ROTATE_BACKUPS,
+    SZ_ROTATE_BYTES,
     SZ_SERIAL_PORT,
+    NormalisePacketLog,
+    extract_serial_port,
 )
 from ramses_rf.schemas import (
-    SCH_CONFIG,
     SCH_DEVICE,
-    SCH_DEVICE_ANY,
-    SCH_SERIAL_CONFIG,
-    SCH_TCS,
-    SZ_BLOCK_LIST,
+    SCH_DEVICE_ID_ANY,
+    SCH_GATEWAY,
+    SCH_GLOBAL_SCHEMAS_DICT,
+    SCH_GLOBAL_TRAITS_DICT,
+    SCH_RESTORE_CACHE_DICT,
     SZ_CONFIG,
-    SZ_CONTROLLER,
-    SZ_EVOFW_FLAG,
-    SZ_KNOWN_LIST,
-    SZ_MAIN_CONTROLLER,
-    SZ_ORPHANS_HEAT,
-    SZ_ORPHANS_HVAC,
-    SZ_PACKET_LOG,
     SZ_SCHEMA,
-    SZ_SERIAL_CONFIG,
 )
 
-from .const import DOMAIN, SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
+from .const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -323,17 +322,23 @@ SVCS_SENSOR = {
 SCAN_INTERVAL_DEFAULT = td(seconds=300)
 SCAN_INTERVAL_MINIMUM = td(seconds=1)
 
-SCH_PACKET_LOG = vol.Schema(
-    {
-        vol.Required(SZ_LOG_FILE_NAME): str,
-        vol.Optional(SZ_LOG_ROTATE_BYTES, default=None): vol.Any(None, int),
-        vol.Optional(SZ_LOG_ROTATE_BACKUPS, default=7): int,
-    },
-    extra=vol.PREVENT_EXTRA,
-)
+# this is overriden, so we can have default=7 days
+SCH_PACKET_LOG_CONFIG_DICT = {
+    vol.Optional(SZ_ROTATE_BACKUPS, default=7): vol.Any(None, int),
+    vol.Optional(SZ_ROTATE_BYTES): vol.Any(None, int),
+}
+SCH_PACKET_LOG_CONFIG = vol.Schema(SCH_PACKET_LOG_CONFIG_DICT, extra=vol.PREVENT_EXTRA)
+
+SCH_PACKET_LOG_DICT = {
+    vol.Required(SZ_PACKET_LOG, default=None): vol.Any(
+        None,
+        vol.All(SCH_PACKET_LOG_NAME, NormalisePacketLog()),
+        SCH_PACKET_LOG_CONFIG.extend({vol.Required(SZ_FILE_NAME): SCH_PACKET_LOG_NAME}),
+    )
+}
 
 SCH_DEVICE_LIST = vol.Schema(
-    vol.All([vol.Any(SCH_DEVICE_ANY, SCH_DEVICE)], vol.Length(min=0))
+    vol.All([vol.Any(SCH_DEVICE_ID_ANY, SCH_DEVICE)], vol.Length(min=0))
 )
 
 SZ_ADVANCED_FEATURES = "advanced_features"
@@ -361,34 +366,23 @@ SCH_RESTORE_CACHE = vol.Schema(
     }
 )
 
-# SCH_SCHEMA = SCH_TCS.extend({vol.Required(SZ_CONTROLLER): cv.string})
-SCH_CONFIG = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(SZ_SERIAL_PORT): vol.Any(
-                    cv.string,
-                    SCH_SERIAL_CONFIG.extend({vol.Required(SZ_PORT_NAME): cv.string}),
-                ),
-                vol.Optional(SZ_KNOWN_LIST, default=[]): SCH_DEVICE_LIST,
-                vol.Optional(SZ_BLOCK_LIST, default=[]): SCH_DEVICE_LIST,
-                cv.deprecated(SZ_CONFIG, "ramses_rf"): vol.Any(),
-                vol.Optional("ramses_rf", default={}): SCH_CONFIG,
-                cv.deprecated(SZ_RESTORE_STATE, SZ_RESTORE_CACHE): vol.Any(),
-                vol.Optional(SZ_RESTORE_CACHE, default=True): vol.Any(
-                    bool, SCH_RESTORE_CACHE
-                ),
-                vol.Optional(
-                    CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT
-                ): vol.All(cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)),
-                vol.Optional(SZ_PACKET_LOG): vol.Any(str, SCH_PACKET_LOG),
-                cv.deprecated(SVC_SEND_PACKET, SZ_ADVANCED_FEATURES): vol.Any(),
-                vol.Optional(SZ_ADVANCED_FEATURES, default={}): SCH_ADVANCED_FEATURES,
-            },
-            extra=vol.ALLOW_EXTRA,  # will be system, orphan schemas for ramses_rf
-        )
-    },
-    extra=vol.ALLOW_EXTRA,
+
+SCH_DOMAIN_CONFIG = (
+    vol.Schema(
+        {
+            vol.Optional("ramses_rf", default={}): SCH_GATEWAY,
+            vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT): vol.All(
+                cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)
+            ),
+            vol.Optional(SZ_ADVANCED_FEATURES, default={}): SCH_ADVANCED_FEATURES,
+        },
+        extra=vol.PREVENT_EXTRA,  # will be system, orphan schemas for ramses_rf
+    )
+    .extend(SCH_SERIAL_PORT_DICT)
+    .extend(SCH_PACKET_LOG_DICT)
+    .extend(SCH_RESTORE_CACHE_DICT)
+    .extend(SCH_GLOBAL_SCHEMAS_DICT)
+    .extend(SCH_GLOBAL_TRAITS_DICT)
 )
 
 
@@ -440,47 +434,24 @@ def _merge(src: dict, dst: dict, _dc: bool = None) -> dict:  # TODO: move to ram
 
 @callback
 def normalise_config(config: dict) -> tuple[str, dict, dict]:
-    """Return a port/config/schema for the library."""
+    """Return a port/client_config/broker_config for the library."""
+
+    config = deepcopy(config)
+
+    port_name, config[SZ_PORT_CONFIG] = extract_serial_port(config.pop(SZ_SERIAL_PORT))
 
     config[SZ_CONFIG] = config.pop("ramses_rf")
 
-    if isinstance(config[SZ_SERIAL_PORT], dict):
-        serial_port = config[SZ_SERIAL_PORT].pop(SZ_PORT_NAME)
-        config[SZ_CONFIG][SZ_EVOFW_FLAG] = config[SZ_SERIAL_PORT].pop(
-            SZ_EVOFW_FLAG, None
-        )
-        config[SZ_CONFIG][SZ_SERIAL_CONFIG] = config.pop(SZ_SERIAL_PORT)
-    else:
-        serial_port = config.pop(SZ_SERIAL_PORT)
-
-    config[SZ_KNOWN_LIST] = _normalise_device_list(config[SZ_KNOWN_LIST])
-    config[SZ_BLOCK_LIST] = _normalise_device_list(config[SZ_BLOCK_LIST])
-
-    if SZ_PACKET_LOG not in config:
-        config[SZ_CONFIG][SZ_PACKET_LOG] = {}
-    elif isinstance(config[SZ_PACKET_LOG], dict):
-        config[SZ_CONFIG][SZ_PACKET_LOG] = config.pop(SZ_PACKET_LOG)
-    else:
-        config[SZ_CONFIG][SZ_PACKET_LOG] = {SZ_LOG_FILE_NAME: config.pop(SZ_PACKET_LOG)}
-
-    if isinstance(config[SZ_RESTORE_CACHE], bool):
-        config[SZ_RESTORE_CACHE] = {
-            SZ_RESTORE_SCHEMA: config[SZ_RESTORE_CACHE],
-            SZ_RESTORE_STATE: config[SZ_RESTORE_CACHE],
-        }
-
-    config[SZ_SCHEMA] = _normalise_schema(config.pop(SZ_SCHEMA, {}))
-
     broker_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
     return (
-        serial_port,
+        port_name,
         {k: v for k, v in config.items() if k not in broker_keys},
         {k: v for k, v in config.items() if k in broker_keys},
     )
 
 
 @callback
-def _normalise_device_list(device_list) -> dict:
+def OUT_normalise_device_list(device_list) -> dict:
     """Convert a device_list schema into a ramses_rf format."""
     # convert: ['01:123456',    {'03:123456': None}, {'18:123456': {'a': 1, 'b': 2}}]
     #    into: {'01:123456': {}, '03:123456': {},     '18:123456': {'a': 1, 'b': 2}}
@@ -493,24 +464,6 @@ def _normalise_device_list(device_list) -> dict:
 
     # elif isinstance(device_list, dict):
     return {k: v or {} for k, v in device_list.items()}
-
-
-@callback
-def _normalise_schema(config_schema: dict) -> dict:
-    """Normalise a config schema to a ramses_rf-compatible schema."""
-
-    orphans_heat = config_schema.pop(SZ_ORPHANS_HEAT, [])
-    orphans_hvac = config_schema.pop(SZ_ORPHANS_HVAC, [])
-
-    if _ctl := config_schema.pop(SZ_CONTROLLER, None):
-        result = {SZ_MAIN_CONTROLLER: _ctl, _ctl: SCH_TCS(config_schema)}
-    else:
-        result = config_schema  # would usually be be {}
-
-    result[SZ_ORPHANS_HEAT] = orphans_heat
-    result[SZ_ORPHANS_HVAC] = orphans_hvac
-
-    return result
 
 
 @callback
