@@ -13,7 +13,7 @@ from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from ramses_rf.const import SZ_DEVICE_ID
-from ramses_rf.helpers import shrink
+from ramses_rf.helpers import merge, shrink
 
 # from ramses_rf.protocol.const import DEVICE_ID_REGEX
 from ramses_rf.protocol.schemas import (
@@ -401,37 +401,6 @@ def _is_subset(subset, superset) -> bool:  # TODO: move to ramses_rf?
     return subset == superset  # not dict, list nor set
 
 
-def _merge(src: dict, dst: dict, _dc: bool = None) -> dict:  # TODO: move to ramses_rf?
-    """Merge src dict (precident) into the dst dict and return the result.
-
-    run me with nosetests --with-doctest file.py
-
-    >>> a = {'first': {'all_rows': {'pass': 'dog', 'number': '1'}}}
-    >>> b = {'first': {'all_rows': {'fail': 'cat', 'number': '5'}}}
-    >>> _merge(b, a) == {'first': {'all_rows': {'pass': 'dog', 'fail': 'cat', 'number': '5'}}}
-    True
-    """
-
-    new_dst = dst if _dc else deepcopy(dst)  # start with copy of dst, merge src into it
-    for key, value in src.items():  # values are only: dict, list, value or None
-
-        if isinstance(value, dict):  # is dict
-            node = new_dst.setdefault(key, {})  # get node or create one
-            _merge(value, node, _dc=True)
-
-        elif not isinstance(value, list):  # is value
-            new_dst[key] = value  # src takes precidence, assert will fail
-
-        elif key not in new_dst or not isinstance(new_dst[key], list):  # is list
-            new_dst[key] = src[key]  # shouldn't happen: assert will fail
-
-        else:
-            new_dst[key] = list(set(src[key] + new_dst[key]))  # will sort
-
-    # assert _is_subset(shrink(src), shrink(new_dst))
-    return new_dst
-
-
 @callback
 def normalise_config(config: dict) -> tuple[str, dict, dict]:
     """Return a port/client_config/broker_config for the library."""
@@ -498,7 +467,7 @@ def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -
             "the config": config_schema,
         }  # maybe cached = config
 
-    merged_schema = _merge(config_schema, cached_schema)  # config takes precidence
+    merged_schema = merge(config_schema, cached_schema)  # config takes precidence
     _LOGGER.debug("Created a merged schema: %s", merged_schema)
 
     if not _is_subset(shrink(config_schema), shrink(merged_schema)):
