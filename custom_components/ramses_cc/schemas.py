@@ -379,7 +379,9 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
 
     config[SZ_CONFIG] = config.pop("ramses_rf")
 
-    port_name, config[SZ_CONFIG][SZ_PORT_CONFIG] = extract_serial_port(config.pop(SZ_SERIAL_PORT))
+    port_name, port_config = extract_serial_port(config.pop(SZ_SERIAL_PORT))
+    if port_config:  # HACK: we swallow port_config
+        _LOGGER.warning("port config currently ignored: %s", port_config)
 
     broker_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
     return (
