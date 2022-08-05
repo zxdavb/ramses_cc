@@ -9,9 +9,10 @@ Provides support for HVAC RF remotes.
 import logging
 from typing import Any, Dict, Iterable, Optional
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.components.remote import ATTR_NUM_REPEATS
 from homeassistant.components.remote import DOMAIN as PLATFORM
-from homeassistant.components.remote import ATTR_NUM_REPEATS, RemoteEntity
+from homeassistant.components.remote import RemoteEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
@@ -42,8 +43,7 @@ async def async_setup_platform(
     broker = hass.data[DOMAIN][BROKER]
 
     new_remotes = [
-        RamsesRemote(broker, device)
-        for device in discovery_info["remotes"]
+        RamsesRemote(broker, device) for device in discovery_info["remotes"]
     ]  # and (not device._is_faked or device["fakable"])
 
     async_add_entities(new_remotes)
@@ -67,7 +67,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
     @property
     def is_on(self) -> None | bool:
         """Return true if device is on."""
-        return not self.coordinator.data.state.standby
+        return True
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the device on."""

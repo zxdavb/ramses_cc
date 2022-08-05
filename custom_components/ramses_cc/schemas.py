@@ -16,27 +16,23 @@ from ramses_rf.const import SZ_DEVICE_ID
 from ramses_rf.helpers import merge, shrink
 
 # from ramses_rf.protocol.const import DEVICE_ID_REGEX
-from ramses_rf.protocol.schemas import (
-    SCH_PACKET_LOG_NAME,
-    SCH_SERIAL_PORT_DICT,
-    SZ_FILE_NAME,
-    SZ_PACKET_LOG,
+from ramses_rf.protocol.schemas import (  # SCH_SERIAL_PORT_CONFIG,; SCH_SERIAL_PORT_NAME,; SZ_PORT_NAME,
     SZ_PORT_CONFIG,
-    SZ_ROTATE_BACKUPS,
-    SZ_ROTATE_BYTES,
     SZ_SERIAL_PORT,
-    NormalisePacketLog,
     extract_serial_port,
+    sch_packet_log_dict_factory,
+    sch_serial_port_dict_factory,
 )
 from ramses_rf.schemas import (
     SCH_DEVICE,
     SCH_DEVICE_ID_ANY,
-    SCH_GATEWAY,
+    SCH_GATEWAY_DICT,
     SCH_GLOBAL_SCHEMAS_DICT,
     SCH_GLOBAL_TRAITS_DICT,
     SCH_RESTORE_CACHE_DICT,
     SZ_CONFIG,
-    SZ_SCHEMA,
+    SZ_RESTORE_CACHE,
+    SZ_RESTORE_SCHEMA,
 )
 
 from .const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
@@ -322,21 +318,6 @@ SVCS_SENSOR = {
 SCAN_INTERVAL_DEFAULT = td(seconds=300)
 SCAN_INTERVAL_MINIMUM = td(seconds=1)
 
-# this is overriden, so we can have default=7 days
-SCH_PACKET_LOG_CONFIG_DICT = {
-    vol.Optional(SZ_ROTATE_BACKUPS, default=7): vol.Any(None, int),
-    vol.Optional(SZ_ROTATE_BYTES): vol.Any(None, int),
-}
-SCH_PACKET_LOG_CONFIG = vol.Schema(SCH_PACKET_LOG_CONFIG_DICT, extra=vol.PREVENT_EXTRA)
-
-SCH_PACKET_LOG_DICT = {
-    vol.Required(SZ_PACKET_LOG, default=None): vol.Any(
-        None,
-        vol.All(SCH_PACKET_LOG_NAME, NormalisePacketLog()),
-        SCH_PACKET_LOG_CONFIG.extend({vol.Required(SZ_FILE_NAME): SCH_PACKET_LOG_NAME}),
-    )
-}
-
 SCH_DEVICE_LIST = vol.Schema(
     vol.All([vol.Any(SCH_DEVICE_ID_ANY, SCH_DEVICE)], vol.Length(min=0))
 )
@@ -355,22 +336,11 @@ SCH_ADVANCED_FEATURES = vol.Schema(
     }
 )
 
-SZ_RESTORE_CACHE = "restore_cache"
-SZ_RESTORE_SCHEMA = "restore_schema"
-SZ_RESTORE_STATE = "restore_state"
-
-SCH_RESTORE_CACHE = vol.Schema(
-    {
-        vol.Optional(SZ_RESTORE_SCHEMA, default=True): bool,
-        vol.Optional(SZ_RESTORE_STATE, default=True): bool,
-    }
-)
-
 
 SCH_DOMAIN_CONFIG = (
     vol.Schema(
         {
-            vol.Optional("ramses_rf", default={}): SCH_GATEWAY,
+            vol.Optional("ramses_rf", default={}): SCH_GATEWAY_DICT,
             vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT): vol.All(
                 cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)
             ),
@@ -378,11 +348,11 @@ SCH_DOMAIN_CONFIG = (
         },
         extra=vol.PREVENT_EXTRA,  # will be system, orphan schemas for ramses_rf
     )
-    .extend(SCH_SERIAL_PORT_DICT)
-    .extend(SCH_PACKET_LOG_DICT)
-    .extend(SCH_RESTORE_CACHE_DICT)
     .extend(SCH_GLOBAL_SCHEMAS_DICT)
     .extend(SCH_GLOBAL_TRAITS_DICT)
+    .extend(sch_packet_log_dict_factory(default_backups=7))
+    .extend(SCH_RESTORE_CACHE_DICT)
+    .extend(sch_serial_port_dict_factory())
 )
 
 
@@ -417,22 +387,6 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
         {k: v for k, v in config.items() if k not in broker_keys},
         {k: v for k, v in config.items() if k in broker_keys},
     )
-
-
-@callback
-def OUT_normalise_device_list(device_list) -> dict:
-    """Convert a device_list schema into a ramses_rf format."""
-    # convert: ['01:123456',    {'03:123456': None}, {'18:123456': {'a': 1, 'b': 2}}]
-    #    into: {'01:123456': {}, '03:123456': {},     '18:123456': {'a': 1, 'b': 2}}
-    if isinstance(device_list, list):
-        result = [
-            {k: v for k, v in x.items()} if isinstance(x, dict) else {x: None}
-            for x in device_list
-        ]
-        return {k: v or {} for d in result for k, v in d.items()}
-
-    # elif isinstance(device_list, dict):
-    return {k: v or {} for k, v in device_list.items()}
 
 
 @callback

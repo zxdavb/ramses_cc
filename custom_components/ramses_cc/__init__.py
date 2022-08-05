@@ -30,7 +30,13 @@ from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from ramses_rf import Gateway
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
-from ramses_rf.schemas import extract_schema
+from ramses_rf.schemas import (
+    SZ_RESTORE_CACHE,
+    SZ_RESTORE_SCHEMA,
+    SZ_RESTORE_STATE,
+    SZ_SCHEMA,
+    extract_schema,
+)
 
 from .const import (
     BROKER,
@@ -49,10 +55,6 @@ from .schemas import (
     SVCS_WATER_HEATER_EVOHOME,
     SZ_ADVANCED_FEATURES,
     SZ_MESSAGE_EVENTS,
-    SZ_RESTORE_CACHE,
-    SZ_RESTORE_SCHEMA,
-    SZ_RESTORE_STATE,
-    SZ_SCHEMA,
     merge_schemas,
     normalise_config,
 )
