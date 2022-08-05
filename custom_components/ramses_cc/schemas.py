@@ -377,9 +377,9 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
 
     config = deepcopy(config)
 
-    port_name, config[SZ_PORT_CONFIG] = extract_serial_port(config.pop(SZ_SERIAL_PORT))
-
     config[SZ_CONFIG] = config.pop("ramses_rf")
+
+    port_name, config[SZ_CONFIG][SZ_PORT_CONFIG] = extract_serial_port(config.pop(SZ_SERIAL_PORT))
 
     broker_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
     return (
