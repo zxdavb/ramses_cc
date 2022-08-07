@@ -6,19 +6,24 @@
 Provides support for HVAC RF remotes.
 """
 
+import asyncio
 import logging
-from typing import Any, Dict, Iterable, Optional
+from datetime import datetime as dt
+from datetime import timedelta as td
+from typing import Any, Iterable
 
-from homeassistant.components.remote import ATTR_NUM_REPEATS
 from homeassistant.components.remote import DOMAIN as PLATFORM
-from homeassistant.components.remote import RemoteEntity
+from homeassistant.components.remote import RemoteEntity, RemoteEntityFeature
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
+from ramses_rf.protocol import Command, Priority
 
-from . import RamsesDeviceBase as RamsesEntity
+from . import RamsesEntity
 from .const import BROKER, DOMAIN
+
+QOS_HIGH = {"priority": Priority.HIGH, "retries": 3}
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,32 +60,133 @@ async def async_setup_platform(
 class RamsesRemote(RamsesEntity, RemoteEntity):
     """Representation of a generic sensor."""
 
+    # entity_description: RemoteEntityDescription
+    # _attr_activity_list: list[str] | None = None
+    # _attr_current_activity: str | None = None
+    _attr_supported_features: int = (
+        RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
+    )
+    # _attr_state: None = None
+
     def __init__(self, broker, device, **kwargs) -> None:
         """Initialize a sensor."""
         _LOGGER.info("Found a Remote: %s", device)
         super().__init__(broker, device)
 
-        device_id = device.id
+        self.entity_id = f"{DOMAIN}.{device.id}"
 
-        _attr_name = f"{device.id}_remote"
+        self._attr_is_on = True
+        self._attr_unique_id = (
+            device.id
+        )  # dont include domain (ramses_cc) / platform (remote)
+
+        self._commands: dict[str, dict] = {}
 
     @property
-    def is_on(self) -> None | bool:
-        """Return true if device is on."""
-        return True
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        return super().extra_state_attributes | {"commands": self._commands}
 
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the device on."""
-        await self.coordinator.roku.remote("poweron")
+    async def async_delete_command(
+        self,
+        command: Iterable[str],
+        **kwargs: Any,
+    ) -> None:
+        """Delete commands from the database.
 
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the device off."""
-        await self.coordinator.roku.remote("poweroff")
+        service: remote.delete_command
+        data:
+          command: boost
+        target:
+          entity_id: remote.device_id
+        """
 
-    async def async_send_command(self, command: Iterable[str], **kwargs: Any) -> None:
-        """Send a command to one device."""
-        num_repeats = kwargs[ATTR_NUM_REPEATS]
+        self._commands = {k: v for k, v in self._commands.items() if k not in command}
 
-        for _ in range(num_repeats):
-            for single_command in command:
-                await self.coordinator.roku.remote(single_command)
+    async def async_learn_command(
+        self,
+        command: Iterable[str],
+        timeout: float = 60,
+        **kwargs: Any,
+    ) -> None:
+        """Learn a command from a device and add to teh database.
+
+        service: remote.learn_command
+        data:
+          command: boost
+          timeout: 3
+        target:
+          entity_id: remote.device_id
+        """
+
+        @callback
+        def event_filter(event: Event) -> bool:
+            """Return True if the listener callable should run."""
+            codes = ("22F1", "22F3")
+            return event.data["src"] == self._device.id and event.data["code"] in codes
+
+        @callback
+        def listener(event: Event) -> None:
+            """Save the command to storage."""
+            self._commands[command[0]] = event.data["packet"]
+
+        if len(command) != 1:
+            raise TypeError("must be exactly one command to learn")
+        if not isinstance(timeout, (float, int)) or not 5 <= timeout <= 300:
+            raise TypeError("timeout must be 5 to 300 (default 60)")
+
+        if command[0] in self._commands:
+            await self.async_delete_command(command)
+
+        with self._broker._sem:
+            remove_listener = self.hass.bus.async_listen(
+                f"{DOMAIN}_message", listener, event_filter
+            )
+
+            dt_expires = dt.now() + td(seconds=timeout)
+            while dt.now() < dt_expires:
+                await asyncio.sleep(0.005)
+                if self._commands.get(command[0]):
+                    break
+
+            remove_listener()
+
+    async def async_send_command(
+        self,
+        command: Iterable[str],
+        delay_secs: float = 0.05,
+        num_repeats: int = 3,
+        **kwargs: Any,
+    ) -> None:
+        """Send commands to a device.
+
+        service: remote.send_command
+        data:
+          command: boost
+          delay_secs: 0.05
+          num_repeats: 3
+        target:
+          entity_id: remote.device_id
+        """
+
+        if len(command) != 1:
+            raise TypeError("must be exactly one command to send")
+        if not isinstance(delay_secs, (float, int)) or not 0.02 <= delay_secs <= 1:
+            raise TypeError("delay_secs must be 0.02 to 1.0 (default 0.05)")
+        if not isinstance(num_repeats, int) or not 1 <= num_repeats <= 5:
+            raise TypeError("num_repeats must be 1 to 5 (default 3)")
+
+        if command[0] not in self._commands:
+            raise LookupError(f"command '{command[0]}' is not known")
+
+        if not self._device.is_faked:  # have to check here, as not using device method
+            raise TypeError(f"{self._device.id} is not enabled for faking")
+
+        for x in range(num_repeats):
+            if x != 0:
+                await asyncio.sleep(delay_secs)
+            cmd = Command(
+                self._commands[command[0]],
+                qos={"priority": Priority.HIGH, "retries": 0},
+            )
+            self._broker.client.send_cmd(cmd)

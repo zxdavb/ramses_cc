@@ -7,10 +7,11 @@ Provides support for sensors.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from homeassistant.components.sensor import DOMAIN as PLATFORM
 from homeassistant.components.sensor import (
+    TEMP_CELSIUS,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
@@ -19,7 +20,6 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
-    TEMP_CELSIUS,
     TIME_MINUTES,
 )
 from homeassistant.core import HomeAssistant, callback
@@ -121,50 +121,38 @@ async def async_setup_platform(
 class RamsesSensor(RamsesDeviceBase, SensorEntity):
     """Representation of a generic sensor."""
 
-    # _attr_state_class = SensorStateClass.MEASUREMENT  # oem_code is not a measurement
+    # Strictly, oem_code is not a measurement
+    _attr_state_class: SensorStateClass = SensorStateClass.MEASUREMENT
 
     def __init__(
         self,
-        broker,
-        device,
-        state_attr,
-        attr_name=None,
-        device_id=None,
-        device_class=None,
-        device_units=None,
-        **kwargs,
+        broker,  # ramses_cc broker
+        device,  # ramses_rf device
+        state_attr,  # key of attr_dict +/- _ot suffix
+        device_class=None,  # attr_dict value
+        device_units=None,  # attr_dict value
+        **kwargs,  # leftover attr_dict values
     ) -> None:
         """Initialize a sensor."""
-        attr_name = attr_name or state_attr
-        device_id = device_id or device.id
 
-        _LOGGER.info("Found a Sensor for %s: %s", device_id, attr_name)
+        _LOGGER.info("Found a Sensor for %s: %s", device.id, state_attr)
 
         super().__init__(
             broker,
             device,
-            device_id,
-            attr_name,
             state_attr,
             device_class,
         )
 
-        self._unit_of_measurement = device_units  # or PERCENTAGE
+        self._attr_native_unit_of_measurement = device_units or PERCENTAGE
 
     @property
-    def state(self) -> Optional[Any]:  # int or float
+    def native_value(self) -> Any | None:  # int or float
         """Return the state of the sensor."""
         state = getattr(self._device, self._state_attr)
         if self.unit_of_measurement == PERCENTAGE:
             return None if state is None else state * 100
-        # if self.unit_of_measurement == TEMP_CELSIUS:
-        #     return None if state is None else int(state * 200) / 200
         return state
-
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement of the sensor."""
-        return self._unit_of_measurement
 
 
 class RamsesCo2Sensor(RamsesSensor):
@@ -198,7 +186,7 @@ class RamsesModLevel(RamsesSensor):
     """Representation of a heat demand sensor."""
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         attrs = super().extra_state_attributes
 
@@ -224,7 +212,7 @@ class RamsesTemperature(RamsesSensor):
     """Representation of a temperature sensor (incl. DHW sensor)."""
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         attrs = super().extra_state_attributes
         if hasattr(self._device, ATTR_SETPOINT):
@@ -250,12 +238,12 @@ class RamsesFaultLog(RamsesDeviceBase):
         return self._device._fault_log._fault_log_done
 
     @property
-    def state(self) -> int:
+    def native_value(self) -> int:
         """Return the number of issues."""
         return len(self._fault_log)
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the device state attributes."""
         return {
             **super().extra_state_attributes,
@@ -271,17 +259,20 @@ class RamsesFaultLog(RamsesDeviceBase):
 DEVICE_CLASS = "device_class"
 DEVICE_UNITS = "device_units"
 ENTITY_CLASS = "entity_class"
+# STATE_CLASS = "state_class"
+
+# These are all: SensorStateClass.MEASUREMENT
 
 SENSOR_ATTRS_HEAT = {
     # Special projects
     "oem_code": {  # 3220/73
         DEVICE_UNITS: None,
     },
-    "percent": {  # 2401
+    "percent": {  # TODO: 2401
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: RamsesRelayDemand,
     },
-    "value": {  # 2401
+    "value": {  # TODO: 2401
         DEVICE_UNITS: "units",
     },
     # SENSOR_ATTRS_BDR = {  # incl: actuator
@@ -363,9 +354,11 @@ SENSOR_ATTRS_HVAC = {
     # "fan_rate":    {DEVICE_UNITS: PERCENTAGE,},
     SZ_AIR_QUALITY: {
         DEVICE_UNITS: PERCENTAGE,
+        # DEVICE_CLASS: SensorDeviceClass.AQI,
     },
     SZ_AIR_QUALITY_BASE: {
         DEVICE_UNITS: PERCENTAGE,
+        # DEVICE_CLASS: SensorDeviceClass.AQI,
     },
     SZ_CO2_LEVEL: {
         DEVICE_CLASS: SensorDeviceClass.CO2,
@@ -410,6 +403,7 @@ SENSOR_ATTRS_HVAC = {
     },
     SZ_REMAINING_TIME: {
         DEVICE_UNITS: TIME_MINUTES,
+        # DEVICE_CLASS: SensorDeviceClass.DURATION,
     },
     SZ_SPEED_CAP: {
         DEVICE_UNITS: "units",

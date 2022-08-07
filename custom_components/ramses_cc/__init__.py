@@ -10,8 +10,8 @@ import asyncio
 import logging
 from datetime import datetime as dt
 from datetime import timedelta as td
-from threading import Lock
-from typing import Any, Dict, List, Optional
+from threading import Lock, Semaphore
+from typing import Any
 
 import ramses_rf
 import serial
@@ -129,6 +129,12 @@ def register_trigger_events(hass: HomeAssistantType, broker):
 
     @callback
     def process_msg(msg, *args, **kwargs):  # process_msg(msg, prev_msg=None)
+        if (
+            not broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS]
+            and broker._sem._value == broker.MAX_SEMAPHORE_LOCKS  # HACK
+        ):
+            return
+
         event_data = {
             "dtm": msg.dtm.isoformat(),
             "src": msg.src.id,
@@ -140,8 +146,7 @@ def register_trigger_events(hass: HomeAssistantType, broker):
         }
         hass.bus.async_fire(f"{DOMAIN}_message", event_data)
 
-    if broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS]:
-        broker.client.create_client(process_msg)
+    broker.client.create_client(process_msg)
 
 
 @callback  # TODO: add async_ to routines where required to do so
@@ -217,6 +222,8 @@ def register_service_functions(hass: HomeAssistantType, broker):
 class RamsesBroker:
     """Container for client and data."""
 
+    MAX_SEMAPHORE_LOCKS: int = 3
+
     def __init__(self, hass, hass_config) -> None:
         """Initialize the client and its data structure(s)."""
 
@@ -248,6 +255,7 @@ class RamsesBroker:
         }
 
         self._lock = Lock()
+        self._sem = Semaphore(value=self.MAX_SEMAPHORE_LOCKS)
 
     async def create_client(self) -> None:
         """Create a client with an initial schema, possibly a cached schema."""
@@ -268,7 +276,7 @@ class RamsesBroker:
                     self._ser_name, loop=self.hass.loop, **config, **schema
                 )
             except (LookupError, vol.MultipleInvalid) as exc:
-                # LookupError: ...in the schema, but also in the block_list
+                # LookupError:     ...in the schema, but also in the block_list
                 # MultipleInvalid: ...extra keys not allowed @ data['???']
                 _LOGGER.warning(f"Failed to initialise with {msg} schema: %s", exc)
             else:
@@ -378,15 +386,15 @@ class RamsesBroker:
             if isinstance(f, HvacRemoteBase) and f not in self._entities["remotes"]
         ]:
             self._entities["remotes"].extend(new_remotes)
-            # self.hass.async_create_task(
-            #     async_load_platform(
-            #         self.hass,
-            #         Platform.REMOTE,
-            #         DOMAIN,
-            #         {"remotes": new_remotes},
-            #         self.hass_config,
-            #     )
-            # )
+            self.hass.async_create_task(
+                async_load_platform(
+                    self.hass,
+                    Platform.REMOTE,
+                    DOMAIN,
+                    {"remotes": new_remotes},
+                    self.hass_config,
+                )
+            )
 
         return bool(new_fans or new_remotes)
 
@@ -459,16 +467,61 @@ class RamsesBroker:
 class RamsesEntity(Entity):
     """Base for any RAMSES II-compatible entity (e.g. Climate, Sensor)."""
 
+    entity_id: str = None  # type: ignore[assignment]
+    _attr_assumed_state: bool = True
+    # _attr_attribution: str | None = None
+    # _attr_context_recent_time: timedelta = timedelta(seconds=5)
+    # _attr_device_info: DeviceInfo | None = None
+    # _attr_entity_category: EntityCategory | None
+    # _attr_has_entity_name: bool
+    # _attr_entity_picture: str | None = None
+    # _attr_entity_registry_enabled_default: bool
+    # _attr_entity_registry_visible_default: bool
+    # _attr_extra_state_attributes: MutableMapping[str, Any]
+    # _attr_force_update: bool
+    _attr_icon: str | None
+    _attr_name: str | None
+    _attr_should_poll: bool = True
+    _attr_unique_id: str | None = None
+    # _attr_unit_of_measurement: str | None
+
     def __init__(self, broker, device) -> None:
         """Initialize the entity."""
         self.hass = broker.hass
         self._broker = broker
         self._device = device
 
-        self._unique_id = self._name = None
+        self._attr_should_poll = False
+
         self._entity_state_attrs = ()
 
         # NOTE: this is bad: self.update_ha_state(delay=5)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        attrs = {
+            a: getattr(self._device, a)
+            for a in self._entity_state_attrs
+            if hasattr(self._device, a)
+        }
+        # TODO: use self._device._parent?
+        # attrs["controller_id"] = self._device.ctl.id if self._device.ctl else None
+        return attrs
+
+    async def async_added_to_hass(self) -> None:
+        """Run when entity about to be added to hass."""
+        async_dispatcher_connect(self.hass, DOMAIN, self.async_handle_dispatch)
+
+    @callback  # TODO: WIP
+    def _call_client_api(self, func, *args, **kwargs) -> None:
+        """Wrap client APIs to make them threadsafe."""
+        # self.hass.loop.call_soon_threadsafe(
+        #     func(*args, **kwargs)
+        # )  # HACK: call_soon_threadsafe should not be needed
+
+        func(*args, **kwargs)
+        self.update_ha_state()
 
     @callback
     def async_handle_dispatch(self, *args) -> None:  # TODO: remove as unneeded?
@@ -491,42 +544,6 @@ class RamsesEntity(Entity):
             self.hass.helpers.event.async_call_later, *args
         )  # HACK: call_soon_threadsafe should not be needed
 
-    @callback  # TODO: WIP
-    def _call_client_api(self, func, *args, **kwargs) -> None:
-        """Wrap client APIs to make them threadsafe."""
-        # self.hass.loop.call_soon_threadsafe(
-        #     func(*args, **kwargs)
-        # )  # HACK: call_soon_threadsafe should not be needed
-
-        func(*args, **kwargs)
-        self.update_ha_state()
-
-    @property
-    def should_poll(self) -> bool:
-        """Entities should not be polled."""
-        return False
-
-    @property
-    def unique_id(self) -> Optional[str]:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        attrs = {
-            a: getattr(self._device, a)
-            for a in self._entity_state_attrs
-            if hasattr(self._device, a)
-        }
-        # TODO: use self._device._parent?
-        # attrs["controller_id"] = self._device.ctl.id if self._device.ctl else None
-        return attrs
-
-    async def async_added_to_hass(self) -> None:
-        """Run when entity about to be added to hass."""
-        async_dispatcher_connect(self.hass, DOMAIN, self.async_handle_dispatch)
-
 
 class RamsesDeviceBase(RamsesEntity):
     """Base for any RAMSES II-compatible entity (e.g. BinarySensor, Sensor)."""
@@ -535,20 +552,18 @@ class RamsesDeviceBase(RamsesEntity):
         self,
         broker,
         device,
-        device_id,
-        attr_name,
         state_attr,
         device_class,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(broker, device)
 
-        self._unique_id = f"{device_id}-{attr_name}"
+        self.entity_id = f"{DOMAIN}.{device.id}-{state_attr}"
 
-        self._device_class = device_class
-        self._device_id = device.id  # e.g. 10:123456_alt
+        self._attr_device_class = device_class
+        self._attr_unique_id = f"{device.id}-{state_attr}"  # dont include domain (ramses_cc) / platform (binary_sesnor/sensor)
+
         self._state_attr = state_attr
-        self._state_attr_friendly_name = attr_name
 
     @property
     def available(self) -> bool:
@@ -556,87 +571,34 @@ class RamsesDeviceBase(RamsesEntity):
         return getattr(self._device, self._state_attr) is not None
 
     @property
-    def device_class(self) -> str:
-        """Return the device class of the sensor."""
-        return self._device_class
-
-    @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        attrs = super().extra_state_attributes
-        attrs["device_id"] = self._device.id
-
-        if hasattr(self._device, "_domain_id"):
-            attrs["domain_id"] = self._device._domain_id
-        elif hasattr(self._device, "idx"):
-            attrs["domain_id"] = self._device.idx
-
-        if hasattr(self._device, "name"):
-            attrs["domain_name"] = self._device.name
-        else:
-            try:
-                attrs["domain_name"] = self._device.zone.name
-            except AttributeError:
-                pass
-
-        if hasattr(self._device, "role"):
-            attrs["role"] = self._device.role
-
-        return attrs
-
-    @property
     def name(self) -> str:
         """Return the name of the binary_sensor/sensor."""
         if not hasattr(self._device, "name") or not self._device.name:
-            return f"{self._device_id} {self._state_attr_friendly_name}"
-        return f"{self._device.name} {self._state_attr_friendly_name}"
+            return f"{self._device.id} {self._state_attr}"
+        return f"{self._device.name} {self._state_attr}"
 
 
 class EvohomeZoneBase(RamsesEntity):
     """Base for any RAMSES RF-compatible entity (e.g. Controller, DHW, Zones)."""
 
+    _attr_precision: float = 0.01  # PRECISION_TENTHS
+    _attr_temperature_unit: str = TEMP_CELSIUS
+
     def __init__(self, broker, device) -> None:
         """Initialize the sensor."""
         super().__init__(broker, device)
 
-        self._unique_id = device.id
-
-        self._hvac_modes = None
-        self._preset_modes = None
-        self._supported_features = None
+        self._attr_unique_id = (
+            device.id
+        )  # dont include domain (ramses_cc) / platform (climate)
 
     @property
-    def current_temperature(self) -> Optional[float]:
+    def current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self._device.temperature
 
     @property
-    def name(self) -> str:
-        """Return the name of the climate/water_heater entity."""
-        return self._device.name or self._device.id
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return self._supported_features
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement used by the platform."""
-        return TEMP_CELSIUS
-
-    @property
-    def hvac_modes(self) -> List[str]:
-        """Return the list of available hvac operation modes."""
-        return self._hvac_modes
-
-    @property
-    def preset_modes(self) -> Optional[List[str]]:
-        """Return a list of available preset modes."""
-        return self._preset_modes
-
-    @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
             **super().extra_state_attributes,
@@ -644,3 +606,8 @@ class EvohomeZoneBase(RamsesEntity):
             "params": self._device.params,
             # "schedule": self._device.schedule,
         }
+
+    @property
+    def name(self) -> str | None:
+        """Return the name of the climate/water_heater entity."""
+        return self._device.name

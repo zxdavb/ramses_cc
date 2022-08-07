@@ -5,7 +5,9 @@
 
 import logging
 
-from .schema import _is_subset, _merge, _normalise_schema
+from ramses_rf.helpers import merge
+
+from .schema import _is_subset, _normalise_schema
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,7 +69,7 @@ assert _normalise_schema(
 
 
 def _test_set(src, dst, result):
-    assert _merge(src, dst) == result
+    assert merge(src, dst) == result
     assert _is_subset(src, result)
     # assert _is_subset(dst, result)
 

@@ -9,7 +9,7 @@ Provides support for binary sensors.
 import logging
 from datetime import datetime as dt
 from datetime import timedelta as td
-from typing import Any, Dict, Optional
+from typing import Any
 
 from homeassistant.components.binary_sensor import DOMAIN as PLATFORM
 from homeassistant.components.binary_sensor import (
@@ -98,25 +98,19 @@ class RamsesBinarySensor(RamsesDeviceBase, BinarySensorEntity):
 
     def __init__(
         self,
-        broker,
-        device,
-        state_attr,
-        attr_name=None,
-        device_id=None,
-        device_class=None,
-        **kwargs,
+        broker,  # ramses_cc broker
+        device,  # ramses_rf device
+        state_attr,  # key of attr_dict +/- _ot suffix
+        device_class=None,  # attr_dict value
+        **kwargs,  # leftover attr_dict values
     ) -> None:
         """Initialize a binary sensor."""
-        attr_name = attr_name or state_attr
-        device_id = device_id or device.id
 
-        _LOGGER.info("Found a Binary Sensor for %s: %s", device_id, attr_name)
+        _LOGGER.info("Found a Binary Sensor for %s: %s", device.id, state_attr)
 
         super().__init__(
             broker,
             device,
-            device_id,
-            attr_name,
             state_attr,
             device_class,
         )
@@ -140,7 +134,7 @@ class RamsesBattery(RamsesBinarySensor):
     """Representation of a low battery sensor; on means low."""
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         state = self._device.battery_state
         return {
@@ -159,7 +153,7 @@ class RamsesFaultLog(RamsesBinarySensor):
             return dt.now() - msg.dtm < td(seconds=1200)
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
             "active_fault": self._device.tcs.active_fault,
@@ -168,7 +162,7 @@ class RamsesFaultLog(RamsesBinarySensor):
         }
 
     @property
-    def is_on(self) -> Optional[bool]:
+    def is_on(self) -> bool | None:
         """Return True if the controller has a fault."""
         return bool(self._device.tcs.active_fault)
 
@@ -183,14 +177,14 @@ class RamsesSystem(RamsesBinarySensor):
             return dt.now() - msg.dtm < td(seconds=msg.payload["remaining_seconds"] * 3)
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
             "schema": self._device.tcs.schema,
         }
 
     @property
-    def is_on(self) -> Optional[bool]:
+    def is_on(self) -> bool | None:
         """Return True if the controller has been seen recently."""
         return self.available
 
@@ -204,7 +198,7 @@ class RamsesGateway(RamsesBinarySensor):
         return bool(self._device._gwy.pkt_protocol._hgi80.get("device_id"))
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
 
         # {% set device_id = state_attr("binary_sensor.01_145038_active_fault", "active_fault")[5] %}
@@ -232,7 +226,7 @@ class RamsesGateway(RamsesBinarySensor):
         }
 
     @property
-    def is_on(self) -> Optional[bool]:
+    def is_on(self) -> bool | None:
         """Return True if the controller has been seen recently."""
         if msg := self._device._gwy.msg_protocol._this_msg:
             return dt.now() - msg.dtm > td(seconds=300)

@@ -8,9 +8,16 @@ Provides support for climate entities.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
-from homeassistant.components.climate import ClimateEntity
+from homeassistant.components.climate import (
+    PRECISION_TENTHS,
+    TEMP_CELSIUS,
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
+)
 from homeassistant.components.climate.const import (
     FAN_AUTO,
     FAN_HIGH,
@@ -18,11 +25,7 @@ from homeassistant.components.climate.const import (
     FAN_MEDIUM,
     FAN_OFF,
     PRESET_NONE,
-    ClimateEntityFeature,
-    HVACAction,
-    HVACMode,
 )
-from homeassistant.const import TEMP_CELSIUS  # "°C"
 
 from . import RamsesEntity
 
@@ -37,11 +40,8 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     # PRESET_COMFORT: auto with lower CO2
     # PRESET_NONE: off, low/med/high or auto
 
-    # Entity attrs...
-    _attr_icon = "mdi:hvac"
-
     # Climate attrs....
-    _attr_precision: float = 0.1
+    _attr_precision: float = PRECISION_TENTHS
     _attr_temperature_unit: str = TEMP_CELSIUS
     _attr_fan_modes: list[str] | None = [
         FAN_OFF,
@@ -62,7 +62,9 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
 
         super().__init__(broker, device)
 
-        self._unique_id = device.id
+        self._attr_unique_id = (
+            device.id
+        )  # dont include domain (ramses_cc) / platform (climate)
 
     @property
     def current_humidity(self) -> int | None:
@@ -74,6 +76,13 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self._device.indoor_temperature
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        return {
+            **super().extra_state_attributes,
+        }
 
     @property
     def fan_mode(self) -> str | None:
@@ -98,18 +107,11 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         return "mdi:hvac-off" if self._device.fan_info == "off" else "mdi:hvac"
 
     @property
-    def preset_mode(self) -> str | None:
-        """Return the current preset mode, e.g., home, away, temp."""
-        return PRESET_NONE
-
-    @property
     def name(self) -> str:
         """Return the name of the entity."""
         return self._device.id
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        return {
-            **super().extra_state_attributes,
-        }
+    def preset_mode(self) -> str | None:
+        """Return the current preset mode, e.g., home, away, temp."""
+        return PRESET_NONE

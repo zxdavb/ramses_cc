@@ -14,21 +14,17 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from ramses_rf.const import SZ_DEVICE_ID
 from ramses_rf.helpers import merge, shrink
-
-# from ramses_rf.protocol.const import DEVICE_ID_REGEX
-from ramses_rf.protocol.schemas import (  # SCH_SERIAL_PORT_CONFIG,; SCH_SERIAL_PORT_NAME,; SZ_PORT_NAME,
-    SZ_PORT_CONFIG,
+from ramses_rf.protocol.schemas import (
     SZ_SERIAL_PORT,
     extract_serial_port,
+    sch_global_traits_dict_factory,
     sch_packet_log_dict_factory,
     sch_serial_port_dict_factory,
 )
 from ramses_rf.schemas import (
-    SCH_DEVICE,
     SCH_DEVICE_ID_ANY,
     SCH_GATEWAY_DICT,
     SCH_GLOBAL_SCHEMAS_DICT,
-    SCH_GLOBAL_TRAITS_DICT,
     SCH_RESTORE_CACHE_DICT,
     SZ_CONFIG,
     SZ_RESTORE_CACHE,
@@ -318,10 +314,6 @@ SVCS_SENSOR = {
 SCAN_INTERVAL_DEFAULT = td(seconds=300)
 SCAN_INTERVAL_MINIMUM = td(seconds=1)
 
-SCH_DEVICE_LIST = vol.Schema(
-    vol.All([vol.Any(SCH_DEVICE_ID_ANY, SCH_DEVICE)], vol.Length(min=0))
-)
-
 SZ_ADVANCED_FEATURES = "advanced_features"
 SZ_MESSAGE_EVENTS = "message_events"
 SZ_DEV_MODE = "dev_mode"
@@ -336,6 +328,13 @@ SCH_ADVANCED_FEATURES = vol.Schema(
     }
 )
 
+SCH_GLOBAL_TRAITS_DICT, SCH_TRAITS = sch_global_traits_dict_factory(
+    hvac_traits={vol.Optional("commands"): dict}
+)
+SCH_DEVICE_LIST = vol.Schema(
+    [{vol.Optional(SCH_DEVICE_ID_ANY): SCH_TRAITS}],  # vol.Length(min=0)
+    extra=vol.PREVENT_EXTRA,
+)  # TODO: what is this for?
 
 SCH_DOMAIN_CONFIG = (
     vol.Schema(
