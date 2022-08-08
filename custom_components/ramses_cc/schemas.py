@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 """Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC."""
+from __future__ import annotations
 
 import logging
 from copy import deepcopy

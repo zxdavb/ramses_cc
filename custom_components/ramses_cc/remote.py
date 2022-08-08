@@ -5,6 +5,7 @@
 
 Provides support for HVAC RF remotes.
 """
+from __future__ import annotations
 
 import asyncio
 import logging

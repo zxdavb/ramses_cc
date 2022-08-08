@@ -5,6 +5,7 @@
 
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
+from __future__ import annotations
 
 import asyncio
 import logging

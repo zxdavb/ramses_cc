@@ -5,6 +5,7 @@
 
 Provides support for climate entities.
 """
+from __future__ import annotations
 
 import logging
 from datetime import datetime as dt
