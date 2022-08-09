@@ -123,7 +123,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         @callback
         def event_filter(event: Event) -> bool:
             """Return True if the listener callable should run."""
-            codes = ("22F1", "22F3")
+            codes = ("22F1", "22F3", "22F7")
             return event.data["src"] == self._device.id and event.data["code"] in codes
 
         @callback
