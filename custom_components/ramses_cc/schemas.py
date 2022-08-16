@@ -16,6 +16,7 @@ from homeassistant.helpers import config_validation as cv
 from ramses_rf.const import SZ_DEVICE_ID
 from ramses_rf.helpers import merge, shrink
 from ramses_rf.protocol.schemas import (
+    SZ_PORT_CONFIG,
     SZ_SERIAL_PORT,
     extract_serial_port,
     sch_global_traits_dict_factory,
@@ -380,13 +381,12 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
     config[SZ_CONFIG] = config.pop("ramses_rf")
 
     port_name, port_config = extract_serial_port(config.pop(SZ_SERIAL_PORT))
-    if port_config:  # HACK: we swallow port_config
-        _LOGGER.warning("port config currently ignored: %s", port_config)
 
     broker_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
     return (
         port_name,
-        {k: v for k, v in config.items() if k not in broker_keys},
+        {k: v for k, v in config.items() if k not in broker_keys}
+        | {SZ_PORT_CONFIG: port_config},
         {k: v for k, v in config.items() if k in broker_keys},
     )
 
