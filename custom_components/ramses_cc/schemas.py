@@ -382,12 +382,19 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
 
     port_name, port_config = extract_serial_port(config.pop(SZ_SERIAL_PORT))
 
+    remote_commands = {
+        k: v.pop("commands")
+        for k, v in config["known_list"].items()
+        if v.get("commands")
+    }
+
     broker_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
     return (
         port_name,
         {k: v for k, v in config.items() if k not in broker_keys}
         | {SZ_PORT_CONFIG: port_config},
-        {k: v for k, v in config.items() if k in broker_keys},
+        {k: v for k, v in config.items() if k in broker_keys}
+        | {"remotes": remote_commands},
     )
 
 
