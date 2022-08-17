@@ -31,6 +31,7 @@ from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from ramses_rf import Gateway
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
+from ramses_rf.helpers import merge
 from ramses_rf.schemas import (
     SZ_RESTORE_CACHE,
     SZ_RESTORE_SCHEMA,
@@ -239,22 +240,23 @@ class RamsesBroker:
         self.status = None
         self.client: Gateway = None  # type: ignore[assignment]
         self._services = {}
+        self._entities = {}  # domain entities
+        self._known_commands = self.config["remotes"]
 
-        self.loop_task = None
-        self._last_update = dt.min
-
+        # Discovered client entities...
         self._hgi = None  # HGI, is distinct from devices (has no intrinsic sensors)
         self._tcs = None
         self._dhw = None
         self._zones = []
-
-        self._entities: dict[str, list] = {
+        self._objects: dict[str, list] = {
             "devices": [],
             "domains": [],
             "fans": [],
             "remotes": [],
         }
 
+        self.loop_task = None
+        self._last_update = dt.min
         self._lock = Lock()
         self._sem = Semaphore(value=self.MAX_SEMAPHORE_LOCKS)
 
@@ -262,6 +264,7 @@ class RamsesBroker:
         """Create a client with an initial schema, possibly a cached schema."""
 
         storage = await self.async_load_storage()
+        self._known_commands = merge(storage.get("remotes", {}), self._known_commands)
 
         schema = extract_schema(**self._client_config)
         config = {k: v for k, v in self._client_config.items() if k not in schema}
@@ -315,9 +318,17 @@ class RamsesBroker:
         """Save the client state to the application store."""
 
         _LOGGER.info("Saving the client state cache (packets, schema)...")
+
         (schema, packets) = self.client._get_state()
+        remote_commands = self._known_commands | {
+            k: v._commands for k, v in self._entities.items() if hasattr(v, "_commands")
+        }
+
         await self._store.async_save(
-            {"client_state": {"schema": schema, "packets": packets}}
+            {
+                "client_state": {"schema": schema, "packets": packets},
+                "remotes": remote_commands,
+            }
         )
 
     @callback
@@ -368,9 +379,9 @@ class RamsesBroker:
         if new_fans := [
             f
             for f in self.client.devices
-            if isinstance(f, HvacVentilator) and f not in self._entities["fans"]
+            if isinstance(f, HvacVentilator) and f not in self._objects["fans"]
         ]:
-            self._entities["fans"].extend(new_fans)
+            self._objects["fans"].extend(new_fans)
             self.hass.async_create_task(
                 async_load_platform(
                     self.hass,
@@ -384,9 +395,9 @@ class RamsesBroker:
         if new_remotes := [
             f
             for f in self.client.devices
-            if isinstance(f, HvacRemoteBase) and f not in self._entities["remotes"]
+            if isinstance(f, HvacRemoteBase) and f not in self._objects["remotes"]
         ]:
-            self._entities["remotes"].extend(new_remotes)
+            self._objects["remotes"].extend(new_remotes)
             self.hass.async_create_task(
                 async_load_platform(
                     self.hass,
@@ -409,25 +420,25 @@ class RamsesBroker:
             self._hgi = discovery_info["gateway"] = self.client.hgi
 
         if new_devices := [
-            d for d in self.client.devices if d not in self._entities["devices"]
+            d for d in self.client.devices if d not in self._objects["devices"]
         ]:
-            self._entities["devices"].extend(new_devices)
+            self._objects["devices"].extend(new_devices)
             discovery_info["devices"] = new_devices
 
         new_domains = []
         if self.client.tcs:  # assumes the primary TCS is the only TCS
             new_domains = [
-                d for d in self.client.tcs.zones if d not in self._entities["domains"]
+                d for d in self.client.tcs.zones if d not in self._objects["domains"]
             ]
-            if self.client.tcs not in self._entities["domains"]:
+            if self.client.tcs not in self._objects["domains"]:
                 new_domains.append(self.client.tcs)
-            if (dhw := self.client.tcs.dhw) and dhw not in self._entities["domains"]:
+            if (dhw := self.client.tcs.dhw) and dhw not in self._objects["domains"]:
                 new_domains.append(dhw)
             # for domain in ("F9", "FA", "FC"):
             #     if f"{self.client.tcs}_{domain}" not in
 
         if new_domains:
-            self._entities["domains"].extend(new_domains)
+            self._objects["domains"].extend(new_domains)
             discovery_info["domains"] = new_domains
 
         if discovery_info:
@@ -512,6 +523,7 @@ class RamsesEntity(Entity):
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
+        self._broker._entities[self.unique_id] = self
         async_dispatcher_connect(self.hass, DOMAIN, self.async_handle_dispatch)
 
     @callback  # TODO: WIP
