@@ -50,7 +50,7 @@ from ramses_rf.protocol.const import (
 )
 
 from . import RamsesDeviceBase as RamsesDeviceBase
-from .const import ATTR_SETPOINT, BROKER, DOMAIN, VOLUME_FLOW_RATE_LITERS_PER_MINUTE
+from .const import ATTR_SETPOINT, BROKER, DOMAIN, VOLUME_FLOW_RATE_LITERS_PER_MINUTE, VOLUME_FLOW_RATE_LITERS_PER_SECOND
 from .helpers import migrate_to_ramses_rf
 from .schemas import SVCS_SENSOR
 
@@ -370,7 +370,7 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_UNITS: PERCENTAGE,
     },
     SZ_EXHAUST_FLOW: {
-        DEVICE_UNITS: None,
+        DEVICE_UNITS: VOLUME_FLOW_RATE_LITERS_PER_SECOND,
     },
     SZ_EXHAUST_TEMPERATURE: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
@@ -413,7 +413,7 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_UNITS: PERCENTAGE,
     },
     SZ_SUPPLY_FLOW: {
-        DEVICE_UNITS: None,
+        DEVICE_UNITS: VOLUME_FLOW_RATE_LITERS_PER_SECOND,
     },
     SZ_SUPPLY_TEMPERATURE: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
