@@ -31,7 +31,7 @@ ATTR_BATTERY_LEVEL = "battery_level"
 ATTR_SETPOINT = "setpoint"
 
 VOLUME_FLOW_RATE_LITERS_PER_MINUTE = "L/min"
-
+VOLUME_FLOW_RATE_LITERS_PER_SECOND = "L/s"
 
 DATA = "data"
 SERVICE = "service"
