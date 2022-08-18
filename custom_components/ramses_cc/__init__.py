@@ -264,7 +264,7 @@ class RamsesBroker:
         """Create a client with an initial schema, possibly a cached schema."""
 
         storage = await self.async_load_storage()
-        self._known_commands = merge(storage.get("remotes", {}), self._known_commands)
+        self._known_commands = merge(self._known_commands, storage.get("remotes", {}))
 
         schema = extract_schema(**self._client_config)
         config = {k: v for k, v in self._client_config.items() if k not in schema}
