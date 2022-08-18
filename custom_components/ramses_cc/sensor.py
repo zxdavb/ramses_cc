@@ -151,7 +151,7 @@ class RamsesSensor(RamsesDeviceBase, SensorEntity):
             device_class,
         )
 
-        self._attr_native_unit_of_measurement = device_units or PERCENTAGE
+        self._attr_native_unit_of_measurement = device_units
 
     @property
     def native_value(self) -> Any | None:  # int or float
@@ -272,9 +272,7 @@ ENTITY_CLASS = "entity_class"
 
 SENSOR_ATTRS_HEAT = {
     # Special projects
-    "oem_code": {  # 3220/73
-        DEVICE_UNITS: None,
-    },
+    "oem_code": {},  # 3220/73
     "percent": {  # TODO: 2401
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: RamsesRelayDemand,
@@ -382,9 +380,7 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    SZ_FAN_INFO: {
-        DEVICE_UNITS: None,
-    },
+    SZ_FAN_INFO: {},
     SZ_INDOOR_HUMIDITY: {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         DEVICE_UNITS: PERCENTAGE,
