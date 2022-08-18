@@ -50,7 +50,13 @@ from ramses_rf.protocol.const import (
 )
 
 from . import RamsesDeviceBase as RamsesDeviceBase
-from .const import ATTR_SETPOINT, BROKER, DOMAIN, VOLUME_FLOW_RATE_LITERS_PER_MINUTE, VOLUME_FLOW_RATE_LITERS_PER_SECOND
+from .const import (
+    ATTR_SETPOINT,
+    BROKER,
+    DOMAIN,
+    VOLUME_FLOW_RATE_LITERS_PER_MINUTE,
+    VOLUME_FLOW_RATE_LITERS_PER_SECOND,
+)
 from .helpers import migrate_to_ramses_rf
 from .schemas import SVCS_SENSOR
 
