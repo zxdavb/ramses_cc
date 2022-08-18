@@ -289,14 +289,18 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
     @property
     def max_temp(self) -> float | None:
         """Return the maximum target temperature of a Zone."""
-        if self._device.config:
+        try:
             return self._device.config["max_temp"]
+        except TypeError:  # 'NoneType' object is not subscriptable
+            return
 
     @property
     def min_temp(self) -> float | None:
         """Return the minimum target temperature of a Zone."""
-        if self._device.config:
+        try:
             return self._device.config["min_temp"]
+        except TypeError:  # 'NoneType' object is not subscriptable
+            return
 
     @property
     def preset_mode(self) -> str | None:

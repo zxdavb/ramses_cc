@@ -17,6 +17,7 @@ from homeassistant.components.remote import DOMAIN as PLATFORM
 from homeassistant.components.remote import RemoteEntity, RemoteEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
 from ramses_rf.protocol import Command, Priority
@@ -191,3 +192,5 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
                 qos={"priority": Priority.HIGH, "retries": 0},
             )
             self._broker.client.send_cmd(cmd)
+
+        async_dispatcher_send(self.hass, DOMAIN)
