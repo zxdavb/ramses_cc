@@ -64,6 +64,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
 
     # entity_description: RemoteEntityDescription
     # _attr_activity_list: list[str] | None = None
+    _attr_assumed_state: bool = True
     # _attr_current_activity: str | None = None
     _attr_supported_features: int = (
         RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND

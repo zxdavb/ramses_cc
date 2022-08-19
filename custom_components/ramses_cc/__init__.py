@@ -480,7 +480,7 @@ class RamsesEntity(Entity):
     """Base for any RAMSES II-compatible entity (e.g. Climate, Sensor)."""
 
     entity_id: str = None  # type: ignore[assignment]
-    _attr_assumed_state: bool = True
+    # _attr_assumed_state: bool = False
     # _attr_attribution: str | None = None
     # _attr_context_recent_time: timedelta = timedelta(seconds=5)
     # _attr_device_info: DeviceInfo | None = None
