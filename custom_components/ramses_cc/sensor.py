@@ -15,7 +15,6 @@ from homeassistant.components.sensor import (
     TEMP_CELSIUS,
     SensorDeviceClass,
     SensorEntity,
-    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.const import (
@@ -48,6 +47,21 @@ from ramses_rf.protocol.const import (
     SZ_SUPPLY_FLOW,
     SZ_SUPPLY_TEMPERATURE,
 )
+from ramses_rf.device.heat import (
+    SZ_BOILER_OUTPUT_TEMP,
+    SZ_BOILER_RETURN_TEMP,
+    SZ_BOILER_SETPOINT,
+    SZ_CH_MAX_SETPOINT,
+    SZ_CH_SETPOINT,
+    SZ_CH_WATER_PRESSURE,
+    SZ_DHW_FLOW_RATE,
+    SZ_DHW_SETPOINT,
+    SZ_DHW_TEMP,
+    SZ_MAX_REL_MODULATION,
+    SZ_OEM_CODE,
+    SZ_OUTSIDE_TEMP,
+    SZ_REL_MODULATION_LEVEL,
+)
 
 from . import RamsesDeviceBase as RamsesDeviceBase
 from .const import (
@@ -61,17 +75,6 @@ from .helpers import migrate_to_ramses_rf
 from .schemas import SVCS_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
-
-SENSOR_KEY_TEMPERATURE = "temperature"
-
-SENSOR_DESCRIPTION_TEMPERATURE = SensorEntityDescription(
-    key=SENSOR_KEY_TEMPERATURE,
-    name="Temperature",
-    device_class=SensorDeviceClass.TEMPERATURE,
-    native_unit_of_measurement=TEMP_CELSIUS,
-    state_class=SensorStateClass.MEASUREMENT,
-)
-# sensor.entity_description = SENSOR_DESCRIPTION_TEMPERATURE
 
 
 async def async_setup_platform(
@@ -128,8 +131,9 @@ async def async_setup_platform(
 class RamsesSensor(RamsesDeviceBase, SensorEntity):
     """Representation of a generic sensor."""
 
-    # Strictly, oem_code is not a measurement
-    _attr_state_class: SensorStateClass = SensorStateClass.MEASUREMENT
+    # Strictly: fan_info, oem_code are not a measurements
+    # _attr_native_unit_of_measurement: str = PERCENTAGE  # most common
+    _attr_state_class: SensorStateClass = SensorStateClass.MEASUREMENT  # all but 2
 
     def __init__(
         self,
@@ -138,6 +142,7 @@ class RamsesSensor(RamsesDeviceBase, SensorEntity):
         state_attr,  # key of attr_dict +/- _ot suffix
         device_class=None,  # attr_dict value
         device_units=None,  # attr_dict value
+        state_class=SensorStateClass.MEASUREMENT,  # attr_dict value, maybe None
         **kwargs,  # leftover attr_dict values
     ) -> None:
         """Initialize a sensor."""
@@ -148,16 +153,17 @@ class RamsesSensor(RamsesDeviceBase, SensorEntity):
             broker,
             device,
             state_attr,
-            device_class,
+            device_class=device_class,
         )
 
         self._attr_native_unit_of_measurement = device_units
+        self._attr_state_class = state_class
 
     @property
     def native_value(self) -> Any | None:  # int or float
         """Return the state of the sensor."""
         state = getattr(self._device, self._state_attr)
-        if self.unit_of_measurement == PERCENTAGE:
+        if self._attr_native_unit_of_measurement == PERCENTAGE:
             return None if state is None else state * 100
         return state
 
@@ -263,16 +269,16 @@ class RamsesFaultLog(RamsesDeviceBase):
         pass
 
 
-DEVICE_CLASS = "device_class"
-DEVICE_UNITS = "device_units"
-ENTITY_CLASS = "entity_class"
-# STATE_CLASS = "state_class"
+DEVICE_CLASS = "device_class"  # _attr_device_class
+DEVICE_UNITS = "device_units"  # _attr_native_unit_of_measurement
+ENTITY_CLASS = "entity_class"  # subclass of RamsesSensor
+STATE_CLASS = "state_class"  # _attr_state_class
 
 # These are all: SensorStateClass.MEASUREMENT
 
 SENSOR_ATTRS_HEAT = {
     # Special projects
-    "oem_code": {},  # 3220/73
+    SZ_OEM_CODE: {STATE_CLASS: None},  # 3220/73
     "percent": {  # TODO: 2401
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: RamsesRelayDemand,
@@ -294,50 +300,50 @@ SENSOR_ATTRS_HEAT = {
         ENTITY_CLASS: RamsesModLevel,
     },
     # SENSOR_ATTRS_OTB = {  # excl. actuator
-    "boiler_output_temp": {  # 3200, 3220|19
+    SZ_BOILER_OUTPUT_TEMP: {  # 3200, 3220|19
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "boiler_return_temp": {  # 3210, 3220|1C
+    SZ_BOILER_RETURN_TEMP: {  # 3210, 3220|1C
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "boiler_setpoint": {  # 22D9, 3220|01
+    SZ_BOILER_SETPOINT: {  # 22D9, 3220|01
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "ch_max_setpoint": {  # 1081, 3220|39
+    SZ_CH_MAX_SETPOINT: {  # 1081, 3220|39
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "ch_setpoint": {  # 3EF0
+    SZ_CH_SETPOINT: {  # 3EF0
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "ch_water_pressure": {  # 1300, 3220|12
+    SZ_CH_WATER_PRESSURE: {  # 1300, 3220|12
         DEVICE_CLASS: SensorDeviceClass.PRESSURE,
         DEVICE_UNITS: "bar",
     },
-    "dhw_flow_rate": {  # 12F0, 3220|13
+    SZ_DHW_FLOW_RATE: {  # 12F0, 3220|13
         DEVICE_UNITS: VOLUME_FLOW_RATE_LITERS_PER_MINUTE,
     },
-    "dhw_setpoint": {  # 10A0, 3220|38
+    SZ_DHW_SETPOINT: {  # 10A0, 3220|38
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "dhw_temp": {  # 1290, 3220|1A
+    SZ_DHW_TEMP: {  # 1290, 3220|1A
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "max_rel_modulation": {  # 3200|0E
+    SZ_MAX_REL_MODULATION: {  # 3200|0E
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: RamsesModLevel,
     },
-    "outside_temp": {  # 1290, 3220|1B
+    SZ_OUTSIDE_TEMP: {  # 1290, 3220|1B
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    "rel_modulation_level": {  # 3EFx, 3200|11
+    SZ_REL_MODULATION_LEVEL: {  # 3EFx, 3200|11
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: RamsesModLevel,
     },
@@ -353,6 +359,7 @@ SENSOR_ATTRS_HEAT = {
         "fakable": True,
     },
 }
+
 
 SENSOR_ATTRS_HVAC = {
     # "boost_timer": {DEVICE_UNITS: TIME_MINUTES,},
@@ -380,7 +387,7 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: TEMP_CELSIUS,
     },
-    SZ_FAN_INFO: {},
+    SZ_FAN_INFO: {STATE_CLASS: None},
     SZ_INDOOR_HUMIDITY: {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         DEVICE_UNITS: PERCENTAGE,

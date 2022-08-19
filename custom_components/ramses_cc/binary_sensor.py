@@ -22,6 +22,16 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_p
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 #
+from ramses_rf.device.heat import (
+    SZ_CH_ACTIVE,
+    SZ_CH_ENABLED,
+    SZ_COOLING_ACTIVE,
+    SZ_COOLING_ENABLED,
+    SZ_DHW_ACTIVE,
+    SZ_DHW_ENABLED,
+    SZ_FAULT_PRESENT,
+    SZ_FLAME_ACTIVE,
+)
 from ramses_rf.protocol.const import SZ_BYPASS_POSITION
 
 from . import RamsesDeviceBase
@@ -95,8 +105,6 @@ async def async_setup_platform(
 class RamsesBinarySensor(RamsesDeviceBase, BinarySensorEntity):
     """Representation of a generic binary sensor."""
 
-    #
-
     def __init__(
         self,
         broker,  # ramses_cc broker
@@ -113,7 +121,7 @@ class RamsesBinarySensor(RamsesDeviceBase, BinarySensorEntity):
             broker,
             device,
             state_attr,
-            device_class,
+            device_class=device_class,
         )
 
     @property
@@ -246,7 +254,7 @@ BINARY_SENSOR_ATTRS = {
         "bit_2_7": {},
         "bit_3_7": {},
         "bit_6_6": {},
-        "fault_present": {
+        SZ_FAULT_PRESENT: {
             DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
         },  # OTB
         # Standard sensors
@@ -258,17 +266,17 @@ BINARY_SENSOR_ATTRS = {
             ENTITY_CLASS: RamsesActuator,
             STATE_ICONS: ("mdi:electric-switch-closed", "mdi:electric-switch"),
         },
-        "ch_active": {
+        SZ_CH_ACTIVE: {
             STATE_ICONS: ("mdi:circle-outline", "mdi:fire-circle"),
         },
-        "ch_enabled": {},
-        "cooling_active": {
+        SZ_CH_ENABLED: {},
+        SZ_COOLING_ACTIVE: {
             STATE_ICONS: ("mdi:snowflake", "mdi:snowflake-off"),
         },
-        "cooling_enabled": {},
-        "dhw_active": {},
-        "dhw_enabled": {},
-        "flame_active": {
+        SZ_COOLING_ENABLED: {},
+        SZ_DHW_ACTIVE: {},
+        SZ_DHW_ENABLED: {},
+        SZ_FLAME_ACTIVE: {
             STATE_ICONS: ("mdi:circle-outline", "mdi:fire-circle"),
         },
         "window_open": {

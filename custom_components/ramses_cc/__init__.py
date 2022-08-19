@@ -566,7 +566,7 @@ class RamsesDeviceBase(RamsesEntity):
         broker,
         device,
         state_attr,
-        device_class,
+        device_class=None,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(broker, device)
