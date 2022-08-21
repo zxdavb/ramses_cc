@@ -3,4 +3,4 @@
 #
 """Support for Honeywell's RAMSES-II RF protocol, as used by Heat/HVAC sytems."""
 
-__version__ = "0.20.22c"
+__version__ = "0.20.27"
