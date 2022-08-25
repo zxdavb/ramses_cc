@@ -19,7 +19,9 @@ import serial
 import voluptuous as vol
 
 #
-from homeassistant.const import CONF_SCAN_INTERVAL, TEMP_CELSIUS, Platform
+from homeassistant.const import (
+    CONF_SCAN_INTERVAL, PRECISION_TENTHS, TEMP_CELSIUS, Platform
+)
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import (
@@ -594,7 +596,7 @@ class RamsesDeviceBase(RamsesEntity):
 class EvohomeZoneBase(RamsesEntity):
     """Base for any RAMSES RF-compatible entity (e.g. Controller, DHW, Zones)."""
 
-    _attr_precision: float = 0.01  # PRECISION_TENTHS
+    _attr_precision: float = PRECISION_TENTHS
     _attr_temperature_unit: str = TEMP_CELSIUS
 
     def __init__(self, broker, device) -> None:
