@@ -216,9 +216,9 @@ class RamsesGateway(RamsesBinarySensor):
         # {%- endfor -%}
 
         def shrink(device_hints) -> dict:
-            result = device_hints
+            result = {}
             for key in ("alias", "class", "faked"):
-                if (value := result.pop(key, None)) is not None:
+                if (value := device_hints.pop(key, None)) is not None:
                     result[key] = value
             return result
 
