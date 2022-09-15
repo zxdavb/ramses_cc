@@ -20,7 +20,10 @@ import voluptuous as vol
 
 #
 from homeassistant.const import (
-    CONF_SCAN_INTERVAL, PRECISION_TENTHS, TEMP_CELSIUS, Platform
+    CONF_SCAN_INTERVAL,
+    PRECISION_TENTHS,
+    TEMP_CELSIUS,
+    Platform,
 )
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.discovery import async_load_platform
