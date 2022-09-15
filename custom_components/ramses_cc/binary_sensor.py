@@ -224,7 +224,7 @@ class RamsesGateway(RamsesBinarySensor):
 
         gwy = self._device._gwy
         return {
-            "schema": gwy.tcs._schema_min if gwy.tcs else {},
+            "schema": {gwy.tcs.id: gwy.tcs._schema_min} if gwy.tcs else {},
             "config": {"enforce_known_list": gwy.config.enforce_known_list},
             "known_list": [{k: shrink(v)} for k, v in gwy._include.items()],
             "block_list": [{k: shrink(v)} for k, v in gwy._exclude.items()],
