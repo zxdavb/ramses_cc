@@ -25,8 +25,22 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from ramses_rf.device.heat import (
+    SZ_BOILER_OUTPUT_TEMP,
+    SZ_BOILER_RETURN_TEMP,
+    SZ_BOILER_SETPOINT,
+    SZ_CH_MAX_SETPOINT,
+    SZ_CH_SETPOINT,
+    SZ_CH_WATER_PRESSURE,
+    SZ_DHW_FLOW_RATE,
+    SZ_DHW_SETPOINT,
+    SZ_DHW_TEMP,
+    SZ_MAX_REL_MODULATION,
+    SZ_OEM_CODE,
+    SZ_OUTSIDE_TEMP,
+    SZ_REL_MODULATION_LEVEL,
+)
 
-#
 from ramses_rf.protocol.const import (
     SZ_AIR_QUALITY,
     SZ_AIR_QUALITY_BASE,
@@ -46,21 +60,6 @@ from ramses_rf.protocol.const import (
     SZ_SUPPLY_FAN_SPEED,
     SZ_SUPPLY_FLOW,
     SZ_SUPPLY_TEMPERATURE,
-)
-from ramses_rf.device.heat import (
-    SZ_BOILER_OUTPUT_TEMP,
-    SZ_BOILER_RETURN_TEMP,
-    SZ_BOILER_SETPOINT,
-    SZ_CH_MAX_SETPOINT,
-    SZ_CH_SETPOINT,
-    SZ_CH_WATER_PRESSURE,
-    SZ_DHW_FLOW_RATE,
-    SZ_DHW_SETPOINT,
-    SZ_DHW_TEMP,
-    SZ_MAX_REL_MODULATION,
-    SZ_OEM_CODE,
-    SZ_OUTSIDE_TEMP,
-    SZ_REL_MODULATION_LEVEL,
 )
 
 from . import RamsesDeviceBase as RamsesDeviceBase
