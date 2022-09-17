@@ -40,7 +40,6 @@ from ramses_rf.device.heat import (
     SZ_OUTSIDE_TEMP,
     SZ_REL_MODULATION_LEVEL,
 )
-
 from ramses_rf.protocol.const import (
     SZ_AIR_QUALITY,
     SZ_AIR_QUALITY_BASE,
