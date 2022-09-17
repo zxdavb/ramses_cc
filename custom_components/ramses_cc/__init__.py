@@ -9,18 +9,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta as td
 from typing import Any
 
 import ramses_rf
-import serial
 import voluptuous as vol
-from homeassistant.const import (
-    CONF_SCAN_INTERVAL,
-    PRECISION_TENTHS,
-    TEMP_CELSIUS,
-    Platform,
-)
+from homeassistant.const import PRECISION_TENTHS, TEMP_CELSIUS, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
@@ -31,7 +24,7 @@ from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID
-from .coordinator import RamsesBroker
+from .coordinator import RamsesCoordinator
 from .schemas import (
     SCH_DOMAIN_CONFIG,
     SVC_SEND_PACKET,
@@ -54,7 +47,6 @@ PLATFORMS = [
     Platform.SENSOR,
     Platform.WATER_HEATER,
 ]
-SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
 
 
 async def async_setup(
@@ -63,43 +55,17 @@ async def async_setup(
 ) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
 
-    async def async_handle_exceptions(awaitable):
-        """Wrap the serial port interface to catch/report exceptions."""
-        try:
-            return await awaitable
-        except serial.SerialException as exc:
-            _LOGGER.exception("There is a problem with the serial port: %s", exc)
-            raise exc
-
     _LOGGER.info(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
     _LOGGER.debug("\r\n\nConfig = %s\r\n", hass_config[DOMAIN])
 
-    broker = RamsesBroker(hass, hass_config)
+    broker = RamsesCoordinator(hass, hass_config)
+    hass.data[DOMAIN] = {BROKER: broker}
 
-    if _LOGGER.isEnabledFor(logging.DEBUG):
-        app_storage = await broker.async_load_storage()
+    if _LOGGER.isEnabledFor(logging.DEBUG):  # TODO: remove
+        app_storage = await broker._async_load_storage()
         _LOGGER.debug("\r\n\nStore = %s\r\n", app_storage)
 
-    await broker.create_client()  # start with a merged/cached, config, null schema
-    if broker.client is None:
-        return False
-
-    hass.data[DOMAIN] = {BROKER: broker}
-    await broker.restore_state()  # load a cached packet log
-
-    _LOGGER.debug("Starting the RF monitor...")  # TODO: move this out of setup?
-    broker.loop_task = hass.loop.create_task(
-        async_handle_exceptions(broker.client.start())
-    )
-    # TODO: all this scheduling needs sorting out
-    hass.helpers.event.async_track_time_interval(
-        broker.async_save_client_state, SAVE_STATE_INTERVAL
-    )
-    hass.helpers.event.async_track_time_interval(
-        broker.async_update, hass_config[DOMAIN][CONF_SCAN_INTERVAL]
-    )
-    hass.helpers.event.async_call_later(2, broker.async_update)  # HACK: to remove
-    hass.helpers.event.async_call_later(6, broker.async_update)  # HACK: to remove
+    await broker.start()
 
     register_service_functions(hass, broker)
     register_trigger_events(hass, broker)
@@ -149,8 +115,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_force_refresh(call: ServiceCall) -> None:
-        await broker.async_update()
-        # includes: async_dispatcher_send(hass, DOMAIN)
+        await broker.async_update()  # incl.: async_dispatcher_send(hass, DOMAIN)
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_reset_system_mode(call: ServiceCall) -> None:

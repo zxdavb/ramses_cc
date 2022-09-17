@@ -13,8 +13,9 @@ from datetime import datetime as dt
 from datetime import timedelta as td
 from threading import Lock, Semaphore
 
+import serial
 import voluptuous as vol
-from homeassistant.const import Platform
+from homeassistant.const import CONF_SCAN_INTERVAL, EVENT_HOMEASSISTANT_START, Platform
 from homeassistant.core import CALLBACK_TYPE, HassJob, HomeAssistant, callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -36,28 +37,40 @@ from .schemas import merge_schemas, normalise_config
 _LOGGER = logging.getLogger(__name__)
 
 
-class RamsesCoordinator(DataUpdateCoordinator):
-    """Class to manage fetching data from single endpoint."""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        update_interval: td | None = None,
-    ) -> None:
-
-        super().__init(
-            hass,
-            logger=_LOGGER,
-            name=DOMAIN,
-            update_interval=update_interval,
-            update_method=self.async_update,
-        )
-
-    async def async_update():
-        pass
+SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
 
 
-class RamsesBroker:
+async def async_handle_exceptions(awaitable, logger=_LOGGER):
+    """Wrap the serial port interface to catch/report exceptions."""
+    try:
+        return await awaitable
+    except serial.SerialException as exc:
+        logger.exception("There is a problem with the serial port: %s", exc)
+        raise exc
+
+
+# class RamsesCoordinator(DataUpdateCoordinator):
+#     """Class to manage fetching data from single endpoint."""
+
+#     def __init__(
+#         self,
+#         hass: HomeAssistant,
+#         update_interval: td | None = None,
+#     ) -> None:
+
+#         super().__init(
+#             hass,
+#             logger=_LOGGER,
+#             name=DOMAIN,
+#             update_interval=update_interval,
+#             update_method=self.async_update,
+#         )
+
+#     async def async_update():
+#         pass
+
+
+class RamsesCoordinator:
     """Container for client and data."""
 
     MAX_SEMAPHORE_LOCKS: int = 3
@@ -96,10 +109,39 @@ class RamsesBroker:
         self._lock = Lock()
         self._sem = Semaphore(value=self.MAX_SEMAPHORE_LOCKS)
 
-    async def create_client(self) -> None:
-        """Create a client with an initial schema, possibly a cached schema."""
+    async def start(self) -> None:
+        """Start the RAMSES co-ordinator."""
 
-        storage = await self.async_load_storage()
+        await self._create_client()
+
+        if self.config[SZ_RESTORE_CACHE][SZ_RESTORE_STATE]:
+            await self._async_load_client_state()
+            _LOGGER.info("Restored the cached state.")
+        else:
+            _LOGGER.info("Not restoring any cached state (disabled).")
+
+        _LOGGER.debug("Starting the RF monitor...")
+        self.loop_task = self.hass.loop.create_task(
+            async_handle_exceptions(self.client.start())
+        )
+
+        # TODO: all this scheduling needs sorting out
+        self.hass.helpers.event.async_track_time_interval(
+            self.async_save_client_state, SAVE_STATE_INTERVAL
+        )
+        self.hass.helpers.event.async_track_time_interval(
+            self.async_update, self.hass_config[DOMAIN][CONF_SCAN_INTERVAL]
+        )
+        # await self.async_update()
+        self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, self.async_update)
+
+    async def _create_client(self) -> None:
+        """Create a client with an inital schema.
+
+        The order of preference for the schema is: merged/cached/config/null.
+        """
+
+        storage = await self._async_load_storage()
         self._known_commands = merge(self._known_commands, storage.get("remotes", {}))
 
         schema = extract_schema(**self._client_config)
@@ -123,30 +165,19 @@ class RamsesBroker:
                 _LOGGER.info(f"Success initialising with {msg} schema: %s", schema)
                 break
         else:
-            self.client = Gateway(
-                self._ser_name, loop=self.hass.loop, **self._client_config
-            )
+            self.client = Gateway(self._ser_name, loop=self.hass.loop, **config)
             _LOGGER.warning("Required to initialise with an empty schema: {}")
 
-    async def restore_state(self) -> None:
-        """Restore a cached state (a packet log) to the client."""
-
-        if self.config[SZ_RESTORE_CACHE][SZ_RESTORE_STATE]:
-            await self.async_load_client_state()
-            _LOGGER.info("Restored the cached state.")
-        else:
-            _LOGGER.info("Not restoring any cached state (disabled).")
-
-    async def async_load_storage(self) -> dict:
+    async def _async_load_storage(self) -> dict:
         """May return an empty dict."""
         app_storage = await self._store.async_load()  # return None if no store
         return app_storage or {}
 
-    async def async_load_client_state(self) -> None:
+    async def _async_load_client_state(self) -> None:
         """Restore the client state from the application store."""
 
         _LOGGER.info("Restoring the client state cache (packets only)...")
-        app_storage = await self.async_load_storage()
+        app_storage = await self._async_load_storage()
         if client_state := app_storage.get("client_state"):
             await self.client._set_state(packets=client_state["packets"])
 
@@ -168,7 +199,7 @@ class RamsesBroker:
         )
 
     @callback
-    def new_heat_entities(self) -> bool:
+    def _find_new_heat_entities(self) -> bool:
         """Discover & instantiate Climate & WaterHeater entities (Heat)."""
 
         if self.client.tcs is None:  # assumes the primary TCS is the only TCS
@@ -209,7 +240,7 @@ class RamsesBroker:
         return bool(discovery_info)
 
     @callback
-    def new_hvac_entities(self) -> bool:
+    def _find_new_hvac_entities(self) -> bool:
         """Discover & instantiate HVAC entities (Climate, Remote)."""
 
         if new_fans := [
@@ -247,7 +278,7 @@ class RamsesBroker:
         return bool(new_fans or new_remotes)
 
     @callback
-    def new_sensors(self) -> bool:
+    def _find_new_sensors(self) -> bool:
         """Discover & instantiate Sensor and BinarySensor entities."""
 
         discovery_info = {}
@@ -296,11 +327,11 @@ class RamsesBroker:
         if self._last_update < dt_now - td(seconds=1):
             self._last_update = dt_now
 
-            if (
-                self.new_sensors()
-                or self.new_heat_entities()
-                or self.new_hvac_entities()
-            ):
+            new_sensors = self._find_new_sensors()
+            new_heat_entities = self._find_new_heat_entities()
+            new_hvac_entities = self._find_new_hvac_entities()
+
+            if new_sensors or new_heat_entities or new_hvac_entities:
                 self.hass.helpers.event.async_call_later(
                     5, self.async_save_client_state
                 )

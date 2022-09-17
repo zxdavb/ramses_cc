@@ -400,7 +400,7 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
 
 @callback
 def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -> dict:
-    """Return a hierarchy of schema to try (merged, config, {})."""
+    """Return a hierarchy of schema to try (merged/cached, config)."""
 
     if not merge_cache:
         _LOGGER.debug("A cached schema was not enabled (not recommended)")
@@ -444,6 +444,6 @@ def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -
         f", if required, use '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: false'"
     )
     return {
-        "a merged (cached)": merged_schema,
+        "a merged (config/cached)": merged_schema,
         "the config": config_schema,
     }  # maybe merged = config
