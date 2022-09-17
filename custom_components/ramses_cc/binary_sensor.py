@@ -216,17 +216,17 @@ class RamsesGateway(RamsesBinarySensor):
         # {%- endfor -%}
 
         def shrink(device_hints) -> dict:
-            result = {}
-            for key in ("alias", "class", "faked"):
-                if (value := device_hints.pop(key, None)) is not None:
-                    result[key] = value
-            return result
+            return {
+                k: v
+                for k, v in device_hints.items()
+                if k in ("alias", "class", "faked") and v not in (None, False)
+            }
 
         gwy = self._device._gwy
         return {
             "schema": {gwy.tcs.id: gwy.tcs._schema_min} if gwy.tcs else {},
             "config": {"enforce_known_list": gwy.config.enforce_known_list},
-            "known_list": [{k: shrink(v)} for k, v in gwy._include.items()],
+            "known_list": [{k: shrink(v)} for k, v in gwy.known_list.items()],
             "block_list": [{k: shrink(v)} for k, v in gwy._exclude.items()],
             "other_list": sorted(
                 d for d in gwy.pkt_protocol._unwanted if d not in gwy._exclude
