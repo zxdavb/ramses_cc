@@ -7,20 +7,18 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable, Coroutine, Generator
 from datetime import datetime as dt
 from datetime import timedelta as td
-import logging
 from threading import Lock, Semaphore
 
+import voluptuous as vol
 from homeassistant.const import Platform
 from homeassistant.core import CALLBACK_TYPE, HassJob, HomeAssistant, callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-import voluptuous as vol
-
 from ramses_rf import Gateway
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
 from ramses_rf.helpers import merge
@@ -33,11 +31,7 @@ from ramses_rf.schemas import (
 )
 
 from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
-from .schemas import (
-    merge_schemas,
-    normalise_config,
-)
-
+from .schemas import merge_schemas, normalise_config
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,7 +40,9 @@ class RamsesCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from single endpoint."""
 
     def __init__(
-        self, hass: HomeAssistant, update_interval: td | None = None,
+        self,
+        hass: HomeAssistant,
+        update_interval: td | None = None,
     ) -> None:
 
         super().__init(
@@ -314,5 +310,3 @@ class RamsesBroker:
         # inform the devices that their state data may have changed
         # FIXME: no good here, as async_setup_platform will be called later
         async_dispatcher_send(self.hass, DOMAIN)
-
-
