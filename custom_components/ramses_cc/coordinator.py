@@ -15,7 +15,7 @@ from threading import Lock, Semaphore
 
 import serial
 import voluptuous as vol
-from homeassistant.const import CONF_SCAN_INTERVAL, EVENT_HOMEASSISTANT_START, Platform
+from homeassistant.const import CONF_SCAN_INTERVAL, Platform
 from homeassistant.core import CALLBACK_TYPE, HassJob, HomeAssistant, callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -40,7 +40,7 @@ _LOGGER = logging.getLogger(__name__)
 SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
 
 
-async def async_handle_exceptions(awaitable, logger=_LOGGER):
+async def async_handle_exceptions(awaitable: Awaitable, logger=_LOGGER):
     """Wrap the serial port interface to catch/report exceptions."""
     try:
         return await awaitable
@@ -121,19 +121,16 @@ class RamsesCoordinator:
             _LOGGER.info("Not restoring any cached state (disabled).")
 
         _LOGGER.debug("Starting the RF monitor...")
-        self.loop_task = self.hass.loop.create_task(
+        self.loop_task = self.hass.async_create_task(
             async_handle_exceptions(self.client.start())
         )
 
-        # TODO: all this scheduling needs sorting out
         self.hass.helpers.event.async_track_time_interval(
             self.async_save_client_state, SAVE_STATE_INTERVAL
         )
         self.hass.helpers.event.async_track_time_interval(
             self.async_update, self.hass_config[DOMAIN][CONF_SCAN_INTERVAL]
         )
-        # await self.async_update()
-        self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, self.async_update)
 
     async def _create_client(self) -> None:
         """Create a client with an inital schema.
@@ -324,7 +321,7 @@ class RamsesCoordinator:
         self._lock.acquire()  # HACK: workaround bug
 
         dt_now = dt.now()
-        if self._last_update < dt_now - td(seconds=1):
+        if self._last_update < dt_now - td(seconds=5):
             self._last_update = dt_now
 
             new_sensors = self._find_new_sensors()
@@ -338,6 +335,8 @@ class RamsesCoordinator:
 
         self._lock.release()
 
+        self.hass.helpers.event.async_call_later(5, self._async_update)
+
+    async def _async_update(self, *args, **kwargs) -> None:
         # inform the devices that their state data may have changed
-        # FIXME: no good here, as async_setup_platform will be called later
         async_dispatcher_send(self.hass, DOMAIN)

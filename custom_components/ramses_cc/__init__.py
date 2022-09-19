@@ -13,7 +13,12 @@ from typing import Any
 
 import ramses_rf
 import voluptuous as vol
-from homeassistant.const import PRECISION_TENTHS, TEMP_CELSIUS, Platform
+from homeassistant.const import (
+    EVENT_HOMEASSISTANT_START,
+    PRECISION_TENTHS,
+    TEMP_CELSIUS,
+    Platform,
+)
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
@@ -66,6 +71,9 @@ async def async_setup(
         _LOGGER.debug("\r\n\nStore = %s\r\n", app_storage)
 
     await broker.start()
+    # NOTE: .async_listen_once(EVENT_HOMEASSISTANT_START, awaitable_coro)
+    # NOTE: will be passed event, as: async def awaitable_coro(_event: Event):
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, broker.async_update)
 
     register_service_functions(hass, broker)
     register_trigger_events(hass, broker)
@@ -293,9 +301,8 @@ class EvohomeZoneBase(RamsesEntity):  # for: climate & water_heater
         """Initialize the sensor."""
         super().__init__(broker, device)
 
-        self._attr_unique_id = (
-            device.id
-        )  # dont include domain (ramses_cc) / platform (climate)
+        # dont include platform/domain (climate.ramses_cc)
+        self._attr_unique_id = device.id
 
     @property
     def current_temperature(self) -> float | None:
@@ -309,7 +316,6 @@ class EvohomeZoneBase(RamsesEntity):  # for: climate & water_heater
             **super().extra_state_attributes,
             "schema": self._device.schema,
             "params": self._device.params,
-            # "schedule": self._device.schedule,
         }
 
     @property
