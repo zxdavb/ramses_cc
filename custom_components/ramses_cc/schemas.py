@@ -313,8 +313,8 @@ SVCS_SENSOR = {
 
 #
 # Configuration schema
-SCAN_INTERVAL_DEFAULT = td(seconds=300)
-SCAN_INTERVAL_MINIMUM = td(seconds=1)
+SCAN_INTERVAL_DEFAULT = td(seconds=60)
+SCAN_INTERVAL_MINIMUM = td(seconds=3)
 
 SZ_ADVANCED_FEATURES = "advanced_features"
 SZ_MESSAGE_EVENTS = "message_events"
