@@ -59,7 +59,7 @@ CONF_OVERRUN = "overrun"
 #
 # Integration/domain generic services
 SVC_FAKE_DEVICE = "fake_device"
-SVC_REFRESH_SYSTEM = "refresh_system"
+SVC_FORCE_UPDATE = "force_update"
 SVC_SEND_PACKET = "send_packet"
 
 SCH_FAKE_DEVICE = vol.Schema(
@@ -79,9 +79,9 @@ SCH_SEND_PACKET = vol.Schema(
 )
 
 SVCS_DOMAIN = {
-    SVC_FAKE_DEVICE: SCH_FAKE_DEVICE,
-    SVC_REFRESH_SYSTEM: None,
-    SVC_SEND_PACKET: SCH_SEND_PACKET,
+    SVC_FAKE_DEVICE: SCH_FAKE_DEVICE,  # yes
+    SVC_FORCE_UPDATE: None,  # checked OK
+    SVC_SEND_PACKET: SCH_SEND_PACKET,  # checked OK
 }
 
 #
@@ -89,12 +89,14 @@ SVCS_DOMAIN = {
 SVC_RESET_SYSTEM_MODE = "reset_system_mode"
 SVC_SET_SYSTEM_MODE = "set_system_mode"
 
-SCH_SYSTEM_MODE = vol.Schema(
+SCH_SET_TCS_BASE = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
+
+SCH_SYSTEM_MODE = SCH_SET_TCS_BASE.extend(
     {
         vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),  # incl. DAY_OFF_ECO
     }
 )
-SCH_SYSTEM_MODE_HOURS = vol.Schema(
+SCH_SYSTEM_MODE_HOURS = SCH_SET_TCS_BASE.extend(
     {
         vol.Required(CONF_MODE): vol.In([SystemMode.ECO_BOOST]),
         vol.Optional(CONF_DURATION, default=td(hours=1)): vol.All(
@@ -102,7 +104,7 @@ SCH_SYSTEM_MODE_HOURS = vol.Schema(
         ),
     }
 )
-SCH_SYSTEM_MODE_DAYS = vol.Schema(
+SCH_SYSTEM_MODE_DAYS = SCH_SET_TCS_BASE.extend(
     {
         vol.Required(CONF_MODE): vol.In(
             [SystemMode.AWAY, SystemMode.CUSTOM, SystemMode.DAY_OFF]
@@ -114,18 +116,20 @@ SCH_SYSTEM_MODE_DAYS = vol.Schema(
 )
 SCH_SYSTEM_MODE = vol.Any(SCH_SYSTEM_MODE, SCH_SYSTEM_MODE_HOURS, SCH_SYSTEM_MODE_DAYS)
 
-SVCS_DOMAIN_EVOHOME = {
-    SVC_RESET_SYSTEM_MODE: None,
-    SVC_SET_SYSTEM_MODE: SCH_SYSTEM_MODE,
+SVCS_CLIMATE_EVO_TCS = {
+    SVC_RESET_SYSTEM_MODE: SCH_SET_TCS_BASE,  # yes
+    SVC_SET_SYSTEM_MODE: SCH_SYSTEM_MODE,  # yes
 }
 
 #
 # Climate platform services for Zone
+SVC_GET_ZONE_SCHED = "get_zone_schedule"
 SVC_PUT_ZONE_TEMP = "put_zone_temp"
 SVC_RESET_ZONE_CONFIG = "reset_zone_config"
 SVC_RESET_ZONE_MODE = "reset_zone_mode"
 SVC_SET_ZONE_CONFIG = "set_zone_config"
 SVC_SET_ZONE_MODE = "set_zone_mode"
+SVC_SET_ZONE_SCHED = "set_zone_schedule"
 
 CONF_ZONE_MODES = (
     ZoneMode.SCHEDULE,
@@ -194,22 +198,26 @@ SCH_PUT_ZONE_TEMP = SCH_SET_ZONE_BASE.extend(
     }
 )
 
-SVCS_CLIMATE_EVOHOME = {
-    SVC_RESET_ZONE_CONFIG: SCH_SET_ZONE_BASE,
-    SVC_RESET_ZONE_MODE: SCH_SET_ZONE_BASE,
-    SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
-    SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,
-    SVC_PUT_ZONE_TEMP: SCH_PUT_ZONE_TEMP,
+SVCS_CLIMATE_EVO_ZONE = {
+    SVC_GET_ZONE_SCHED: SCH_SET_ZONE_BASE,  # yes
+    SVC_PUT_ZONE_TEMP: SCH_PUT_ZONE_TEMP,  # yes
+    SVC_RESET_ZONE_CONFIG: SCH_SET_ZONE_BASE,  # yes
+    SVC_RESET_ZONE_MODE: SCH_SET_ZONE_BASE,  # yes
+    SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,  # yes
+    SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,  # yes
+    SVC_SET_ZONE_SCHED: SCH_SET_ZONE_BASE,  # yes
 }
 
 #
 # WaterHeater platform services for DHW
+SVC_GET_DHW_SCHED = "get_dhw_schedule"
 SVC_PUT_DHW_TEMP = "put_dhw_temp"
 SVC_RESET_DHW_MODE = "reset_dhw_mode"
 SVC_RESET_DHW_PARAMS = "reset_dhw_params"
 SVC_SET_DHW_BOOST = "set_dhw_boost"
 SVC_SET_DHW_MODE = "set_dhw_mode"
 SVC_SET_DHW_PARAMS = "set_dhw_params"
+SVC_SET_DHW_SCHED = "set_dhw_schedule"
 
 # CONF_DHW_MODES = (
 #     ZoneMode.PERMANENT,
@@ -258,13 +266,15 @@ SCH_PUT_DHW_TEMP = SCH_SET_ZONE_BASE.extend(
     }
 )
 
-SVCS_WATER_HEATER_EVOHOME = {
-    SVC_RESET_DHW_MODE: SCH_SET_DHW_BASE,
-    SVC_RESET_DHW_PARAMS: SCH_SET_DHW_BASE,
-    SVC_SET_DHW_BOOST: SCH_SET_DHW_BASE,
-    SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,
-    SVC_SET_DHW_PARAMS: SCH_SET_DHW_CONFIG,
-    SVC_PUT_DHW_TEMP: SCH_PUT_DHW_TEMP,
+SVCS_WATER_HEATER_EVO_DHW = {
+    # SVC_GET_DHW_SCHED: SCH_SET_DHW_BASE,  #
+    SVC_RESET_DHW_MODE: SCH_SET_DHW_BASE,  # yes
+    SVC_RESET_DHW_PARAMS: SCH_SET_DHW_BASE,  # yes
+    SVC_SET_DHW_BOOST: SCH_SET_DHW_BASE,  # yes
+    SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,  # yes
+    SVC_SET_DHW_PARAMS: SCH_SET_DHW_CONFIG,  # yes
+    SVC_PUT_DHW_TEMP: SCH_PUT_DHW_TEMP,  # yes
+    # SVC_SET_DHW_SCHED: SCH_SET_DHW_BASE,  # yes
 }
 
 #
@@ -303,12 +313,12 @@ SCH_PUT_PRESENCE_DETECT = SCH_PUT_SENSOR_BASE.extend(
 )
 
 SVCS_BINARY_SENSOR = {
-    SVC_PUT_PRESENCE_DETECT: SCH_PUT_PRESENCE_DETECT,
+    SVC_PUT_PRESENCE_DETECT: SCH_PUT_PRESENCE_DETECT,  # yes
 }
 
 SVCS_SENSOR = {
-    SVC_PUT_CO2_LEVEL: SCH_PUT_CO2_LEVEL,
-    SVC_PUT_INDOOR_HUMIDITY: SCH_PUT_INDOOR_HUMIDITY,
+    SVC_PUT_CO2_LEVEL: SCH_PUT_CO2_LEVEL,  # yes
+    SVC_PUT_INDOOR_HUMIDITY: SCH_PUT_INDOOR_HUMIDITY,  # yes
 }
 
 #

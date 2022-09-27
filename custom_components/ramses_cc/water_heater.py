@@ -20,14 +20,14 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntityFeature,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from ramses_rf.system.heat import StoredHw
 
 from . import EvohomeZoneBase
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
 from .helpers import migrate_to_ramses_rf
-from .schemas import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE
+from .schemas import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE, SVCS_WATER_HEATER_EVO_DHW
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,8 +81,8 @@ async def async_setup_platform(
         return
     broker._services[PLATFORM] = True
 
-    # register_svc = current_platform.get().async_register_entity_service
-    # [register_svc(k, v, f"svc_{k}") for k, v in CLIMATE_SERVICES.items()]
+    register_svc = current_platform.get().async_register_entity_service
+    [register_svc(k, v, f"svc_{k}") for k, v in SVCS_WATER_HEATER_EVO_DHW.items()]
 
 
 class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
@@ -102,9 +102,7 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
         _LOGGER.info("Found a DHW controller: %s", device)
         super().__init__(broker, device)
 
-        self._attr_unique_id = (
-            device.id
-        )  # dont include domain (ramses_cc) / platform (water_heater)
+        self._attr_unique_id = device.id
 
     @property
     def current_operation(self) -> str:
@@ -135,13 +133,11 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        # data = super().state_attributes
-        # data[ATTR_AWAY_MODE] = STATE_ON if self.is_away_mode_on else STATE_OFF
-        # data.update({k: getattr(self._device, k) for k in STATE_ATTRS_DHW})
-        # return data
         return {
             "mode": self._device.mode,
             **super().extra_state_attributes,
+            # "schedule": self._device.schedule,
+            # "schedule_version": self._device.schedule_version,
         }
 
     @property
@@ -173,7 +169,6 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
         except AttributeError:
             pass
 
-    @callback
     def set_operation_mode(self, operation_mode: str) -> None:
         """Set the operating mode of the water heater."""
         active = until = None  # for STATE_AUTO
@@ -188,6 +183,15 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
         self.svc_set_dhw_mode(
             mode=MODE_HA_TO_EVO[operation_mode], active=active, until=until
         )
+
+    def set_temperature(self, temperature: float = None) -> None:
+        """Set the target temperature of the water heater."""
+        self.svc_set_dhw_params(setpoint=temperature)
+
+    @callback
+    def svc_put_dhw_temp(self) -> None:
+        """Fake the measured temperature of the DHW's sensor."""
+        raise NotImplementedError
 
     @callback
     def svc_reset_dhw_mode(self) -> None:
@@ -227,7 +231,12 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
             differential=differential,
         )
 
-    @callback
-    def set_temperature(self, temperature: float = None, **kwargs: Any) -> None:
-        """Set the target temperature of the water heater."""
-        self.svc_set_dhw_params(setpoint=temperature)
+    async def svc_get_dhw_schedule(self, **kwargs) -> None:
+        """Get the latest weekly schedule of the DHW/Zone."""
+        # {{ state_attr('climate.ramses_cc_01_145038_hw', 'schedule') }}
+        await self._device.get_schedule()
+        self.update_ha_state()
+
+    async def svc_set_dhw_schedule(self, schedule: dict, **kwargs) -> None:
+        """Set the weekly schedule of the DHW/Zone."""
+        await self._device.set_schedule(schedule)

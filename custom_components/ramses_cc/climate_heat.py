@@ -244,12 +244,16 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
+        # {{ state_attr('climate.ramses_cc_01_145038_02', 'schedule') }}
+        # {{ state_attr('climate.ramses_cc_01_145038_02', 'schedule_version') }}
         return {
             "zone_idx": self._device.idx,
             "heating_type": self._device.heating_type,
             "mode": self._device.mode,
             "config": self._device.config,
             **super().extra_state_attributes,
+            # "schedule": self._device.schedule,
+            # "schedule_version": self._device.schedule_version,
         }
 
     @property
@@ -350,6 +354,19 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
         self.svc_set_zone_mode(setpoint=temperature)
 
     @callback
+    def svc_put_zone_temp(
+        self, temperature: float, **kwargs
+    ) -> None:  # set_current_temp
+        """Fake the measured temperature of the Zone sensor.
+
+        This is not the setpoint (see: set_temperature), but the measured temperature.
+        """
+        self._device.sensor._make_fake()
+        self._device.sensor.temperature = temperature
+        self._device._get_temp()
+        self.update_ha_state()
+
+    @callback
     def svc_reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""
         self._call_client_api(self._device.reset_config)
@@ -375,15 +392,12 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
             self._device.set_mode, mode=mode, setpoint=setpoint, until=until
         )
 
-    @callback
-    def svc_put_zone_temp(
-        self, temperature: float, **kwargs
-    ) -> None:  # set_current_temp
-        """Set the current (measured) temperature of the Zone sensor.
-
-        This is not the setpoint (see: set_temperature), but the measured temperature.
-        """
-        self._device.sensor._make_fake()
-        self._device.sensor.temperature = temperature
-        self._device._get_temp()
+    async def svc_get_zone_schedule(self, **kwargs) -> None:
+        """Get the latest weekly schedule of the DHW/Zone."""
+        # {{ state_attr('climate.ramses_cc_01_145038_04', 'schedule') }}
+        await self._device.get_schedule()
         self.update_ha_state()
+
+    async def svc_set_zone_schedule(self, schedule: dict, **kwargs) -> None:
+        """Set the weekly schedule of the DHW/Zone."""
+        await self._device.set_schedule(schedule)

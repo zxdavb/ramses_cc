@@ -11,14 +11,17 @@ import logging
 
 from homeassistant.components.climate import DOMAIN as PLATFORM
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    async_get_current_platform,
+)
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .climate_heat import EvohomeController, EvohomeZone
 from .climate_hvac import RamsesHvac
 from .const import BROKER, DOMAIN
 from .helpers import migrate_to_ramses_rf
-from .schemas import SVCS_CLIMATE_EVOHOME
+from .schemas import SVCS_CLIMATE_EVO_TCS, SVCS_CLIMATE_EVO_ZONE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,17 +44,23 @@ async def async_setup_platform(
     broker = hass.data[DOMAIN][BROKER]
     new_entities = []
 
+    register_svc = async_get_current_platform().async_register_entity_service
+
     if tcs := discovery_info.get("tcs"):
         new_entities.append(entity_factory(EvohomeController, broker, tcs))
 
-        if not broker._services.get(PLATFORM):
-            broker._services[PLATFORM] = True
+        if not broker._services.get("climate_tcs"):
+            broker._services["climate_tcs"] = True
 
-            register_svc = current_platform.get().async_register_entity_service
-            [register_svc(k, v, f"svc_{k}") for k, v in SVCS_CLIMATE_EVOHOME.items()]
+            [register_svc(k, v, f"svc_{k}") for k, v in SVCS_CLIMATE_EVO_TCS.items()]
 
     for zone in [z for z in discovery_info.get("zones", [])]:
         new_entities.append(entity_factory(EvohomeZone, broker, zone))
+
+        if not broker._services.get("climate_zone"):
+            broker._services["climate_zone"] = True
+
+            [register_svc(k, v, f"svc_{k}") for k, v in SVCS_CLIMATE_EVO_ZONE.items()]
 
     for fan in [f for f in discovery_info.get("fans", [])]:
         new_entities.append(RamsesHvac(broker, fan))

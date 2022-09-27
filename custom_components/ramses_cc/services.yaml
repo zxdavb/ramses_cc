@@ -2,7 +2,7 @@
 # generic service calls
 
 fake_device:
-  name: Fake a device
+  name: Fake a RAMSES device
   description: >-
     Fake a device, so that it can then cast state data via HA service calls.
 
@@ -14,8 +14,6 @@ fake_device:
     avoid confusion).
 
     If required, the device can be caused to immediately engage its binding mode.
-
-    Such devices are currently limited to zone sensors.
   fields:
     device_id:
       name: Device ID
@@ -40,27 +38,31 @@ fake_device:
       selector:
         boolean
 
-refresh_system:
-  name: Refresh the system state
+force_update:
+  name: Update the System state
   description: >-
-    Update the system state now, without waiting for the next scheduled update.
+    Immediately update the system state, without waiting for the next scheduled update.
 
 send_packet:
-  name: Send a packet
-  description: Send a completely bespoke command packet.
+  name: Send a Command packet
+  description: Send a completely bespoke RAMSES II command packet from the gateway.
   fields:
     device_id:
-      description: The destination device_id.
+      description: The destination device ID.
+      required: true
       example: 01:123456
     verb:
       description: 'The packet verb, one of: I, RQ, RP, W.'
+      required: true
       example: RQ
     code:
       description: The packet code (class).
+      required: true
       example: 1F09
     payload:
       description: The packet payload as a hexadecimal string.
-      example: '00'
+      required: true
+      example: '"00"'
 
 #
 # evohome (CH/DHW) service calls
@@ -70,12 +72,18 @@ reset_system_mode:
   description: >-
     The system will be in auto mode and all zones will be in follow_schedule mode,
     including (if supported) those in permanent_override mode.
+  target:
+    integration: ramses_cc
+    domain: climate
 
 set_system_mode:
   name: Set the system mode
   description: >-
     The system will be in the new mode and all zones not in permanent_override mode
     will be affected.
+  target:
+    integration: ramses_cc
+    domain: climate
   fields:
     mode:
       description: "One of: auto, eco_boost, away, day_off, heat_off, or custom."
@@ -171,6 +179,39 @@ set_zone_mode:
       description: >-
         The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
+
+get_zone_schedule:
+  name: Get a zone schedule
+  description: >-
+    Obtains the zone's latest schedule from the controller and exports it in a
+    portable format.
+  target:
+    integration: ramses_cc
+    domain: climate
+  fields:
+    entity_id:
+      description: >-
+        The entity_id of the zone.
+      example: climate.main_room
+      required: true
+
+set_zone_schedule:
+  name: Set a zone schedule
+  description: >-
+    Import the zone's weekly schedule from a portable format.
+  target:
+    integration: ramses_cc
+    domain: climate
+  fields:
+    entity_id:
+      description: >-
+        The entity_id of the zone.
+      example: climate.main_room
+      required: true
+    schedule:
+      description: >-
+        The weekly schedule of the zone in a portable format.
+      required: true
 
 #
 # evohome DHW service calls
@@ -270,6 +311,39 @@ set_dhw_params:
       description: >-
         The differential in degrees Celsius. Default is 1.
       example: 1
+
+get_dhw_schedule:
+  name: Get a DHW schedule
+  description: >-
+    Obtains the DHW's latest schedule from the controller and exports it in a
+    portable format.
+  target:
+    integration: ramses_cc
+    domain: water_heater
+  fields:
+    entity_id:
+      description: >-
+        The entity_id of the DHW.
+      example: water_heater.stored_hw
+      required: true
+
+set_dhw_schedule:
+  name: Set a DHW schedule
+  description: >-
+    Import the DHW's schedule from a portable format.
+  target:
+    integration: ramses_cc
+    domain: water_heater
+  fields:
+    entity_id:
+      description: >-
+        The entity_id of the DHW.
+      example: water_heater.stored_hw
+      required: true
+    schedule:
+      description: >-
+        The weekly schedule of the DHW in a portable format.
+      required: true
 
 #
 # sensor (HVAC) service calls

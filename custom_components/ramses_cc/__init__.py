@@ -7,7 +7,6 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -20,22 +19,17 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.core import HomeAssistant, ServiceCall, callback
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_connect,
-    async_dispatcher_send,
-)
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
-from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID
+from .const import BROKER, DOMAIN
 from .coordinator import RamsesCoordinator
 from .schemas import (
     SCH_DOMAIN_CONFIG,
     SVC_SEND_PACKET,
     SVCS_DOMAIN,
-    SVCS_DOMAIN_EVOHOME,
-    SVCS_WATER_HEATER_EVOHOME,
     SZ_ADVANCED_FEATURES,
     SZ_MESSAGE_EVENTS,
 )
@@ -83,16 +77,10 @@ async def async_setup(
 
 @callback  # TODO: add async_ to routines where required to do so
 def register_trigger_events(hass: HomeAssistantType, broker):
-    """Set up the handlers for the system-wide services."""
+    """Set up the handlers for the system-wide events."""
 
     @callback
     def process_msg(msg, *args, **kwargs):  # process_msg(msg, prev_msg=None)
-        if (
-            not broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS]
-            and broker._sem._value == broker.MAX_SEMAPHORE_LOCKS  # HACK
-        ):
-            return
-
         event_data = {
             "dtm": msg.dtm.isoformat(),
             "src": msg.src.id,
@@ -104,12 +92,13 @@ def register_trigger_events(hass: HomeAssistantType, broker):
         }
         hass.bus.async_fire(f"{DOMAIN}_message", event_data)
 
-    broker.client.create_client(process_msg)
+    if broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS]:
+        broker.client.create_client(process_msg)
 
 
 @callback  # TODO: add async_ to routines where required to do so
 def register_service_functions(hass: HomeAssistantType, broker):
-    """Set up the handlers for the system-wide services."""
+    """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_fake_device(call: ServiceCall) -> None:
@@ -118,55 +107,20 @@ def register_service_functions(hass: HomeAssistantType, broker):
         except LookupError as exc:
             _LOGGER.error("%s", exc)
             return
-        await asyncio.sleep(1)
-        async_dispatcher_send(hass, DOMAIN)
+        hass.helpers.event.async_call_later(5, broker.async_update)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_force_refresh(call: ServiceCall) -> None:
-        await broker.async_update()  # incl.: async_dispatcher_send(hass, DOMAIN)
-
-    @verify_domain_control(hass, DOMAIN)
-    async def svc_reset_system_mode(call: ServiceCall) -> None:
-        payload = {
-            UNIQUE_ID: broker.client.tcs.id,
-            SERVICE: call.service,
-            DATA: call.data,
-        }
-        async_dispatcher_send(hass, DOMAIN, payload)
-
-    @verify_domain_control(hass, DOMAIN)
-    async def svc_set_system_mode(call: ServiceCall) -> None:
-        payload = {
-            UNIQUE_ID: broker.client.tcs.id,
-            SERVICE: call.service,
-            DATA: call.data,
-        }
-        async_dispatcher_send(hass, DOMAIN, payload)
+    async def svc_force_update(call: ServiceCall) -> None:
+        await broker.async_update()
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_send_packet(call: ServiceCall) -> None:
         broker.client.send_cmd(broker.client.create_cmd(**call.data))
-        await asyncio.sleep(1)
-        async_dispatcher_send(hass, DOMAIN)
-
-    @verify_domain_control(hass, DOMAIN)
-    async def svc_call_dhw_svc(call: ServiceCall) -> None:
-        payload = {
-            UNIQUE_ID: f"{broker.client.tcs.id}_HW",
-            SERVICE: call.service,
-            DATA: call.data,
-        }
-        async_dispatcher_send(hass, DOMAIN, payload)
-
-    [
-        hass.services.async_register(DOMAIN, k, svc_call_dhw_svc, schema=v)
-        for k, v in SVCS_WATER_HEATER_EVOHOME.items()
-    ]
+        hass.helpers.event.async_call_later(5, broker.async_update)
 
     domain_service = SVCS_DOMAIN
     if not broker.config[SZ_ADVANCED_FEATURES].get(SVC_SEND_PACKET):
         del domain_service[SVC_SEND_PACKET]
-    domain_service |= SVCS_DOMAIN_EVOHOME
 
     services = {k: v for k, v in locals().items() if k.startswith("svc")}
     [
