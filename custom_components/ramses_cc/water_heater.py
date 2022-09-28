@@ -7,6 +7,7 @@ Provides support for water_heater entities.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime as dt
 from datetime import timedelta as td
@@ -237,6 +238,6 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
         await self._device.get_schedule()
         self.update_ha_state()
 
-    async def svc_set_dhw_schedule(self, schedule: dict, **kwargs) -> None:
+    async def svc_set_dhw_schedule(self, schedule: str, **kwargs) -> None:
         """Set the weekly schedule of the DHW."""
-        await self._device.set_schedule(schedule)
+        await self._device.set_schedule(json.loads(schedule))

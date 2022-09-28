@@ -199,9 +199,7 @@ SCH_PUT_ZONE_TEMP = SCH_SET_ZONE_BASE.extend(
     }
 )
 
-SCH_SET_ZONE_SCHED = SCH_SET_ZONE_BASE.extend(
-    {vol.Required(CONF_SCHEDULE): vol.Any(None, dict)}
-)
+SCH_SET_ZONE_SCHED = SCH_SET_ZONE_BASE.extend({vol.Required(CONF_SCHEDULE): str})
 
 
 SVCS_CLIMATE_EVO_ZONE = {
@@ -272,9 +270,7 @@ SCH_PUT_DHW_TEMP = SCH_SET_DHW_BASE.extend(
     }
 )
 
-SCH_SET_DHW_SCHED = SCH_SET_DHW_BASE.extend(
-    {vol.Required(CONF_SCHEDULE): vol.Any(None, dict)}
-)
+SCH_SET_DHW_SCHED = SCH_SET_DHW_BASE.extend({vol.Required(CONF_SCHEDULE): str})
 
 
 SVCS_WATER_HEATER_EVO_DHW = {

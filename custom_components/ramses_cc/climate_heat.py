@@ -7,6 +7,7 @@ Provides support for climate entities.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime as dt
 from typing import Any
@@ -396,6 +397,6 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
         await self._device.get_schedule()
         self.update_ha_state()
 
-    async def svc_set_zone_schedule(self, schedule: dict, **kwargs) -> None:
+    async def svc_set_zone_schedule(self, schedule: str, **kwargs) -> None:
         """Set the weekly schedule of the Zone."""
-        await self._device.set_schedule(schedule)
+        await self._device.set_schedule(json.loads(schedule))
