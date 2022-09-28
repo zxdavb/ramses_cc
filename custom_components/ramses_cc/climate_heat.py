@@ -252,8 +252,8 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
             "mode": self._device.mode,
             "config": self._device.config,
             **super().extra_state_attributes,
-            # "schedule": self._device.schedule,
-            # "schedule_version": self._device.schedule_version,
+            "schedule": self._device.schedule,
+            "schedule_version": self._device.schedule_version,
         }
 
     @property

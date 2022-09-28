@@ -160,6 +160,9 @@ get_zone_schedule:
     Obtains the zone's latest weekly schedule from the controller and updates the
     entity's state attributes with that data.
 
+    The schedule will be available at:
+    `{{ state_attr('climate.main_room', 'schedule') }}`
+
     Note: only evohome-compatible zones have schedules and not all of this integration's
     climate entities are such zones (will raise a TypeError).
 
@@ -306,6 +309,9 @@ get_dhw_schedule:
   description: >-
     Obtains the DHW's latest weekly schedule from the controller and updates the
     entity's state attributes with that data.
+
+    The schedule will be available at:
+    `{{ state_attr('water_heater.stored_hw', 'schedule') }}`
 
   fields:
     entity_id: &entity_id_dhw

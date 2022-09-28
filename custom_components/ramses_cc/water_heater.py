@@ -136,8 +136,8 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
         return {
             "mode": self._device.mode,
             **super().extra_state_attributes,
-            # "schedule": self._device.schedule,
-            # "schedule_version": self._device.schedule_version,
+            "schedule": self._device.schedule,
+            "schedule_version": self._device.schedule_version,
         }
 
     @property
