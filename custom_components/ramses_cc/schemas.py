@@ -231,7 +231,7 @@ SVC_SET_DHW_SCHED = "set_dhw_schedule"
 #     ZoneMode.TEMPORARY,
 # )
 
-SCH_SET_DHW_BASE = vol.Schema({})
+SCH_SET_DHW_BASE = SCH_SET_ZONE_BASE
 
 SCH_SET_DHW_MODE = SCH_SET_DHW_BASE.extend(
     {
@@ -265,20 +265,20 @@ SCH_SET_DHW_CONFIG = SCH_SET_DHW_BASE.extend(
 )
 
 SCH_PUT_DHW_TEMP = SCH_SET_DHW_BASE.extend(
-    {vol.Required(CONF_SCHEDULE): vol.Any(None, dict)}
-)
-
-SCH_SET_DHW_SCHED = SCH_SET_DHW_BASE.extend(
     {
         vol.Required(CONF_TEMPERATURE): vol.All(
-            vol.Coerce(float), vol.Range(min=-20, max=99)  # TODO: check limits
+            vol.Coerce(float), vol.Range(min=-20, max=99)
         ),
     }
 )
 
+SCH_SET_DHW_SCHED = SCH_SET_DHW_BASE.extend(
+    {vol.Required(CONF_SCHEDULE): vol.Any(None, dict)}
+)
+
 
 SVCS_WATER_HEATER_EVO_DHW = {
-    SVC_GET_DHW_SCHED: SCH_SET_DHW_BASE,  #
+    SVC_GET_DHW_SCHED: SCH_SET_DHW_BASE,
     SVC_RESET_DHW_MODE: SCH_SET_DHW_BASE,
     SVC_RESET_DHW_PARAMS: SCH_SET_DHW_BASE,
     SVC_SET_DHW_BOOST: SCH_SET_DHW_BASE,

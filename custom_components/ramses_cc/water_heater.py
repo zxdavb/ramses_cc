@@ -232,11 +232,11 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
         )
 
     async def svc_get_dhw_schedule(self, **kwargs) -> None:
-        """Get the latest weekly schedule of the DHW/Zone."""
-        # {{ state_attr('climate.ramses_cc_01_145038_hw', 'schedule') }}
+        """Get the latest weekly schedule of the DHW."""
+        # {{ state_attr('water_heater.stored_hw', 'schedule') }}
         await self._device.get_schedule()
         self.update_ha_state()
 
     async def svc_set_dhw_schedule(self, schedule: dict, **kwargs) -> None:
-        """Set the weekly schedule of the DHW/Zone."""
+        """Set the weekly schedule of the DHW."""
         await self._device.set_schedule(schedule)

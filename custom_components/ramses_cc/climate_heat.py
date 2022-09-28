@@ -244,8 +244,6 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        # {{ state_attr('climate.ramses_cc_01_145038_02', 'schedule') }}
-        # {{ state_attr('climate.ramses_cc_01_145038_02', 'schedule_version') }}
         return {
             "zone_idx": self._device.idx,
             "heating_type": self._device.heating_type,
@@ -393,11 +391,11 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
         )
 
     async def svc_get_zone_schedule(self, **kwargs) -> None:
-        """Get the latest weekly schedule of the DHW/Zone."""
+        """Get the latest weekly schedule of the Zone."""
         # {{ state_attr('climate.ramses_cc_01_145038_04', 'schedule') }}
         await self._device.get_schedule()
         self.update_ha_state()
 
     async def svc_set_zone_schedule(self, schedule: dict, **kwargs) -> None:
-        """Set the weekly schedule of the DHW/Zone."""
+        """Set the weekly schedule of the Zone."""
         await self._device.set_schedule(schedule)
