@@ -58,7 +58,7 @@ CONF_DIFFERENTIAL = "differential"
 CONF_OVERRUN = "overrun"
 
 #
-# Integration/domain generic services
+# Generic services for Integration/domain
 SVC_FAKE_DEVICE = "fake_device"
 SVC_FORCE_UPDATE = "force_update"
 SVC_SEND_PACKET = "send_packet"
@@ -85,19 +85,19 @@ SVCS_DOMAIN = {
     SVC_SEND_PACKET: SCH_SEND_PACKET,
 }
 
+_SCH_ENTITY_ID = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
+
 #
-# Integration/domain services for TCS
+# Climate platform services for CH/DHW CTLs
 SVC_RESET_SYSTEM_MODE = "reset_system_mode"
 SVC_SET_SYSTEM_MODE = "set_system_mode"
 
-SCH_SET_TCS_BASE = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
-
-SCH_SYSTEM_MODE = SCH_SET_TCS_BASE.extend(
+SCH_SYSTEM_MODE = _SCH_ENTITY_ID.extend(
     {
         vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),  # incl. DAY_OFF_ECO
     }
 )
-SCH_SYSTEM_MODE_HOURS = SCH_SET_TCS_BASE.extend(
+SCH_SYSTEM_MODE_HOURS = _SCH_ENTITY_ID.extend(
     {
         vol.Required(CONF_MODE): vol.In([SystemMode.ECO_BOOST]),
         vol.Optional(CONF_DURATION, default=td(hours=1)): vol.All(
@@ -105,7 +105,7 @@ SCH_SYSTEM_MODE_HOURS = SCH_SET_TCS_BASE.extend(
         ),
     }
 )
-SCH_SYSTEM_MODE_DAYS = SCH_SET_TCS_BASE.extend(
+SCH_SYSTEM_MODE_DAYS = _SCH_ENTITY_ID.extend(
     {
         vol.Required(CONF_MODE): vol.In(
             [SystemMode.AWAY, SystemMode.CUSTOM, SystemMode.DAY_OFF]
@@ -118,12 +118,12 @@ SCH_SYSTEM_MODE_DAYS = SCH_SET_TCS_BASE.extend(
 SCH_SYSTEM_MODE = vol.Any(SCH_SYSTEM_MODE, SCH_SYSTEM_MODE_HOURS, SCH_SYSTEM_MODE_DAYS)
 
 SVCS_CLIMATE_EVO_TCS = {
-    SVC_RESET_SYSTEM_MODE: SCH_SET_TCS_BASE,
+    SVC_RESET_SYSTEM_MODE: _SCH_ENTITY_ID,
     SVC_SET_SYSTEM_MODE: SCH_SYSTEM_MODE,
 }
 
 #
-# Climate platform services for Zone
+# Climate platform services for CH/DHW Zones
 SVC_GET_ZONE_SCHED = "get_zone_schedule"
 SVC_PUT_ZONE_TEMP = "put_zone_temp"
 SVC_RESET_ZONE_CONFIG = "reset_zone_config"
@@ -139,9 +139,7 @@ CONF_ZONE_MODES = (
     ZoneMode.TEMPORARY,
 )
 
-SCH_SET_ZONE_BASE = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
-
-SCH_SET_ZONE_CONFIG = SCH_SET_ZONE_BASE.extend(
+SCH_SET_ZONE_CONFIG = _SCH_ENTITY_ID.extend(
     {
         vol.Optional(CONF_MAX_TEMP, default=35): vol.All(
             cv.positive_float,
@@ -157,12 +155,12 @@ SCH_SET_ZONE_CONFIG = SCH_SET_ZONE_BASE.extend(
     }
 )
 
-SCH_SET_ZONE_MODE = SCH_SET_ZONE_BASE.extend(
+SCH_SET_ZONE_MODE = _SCH_ENTITY_ID.extend(
     {
         vol.Optional(CONF_MODE): vol.In([ZoneMode.SCHEDULE]),
     }
 )
-SCH_SET_ZONE_MODE_SETPOINT = SCH_SET_ZONE_BASE.extend(
+SCH_SET_ZONE_MODE_SETPOINT = _SCH_ENTITY_ID.extend(
     {
         vol.Optional(CONF_MODE): vol.In([ZoneMode.PERMANENT, ZoneMode.ADVANCED]),
         vol.Optional(CONF_SETPOINT, default=21): vol.All(
@@ -171,7 +169,7 @@ SCH_SET_ZONE_MODE_SETPOINT = SCH_SET_ZONE_BASE.extend(
         ),
     }
 )
-SCH_SET_ZONE_MODE_UNTIL = SCH_SET_ZONE_BASE.extend(
+SCH_SET_ZONE_MODE_UNTIL = _SCH_ENTITY_ID.extend(
     {
         vol.Optional(CONF_MODE): vol.In([ZoneMode.TEMPORARY]),
         vol.Optional(CONF_SETPOINT, default=21): vol.All(
@@ -191,7 +189,7 @@ SCH_SET_ZONE_MODE = vol.Any(
     SCH_SET_ZONE_MODE_UNTIL,
 )
 
-SCH_PUT_ZONE_TEMP = SCH_SET_ZONE_BASE.extend(
+SCH_PUT_ZONE_TEMP = _SCH_ENTITY_ID.extend(
     {
         vol.Required(CONF_TEMPERATURE): vol.All(
             vol.Coerce(float), vol.Range(min=-20, max=99)
@@ -199,21 +197,21 @@ SCH_PUT_ZONE_TEMP = SCH_SET_ZONE_BASE.extend(
     }
 )
 
-SCH_SET_ZONE_SCHED = SCH_SET_ZONE_BASE.extend({vol.Required(CONF_SCHEDULE): str})
+SCH_SET_ZONE_SCHED = _SCH_ENTITY_ID.extend({vol.Required(CONF_SCHEDULE): str})
 
 
 SVCS_CLIMATE_EVO_ZONE = {
-    SVC_GET_ZONE_SCHED: SCH_SET_ZONE_BASE,
+    SVC_GET_ZONE_SCHED: _SCH_ENTITY_ID,
     SVC_PUT_ZONE_TEMP: SCH_PUT_ZONE_TEMP,
-    SVC_RESET_ZONE_CONFIG: SCH_SET_ZONE_BASE,
-    SVC_RESET_ZONE_MODE: SCH_SET_ZONE_BASE,
+    SVC_RESET_ZONE_CONFIG: _SCH_ENTITY_ID,
+    SVC_RESET_ZONE_MODE: _SCH_ENTITY_ID,
     SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
     SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,
     SVC_SET_ZONE_SCHED: SCH_SET_ZONE_SCHED,
 }
 
 #
-# WaterHeater platform services for DHW
+# WaterHeater platform services for CH/DHW
 SVC_GET_DHW_SCHED = "get_dhw_schedule"
 SVC_PUT_DHW_TEMP = "put_dhw_temp"
 SVC_RESET_DHW_MODE = "reset_dhw_mode"
@@ -229,9 +227,7 @@ SVC_SET_DHW_SCHED = "set_dhw_schedule"
 #     ZoneMode.TEMPORARY,
 # )
 
-SCH_SET_DHW_BASE = SCH_SET_ZONE_BASE
-
-SCH_SET_DHW_MODE = SCH_SET_DHW_BASE.extend(
+SCH_SET_DHW_MODE = _SCH_ENTITY_ID.extend(
     {
         vol.Optional(CONF_MODE): vol.In(
             [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
@@ -245,7 +241,7 @@ SCH_SET_DHW_MODE = SCH_SET_DHW_BASE.extend(
     }
 )
 
-SCH_SET_DHW_CONFIG = SCH_SET_DHW_BASE.extend(
+SCH_SET_DHW_CONFIG = _SCH_ENTITY_ID.extend(
     {
         vol.Optional(CONF_SETPOINT, default=50): vol.All(
             cv.positive_float,
@@ -262,7 +258,7 @@ SCH_SET_DHW_CONFIG = SCH_SET_DHW_BASE.extend(
     }
 )
 
-SCH_PUT_DHW_TEMP = SCH_SET_DHW_BASE.extend(
+SCH_PUT_DHW_TEMP = _SCH_ENTITY_ID.extend(
     {
         vol.Required(CONF_TEMPERATURE): vol.All(
             vol.Coerce(float), vol.Range(min=-20, max=99)
@@ -270,14 +266,14 @@ SCH_PUT_DHW_TEMP = SCH_SET_DHW_BASE.extend(
     }
 )
 
-SCH_SET_DHW_SCHED = SCH_SET_DHW_BASE.extend({vol.Required(CONF_SCHEDULE): str})
+SCH_SET_DHW_SCHED = _SCH_ENTITY_ID.extend({vol.Required(CONF_SCHEDULE): str})
 
 
 SVCS_WATER_HEATER_EVO_DHW = {
-    SVC_GET_DHW_SCHED: SCH_SET_DHW_BASE,
-    SVC_RESET_DHW_MODE: SCH_SET_DHW_BASE,
-    SVC_RESET_DHW_PARAMS: SCH_SET_DHW_BASE,
-    SVC_SET_DHW_BOOST: SCH_SET_DHW_BASE,
+    SVC_GET_DHW_SCHED: _SCH_ENTITY_ID,
+    SVC_RESET_DHW_MODE: _SCH_ENTITY_ID,
+    SVC_RESET_DHW_PARAMS: _SCH_ENTITY_ID,
+    SVC_SET_DHW_BOOST: _SCH_ENTITY_ID,
     SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,
     SVC_SET_DHW_PARAMS: SCH_SET_DHW_CONFIG,
     SVC_PUT_DHW_TEMP: SCH_PUT_DHW_TEMP,
@@ -285,7 +281,7 @@ SVCS_WATER_HEATER_EVO_DHW = {
 }
 
 #
-# WaterHeater platform services for HVAC sensors
+# BinarySensor/Sensor platform services for HVAC
 SZ_CO2_LEVEL = "co2_level"
 SZ_INDOOR_HUMIDITY = "indoor_humidity"
 SZ_PRESENCE_DETECTED = "presence_detected"
@@ -293,9 +289,7 @@ SVC_PUT_CO2_LEVEL = f"put_{SZ_CO2_LEVEL}"
 SVC_PUT_INDOOR_HUMIDITY = f"put_{SZ_INDOOR_HUMIDITY}"
 SVC_PUT_PRESENCE_DETECT = f"put_{SZ_PRESENCE_DETECTED}"
 
-SCH_PUT_SENSOR_BASE = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
-
-SCH_PUT_CO2_LEVEL = SCH_PUT_SENSOR_BASE.extend(
+SCH_PUT_CO2_LEVEL = _SCH_ENTITY_ID.extend(
     {
         vol.Required(SZ_CO2_LEVEL): vol.All(
             cv.positive_int,
@@ -304,7 +298,7 @@ SCH_PUT_CO2_LEVEL = SCH_PUT_SENSOR_BASE.extend(
     }
 )
 
-SCH_PUT_INDOOR_HUMIDITY = SCH_PUT_SENSOR_BASE.extend(
+SCH_PUT_INDOOR_HUMIDITY = _SCH_ENTITY_ID.extend(
     {
         vol.Required(SZ_INDOOR_HUMIDITY): vol.All(
             cv.positive_float,
@@ -313,7 +307,7 @@ SCH_PUT_INDOOR_HUMIDITY = SCH_PUT_SENSOR_BASE.extend(
     }
 )
 
-SCH_PUT_PRESENCE_DETECT = SCH_PUT_SENSOR_BASE.extend(
+SCH_PUT_PRESENCE_DETECT = _SCH_ENTITY_ID.extend(
     {
         vol.Required(SZ_PRESENCE_DETECTED): cv.boolean,
     }
@@ -329,7 +323,36 @@ SVCS_SENSOR = {
 }
 
 #
-# Configuration schema
+# Remote platform services for HVAC
+SZ_COMMAND = "command"
+SZ_TIMEOUT = "timeout"
+SZ_REPEATS = "repeats"
+SZ_DELAY = "delay"
+SVC_DELETE_COMMAND = "delete_command"
+SVC_LEARN_COMMAND = "learn_command"
+SVC_SEND_COMMAND = "send_command"
+
+SCH_LEARN_COMMAND_BASE = _SCH_ENTITY_ID.extend({vol.Required(SZ_COMMAND): cv.string})
+SCH_LEARN_COMMAND = SCH_LEARN_COMMAND_BASE.extend(
+    {
+        vol.Required(SZ_TIMEOUT): cv.positive_int,
+    }
+)
+SCH_SEND_COMMAND = SCH_LEARN_COMMAND_BASE.extend(
+    {
+        vol.Required(SZ_REPEATS): cv.positive_int,
+        vol.Required(SZ_DELAY): cv.positive_float,
+    }
+)
+
+SVCS_REMOTE = {
+    SVC_DELETE_COMMAND: SCH_LEARN_COMMAND_BASE,
+    SVC_LEARN_COMMAND: SCH_LEARN_COMMAND,
+    SVC_SEND_COMMAND: SCH_LEARN_COMMAND_BASE,
+}
+
+#
+# Configuration schema for Integration/domain
 SCAN_INTERVAL_DEFAULT = td(seconds=60)
 SCAN_INTERVAL_MINIMUM = td(seconds=3)
 

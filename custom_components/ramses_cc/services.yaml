@@ -116,7 +116,9 @@ set_system_mode:
     mode:
       name: Mode
       description: "One of: auto, eco_boost, away, day_off, heat_off, or custom."
+      default: quto
       example: away
+      required: true
       selector:
         select:
           mode: dropdown
@@ -133,6 +135,7 @@ set_system_mode:
       description: >-
         Optional. A period of time in days; used only with away, day_off, or custom.
         The system will revert to auto at midnight (up to 99 days, today is day 1).
+      default: 1
       example: '{"days": 28}'
       selector:
         number:
@@ -143,12 +146,18 @@ set_system_mode:
           mode: slider
 
     duration:
-      name: Duration
+      name: Eco/Boost Duration
       description: >-
         Optional. The duration in hours/minutes; used only with eco_boost (up to 24h).
+      default: 60
       example: '{"hours": 18}'
       selector:
-        duration:
+        number:
+          min: 5
+          max: 1440
+          step: 5
+          unit_of_measurement: minutes
+          mode: slider
 
 
 #
@@ -493,7 +502,7 @@ put_co2_level:
     entity_id:
       description: >-
         The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an expception if not is not bound.
+        Does not raise an exception if not is not bound.
       example: sensor.30_123456_co2_level
       required: true
       selector:
@@ -523,7 +532,7 @@ put_indoor_humidity:
     entity_id:
       description: >-
         The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an expception if not is not bound.
+        Does not raise an exception if not is not bound.
       example: sensor.30_123456_indoor_humidity
       required: true
       selector:
@@ -554,7 +563,7 @@ put_presence_detect:
     entity_id:
       description: >-
         The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an expception if not is not bound.
+        Does not raise an exception if not is not bound.
       example: binary_sensor.30_123456_presence_detect
       required: true
       selector:
@@ -569,6 +578,97 @@ put_presence_detect:
       example: True
       selector:
         boolean:
+
+
+#
+# HVAC remote service calls
+
+delete_command:
+  name: Delete a Remote command
+  description: >-
+    Deletes a RAMSES command from the database.
+    This is a convenience wrapper for HA's own `delete_command` service call.
+
+  fields:
+    entity_id: &entity_id_remote
+      description: >-
+        The entity_id of the remote, usually a HVAC device.
+      example: remote.30_123456
+      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: remote
+
+    command: &command_remote
+      name: Command name
+      description: The name of the command.
+      example: Boost
+      required: true
+      selector:
+        text:
+
+
+learn_command:
+  name: Learn a Remote command
+  description: >-
+    Learns a RAMSES command and adds it to the database.
+    This is a convenience wrapper for HA's own `learn_command` service call.
+
+  fields:
+    entity_id: *entity_id_remote
+
+    command: *command_remote
+
+    timeout:
+      description: The current CO2 level in ppm.
+      required: false
+      default: 120
+      example: 120
+      selector:
+        number:
+          min: 30
+          max: 300
+          steps: 1
+          unit_of_measurement: seconds
+          mode: slider
+
+
+send_command:
+  name: Send a Remote command
+  description: >-
+    Sends a RAMSES command as if from a remote.
+    This is a convenience wrapper for HA's own `send_command` service call.
+
+  fields:
+    entity_id: *entity_id_remote
+
+    command: *command_remote
+
+    repeats:
+      description: The number of times you want to repeat the command.
+      required: false
+      default: 3
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 5
+          steps: 1
+          mode: slider
+
+    delay:
+      description: The time you want to wait in between repeated commands.
+      required: false
+      default: 0.2
+      example: 0.2
+      selector:
+        number:
+          min: 0.1
+          max: 2.0
+          steps: 0.1
+          unit_of_measurement: seconds
+          mode: slider
 
 
 # If the service accepts entity IDs, target allows the user to specify entities by
