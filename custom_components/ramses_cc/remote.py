@@ -17,12 +17,13 @@ from homeassistant.components.remote import DOMAIN as PLATFORM
 from homeassistant.components.remote import RemoteEntity, RemoteEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
 from homeassistant.helpers.typing import DiscoveryInfoType
 from ramses_rf.protocol import Command, Priority
 
 from . import RamsesEntity
 from .const import BROKER, DOMAIN
+from .schemas import SVCS_REMOTE
 
 QOS_HIGH = {"priority": Priority.HIGH, "retries": 3}
 
@@ -56,6 +57,9 @@ async def async_setup_platform(
 
     if not broker._services.get(PLATFORM) and new_remotes:
         broker._services[PLATFORM] = True
+
+    register_svc = current_platform.get().async_register_entity_service
+    [register_svc(k, v, f"svc_{k}") for k, v in SVCS_REMOTE.items()]
 
 
 class RamsesRemote(RamsesEntity, RemoteEntity):
@@ -111,7 +115,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         timeout: float = 60,
         **kwargs: Any,
     ) -> None:
-        """Learn a command from a device and add to teh database.
+        """Learn a command from a device (remote) and add to the database.
 
         service: remote.learn_command
         data:
@@ -160,7 +164,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         num_repeats: int = 3,
         **kwargs: Any,
     ) -> None:
-        """Send commands to a device.
+        """Send commands from a device (remote).
 
         service: remote.send_command
         data:
@@ -194,3 +198,24 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
             self._broker.client.send_cmd(cmd)
 
         self._broker.async_update()
+
+    async def svc_delete_command(self, *args, **kwargs) -> None:
+        """Delete a RAMSES remote command from the database.
+
+        This is a RAMSES-specific convenience wrapper for async_delete_command().
+        """
+        await self.async_learn_command(*args, **kwargs)
+
+    async def svc_learn_command(self, *args, **kwargs) -> None:
+        """Learn a command from a RAMSES remote and add to the database.
+
+        This is a RAMSES-specific convenience wrapper for async_learn_command().
+        """
+        await self.async_learn_command(*args, **kwargs)
+
+    async def svc_send_command(self, *args, **kwargs) -> None:
+        """Send a command as is from a RAMSES remote.
+
+        This is a RAMSES-specific convenience wrapper for async_send_command().
+        """
+        await self.async_learn_command(*args, **kwargs)
