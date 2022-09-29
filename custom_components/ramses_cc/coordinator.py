@@ -8,17 +8,19 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 from __future__ import annotations
 
 import logging
-from collections.abc import Awaitable, Callable, Coroutine, Generator
+from collections.abc import Awaitable  # , Callable, Coroutine, Generator
 from datetime import datetime as dt
 from datetime import timedelta as td
+from threading import Semaphore
 
 import serial
 import voluptuous as vol
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
-from homeassistant.core import CALLBACK_TYPE, HassJob, HomeAssistant, callback
+from homeassistant.core import callback  # CALLBACK_TYPE, HassJob, HomeAssistant,
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+# om homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from ramses_rf import Gateway
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
 from ramses_rf.helpers import merge
@@ -103,6 +105,7 @@ class RamsesCoordinator:
 
         self.loop_task = None
         self._last_update = dt.min
+        self._sem = Semaphore(value=1)
 
     async def start(self) -> None:
         """Start the RAMSES co-ordinator."""
