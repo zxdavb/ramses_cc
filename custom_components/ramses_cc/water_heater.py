@@ -185,7 +185,7 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
             mode=MODE_HA_TO_EVO[operation_mode], active=active, until=until
         )
 
-    def set_temperature(self, temperature: float = None) -> None:
+    def set_temperature(self, temperature: float = None, **kwargs) -> None:
         """Set the target temperature of the water heater."""
         self.svc_set_dhw_params(setpoint=temperature)
 
