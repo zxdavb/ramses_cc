@@ -21,7 +21,10 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntityFeature,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    async_get_current_platform,
+)
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from ramses_rf.system.heat import StoredHw
 
@@ -62,28 +65,26 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
-    """Create a DHW controller."""
+    """Create DHW controllers for CH/DHW (heat)."""
 
-    def entity_factory(entity_class, broker, device):
-        migrate_to_ramses_rf(hass, "water_heater", f"{device.id}")
+    def entity_factory(entity_class, broker, device):  # TODO: deprecate
+        migrate_to_ramses_rf(hass, PLATFORM, device.id)
         return entity_class(broker, device)
 
-    if discovery_info is None:
+    if discovery_info is None:  # or not discovery_info.get("dhw"):  # not needed
         return
 
     broker = hass.data[DOMAIN][BROKER]
 
-    if not discovery_info.get("dhw"):
-        return
+    async_add_entities(
+        [entity_factory(EvohomeDHW, broker, dhw) for dhw in discovery_info["dhw"]]
+    )
 
-    async_add_entities([entity_factory(EvohomeDHW, broker, discovery_info["dhw"])])
+    if not broker._services.get(PLATFORM):
+        broker._services[PLATFORM] = True
 
-    if broker._services.get(PLATFORM):
-        return
-    broker._services[PLATFORM] = True
-
-    register_svc = current_platform.get().async_register_entity_service
-    [register_svc(k, v, f"svc_{k}") for k, v in SVCS_WATER_HEATER_EVO_DHW.items()]
+        register_svc = async_get_current_platform().async_register_entity_service
+        [register_svc(k, v, f"svc_{k}") for k, v in SVCS_WATER_HEATER_EVO_DHW.items()]
 
 
 class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):

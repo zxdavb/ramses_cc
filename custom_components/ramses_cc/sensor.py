@@ -23,7 +23,10 @@ from homeassistant.const import (
     TIME_MINUTES,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    async_get_current_platform,
+)
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from ramses_rf.device.heat import (
     SZ_BOILER_OUTPUT_TEMP,
@@ -81,7 +84,7 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
-    """Set up the sensor entities.
+    """Create sensors for CH/DHW (heat) & HVAC.
 
     discovery_info keys:
       gateway: is the ramses_rf protocol stack (gateway/protocol/transport/serial)
@@ -90,7 +93,7 @@ async def async_setup_platform(
     """
 
     def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
-        migrate_to_ramses_rf(hass, "sensor", f"{device.id}-{attr}")
+        migrate_to_ramses_rf(hass, PLATFORM, f"{device.id}-{attr}")
         return (entity_class or RamsesSensor)(broker, device, attr, **kwargs)
 
     if discovery_info is None:
@@ -122,7 +125,7 @@ async def async_setup_platform(
     if not broker._services.get(PLATFORM) and new_sensors:
         broker._services[PLATFORM] = True
 
-        register_svc = current_platform.get().async_register_entity_service
+        register_svc = async_get_current_platform().async_register_entity_service
         [register_svc(k, v, f"svc_{k}") for k, v in SVCS_SENSOR.items()]
 
 

@@ -91,8 +91,15 @@ class RamsesCoordinator:
         self._entities = {}  # domain entities
         self._known_commands = self.config["remotes"]
 
-        # Discovered client entities...
-        self._hgi = None  # HGI, is distinct from devices (has no intrinsic sensors)
+        # Discovered client objects...
+        self._hgi = None  # HGI, is distinct from devices
+        self._ctls = []
+        self._dhws = []
+        self._devs = []
+        self._fans = []
+        self._rems = []
+        self._zons = []
+
         self._tcs = None
         self._dhw = None
         self._zones = []
@@ -195,61 +202,71 @@ class RamsesCoordinator:
 
     @callback
     def _find_new_heat_entities(self) -> bool:
-        """Discover & instantiate Climate & WaterHeater entities (Heat)."""
+        """Create Heat entities: Climate, WaterHeater, BinarySensor & Sensor"""
 
-        if self.client.tcs is None:  # assumes the primary TCS is the only TCS
+        if self.client.tcs is None:  # may only be HVAC
             return False
 
-        discovery_info = {}
+        if new_ctls := [s for s in self.client.systems if s not in self._ctls]:
+            self._ctls.extend(new_ctls)
+        if new_zons := [z for s in self._ctls for z in s.zones if z not in self._zons]:
+            self._zons.extend(new_zons)
+        if new_dhws := [s.dhw for s in self._ctls if s.dhw and s.dhw not in self._dhws]:
+            self._dhws.extend(new_dhws)
 
-        if not self._tcs:
-            self._tcs = discovery_info["tcs"] = self.client.tcs
-
-        if new_zones := [z for z in self.client.tcs.zones if z not in self._zones]:
-            self._zones.extend(new_zones)
-            discovery_info["zones"] = new_zones
-
-        if discovery_info:
+        if new_ctls or new_zons:
             self.hass.async_create_task(
                 async_load_platform(
                     self.hass,
                     Platform.CLIMATE,
                     DOMAIN,
-                    discovery_info,
+                    {"ctls": new_ctls, "zons": new_zons},  # discovery_info,
                     self.hass_config,
                 )
             )
-
-        if self.client.tcs.dhw and self._dhw is None:
-            self._dhw = discovery_info["dhw"] = self.client.tcs.dhw
+        if new_dhws:
             self.hass.async_create_task(
                 async_load_platform(
                     self.hass,
                     Platform.WATER_HEATER,
                     DOMAIN,
-                    {"dhw": self._dhw},
+                    {"dhw": self._dhw},  # discovery_info,
                     self.hass_config,
                 )
             )
+        if new_doms := new_ctls + new_zons + new_dhws:
+            # for domain in ("F9", "FA", "FC"):
+            #     if f"{self.client.tcs}_{domain}" not in...
+            for platform in (Platform.BINARY_SENSOR, Platform.SENSOR):
+                self.hass.async_create_task(
+                    async_load_platform(
+                        self.hass,
+                        platform,
+                        DOMAIN,
+                        {"domains": new_doms},  # discovery_info,
+                        self.hass_config,
+                    )
+                )
 
-        return bool(discovery_info)
+        return bool(new_ctls + new_zons + new_dhws)
 
     @callback
     def _find_new_hvac_entities(self) -> bool:
-        """Discover & instantiate HVAC entities (Climate, Remote)."""
+        """Create HVAC entities: Climate, Remote"""
 
         if new_fans := [
             f
             for f in self.client.devices
-            if isinstance(f, HvacVentilator) and f not in self._objects["fans"]
+            if isinstance(f, HvacVentilator) and f not in self._fans
         ]:
-            self._objects["fans"].extend(new_fans)
+            self._fans.extend(new_fans)
+
             self.hass.async_create_task(
                 async_load_platform(
                     self.hass,
                     Platform.CLIMATE,
                     DOMAIN,
-                    {"fans": new_fans},
+                    {"fans": new_fans},  # discovery_info,
                     self.hass_config,
                 )
             )
@@ -257,15 +274,16 @@ class RamsesCoordinator:
         if new_remotes := [
             f
             for f in self.client.devices
-            if isinstance(f, HvacRemoteBase) and f not in self._objects["remotes"]
+            if isinstance(f, HvacRemoteBase) and f not in self._rems
         ]:
-            self._objects["remotes"].extend(new_remotes)
+            self._rems.extend(new_remotes)
+
             self.hass.async_create_task(
                 async_load_platform(
                     self.hass,
                     Platform.REMOTE,
                     DOMAIN,
-                    {"remotes": new_remotes},
+                    {"remotes": new_remotes},  # discovery_info,
                     self.hass_config,
                 )
             )
@@ -274,34 +292,16 @@ class RamsesCoordinator:
 
     @callback
     def _find_new_sensors(self) -> bool:
-        """Discover & instantiate Sensor and BinarySensor entities."""
+        """Create HVAC entities: BinarySensor & Sensor"""
 
         discovery_info = {}
 
         if not self._hgi and self.client.hgi:  # TODO: check HGI is added as a device
             self._hgi = discovery_info["gateway"] = self.client.hgi
 
-        if new_devices := [
-            d for d in self.client.devices if d not in self._objects["devices"]
-        ]:
-            self._objects["devices"].extend(new_devices)
+        if new_devices := [d for d in self.client.devices if d not in self._devs]:
+            self._devs.extend(new_devices)
             discovery_info["devices"] = new_devices
-
-        new_domains = []
-        if self.client.tcs:  # assumes the primary TCS is the only TCS
-            new_domains = [
-                d for d in self.client.tcs.zones if d not in self._objects["domains"]
-            ]
-            if self.client.tcs not in self._objects["domains"]:
-                new_domains.append(self.client.tcs)
-            if (dhw := self.client.tcs.dhw) and dhw not in self._objects["domains"]:
-                new_domains.append(dhw)
-            # for domain in ("F9", "FA", "FC"):
-            #     if f"{self.client.tcs}_{domain}" not in
-
-        if new_domains:
-            self._objects["domains"].extend(new_domains)
-            discovery_info["domains"] = new_domains
 
         if discovery_info:
             for platform in (Platform.BINARY_SENSOR, Platform.SENSOR):
