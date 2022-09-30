@@ -621,7 +621,7 @@ learn_command:
     command: *command_remote
 
     timeout:
-      description: The current CO2 level in ppm.
+      description: Timeout for the command to be learned.
       required: false
       default: 120
       example: 120
