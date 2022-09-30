@@ -100,16 +100,6 @@ class RamsesCoordinator:
         self._rems = []
         self._zons = []
 
-        self._tcs = None
-        self._dhw = None
-        self._zones = []
-        self._objects: dict[str, list] = {
-            "devices": [],
-            "domains": [],
-            "fans": [],
-            "remotes": [],
-        }
-
         self.loop_task = None
         self._last_update = dt.min
         self._sem = Semaphore(value=1)
@@ -230,7 +220,7 @@ class RamsesCoordinator:
                     self.hass,
                     Platform.WATER_HEATER,
                     DOMAIN,
-                    {"dhw": self._dhw},  # discovery_info,
+                    {"dhw": new_dhws},  # discovery_info,
                     self.hass_config,
                 )
             )
