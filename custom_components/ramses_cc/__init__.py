@@ -25,7 +25,7 @@ from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from .const import BROKER, DOMAIN
-from .coordinator import RamsesCoordinator
+from .coordinator import RamsesBroker
 from .schemas import (
     SCH_DOMAIN_CONFIG,
     SVC_SEND_PACKET,
@@ -57,7 +57,7 @@ async def async_setup(
     _LOGGER.info(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
     _LOGGER.debug("\r\n\nConfig = %s\r\n", hass_config[DOMAIN])
 
-    broker = RamsesCoordinator(hass, hass_config)
+    broker = RamsesBroker(hass, hass_config)
     hass.data[DOMAIN] = {BROKER: broker}
 
     if _LOGGER.isEnabledFor(logging.DEBUG):  # TODO: remove
@@ -69,7 +69,7 @@ async def async_setup(
     # NOTE: will be passed event, as: async def awaitable_coro(_event: Event):
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, broker.async_update)
 
-    register_service_functions(hass, broker)
+    register_domain_services(hass, broker)
     register_trigger_events(hass, broker)
 
     return True
@@ -97,7 +97,7 @@ def register_trigger_events(hass: HomeAssistantType, broker):
 
 
 @callback  # TODO: add async_ to routines where required to do so
-def register_service_functions(hass: HomeAssistantType, broker):
+def register_domain_services(hass: HomeAssistantType, broker: RamsesBroker):
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)
@@ -110,7 +110,7 @@ def register_service_functions(hass: HomeAssistantType, broker):
         hass.helpers.event.async_call_later(5, broker.async_update)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_force_update(call: ServiceCall) -> None:
+    async def svc_force_update(_: ServiceCall) -> None:
         await broker.async_update()
 
     @verify_domain_control(hass, DOMAIN)
