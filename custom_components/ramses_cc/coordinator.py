@@ -41,7 +41,9 @@ _LOGGER = logging.getLogger(__name__)
 SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
 
 
-async def async_handle_exceptions(awaitable: Awaitable, logger=_LOGGER):
+async def async_handle_exceptions(
+    awaitable: Awaitable, logger: logging.Logger = _LOGGER
+) -> None:
     """Wrap the serial port interface to catch/report exceptions."""
     try:
         return await awaitable
@@ -50,28 +52,7 @@ async def async_handle_exceptions(awaitable: Awaitable, logger=_LOGGER):
         raise exc
 
 
-# class RamsesCoordinator(DataUpdateCoordinator):
-#     """Class to manage fetching data from single endpoint."""
-
-#     def __init__(
-#         self,
-#         hass: HomeAssistant,
-#         update_interval: td | None = None,
-#     ) -> None:
-
-#         super().__init(
-#             hass,
-#             logger=_LOGGER,
-#             name=DOMAIN,
-#             update_interval=update_interval,
-#             update_method=self.async_update,
-#         )
-
-#     async def async_update():
-#         pass
-
-
-class RamsesCoordinator:
+class RamsesBroker:
     """Container for client and data."""
 
     def __init__(self, hass, hass_config) -> None:
