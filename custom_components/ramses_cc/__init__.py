@@ -23,6 +23,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import BROKER, DOMAIN
 from .coordinator import RamsesBroker
@@ -48,35 +49,42 @@ PLATFORMS = [
 ]
 
 
-async def async_setup(
-    hass: HomeAssistant,
-    hass_config: ConfigType,
-) -> bool:
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
 
     _LOGGER.info(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
-    _LOGGER.debug("\r\n\nConfig = %s\r\n", hass_config[DOMAIN])
+    _LOGGER.debug("\r\n\nConfig = %s\r\n", config[DOMAIN])
 
-    broker = RamsesBroker(hass, hass_config)
-    hass.data[DOMAIN] = {BROKER: broker}
+    coordinator: DataUpdateCoordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name=DOMAIN,
+        update_interval=config[DOMAIN]["scan_interval"],
+    )
+
+    hass.data[DOMAIN] = {}
+    hass.data[DOMAIN][BROKER] = broker = RamsesBroker(hass, config)
+
+    coordinator.update_method = broker.async_update
+    await broker.start()
 
     if _LOGGER.isEnabledFor(logging.DEBUG):  # TODO: remove
         app_storage = await broker._async_load_storage()
         _LOGGER.debug("\r\n\nStore = %s\r\n", app_storage)
 
-    await broker.start()
     # NOTE: .async_listen_once(EVENT_HOMEASSISTANT_START, awaitable_coro)
     # NOTE: will be passed event, as: async def awaitable_coro(_event: Event):
+    await coordinator.async_config_entry_first_refresh()  # will save access tokens too
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, broker.async_update)
 
     register_domain_services(hass, broker)
-    register_trigger_events(hass, broker)
+    register_domain_events(hass, broker)
 
     return True
 
 
 @callback  # TODO: add async_ to routines where required to do so
-def register_trigger_events(hass: HomeAssistantType, broker):
+def register_domain_events(hass: HomeAssistantType, broker):
     """Set up the handlers for the system-wide events."""
 
     @callback
