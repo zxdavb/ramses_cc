@@ -286,6 +286,9 @@ BINARY_SENSOR_ATTRS = {
             DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
         },
         SZ_BYPASS_POSITION: {},
+        "dhw_blocking": {},
+        "otc_active": {},
+        "summer_mode": {},
     },
     "domains": {  # the non-devices: TCS, DHW, & Zones
         "window_open": {
