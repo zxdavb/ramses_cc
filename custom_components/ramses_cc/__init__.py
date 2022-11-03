@@ -89,16 +89,17 @@ def register_domain_events(hass: HomeAssistantType, broker):
 
     @callback
     def process_msg(msg, *args, **kwargs):  # process_msg(msg, prev_msg=None)
-        event_data = {
-            "dtm": msg.dtm.isoformat(),
-            "src": msg.src.id,
-            "dst": msg.dst.id,
-            "verb": msg.verb,
-            "code": msg.code,
-            "payload": msg.payload,
-            "packet": str(msg._pkt),
-        }
-        hass.bus.async_fire(f"{DOMAIN}_message", event_data)
+        if broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS].match(f"{msg!r}"):
+            event_data = {
+                "dtm": msg.dtm.isoformat(),
+                "src": msg.src.id,
+                "dst": msg.dst.id,
+                "verb": msg.verb,
+                "code": msg.code,
+                "payload": msg.payload,
+                "packet": str(msg._pkt),
+            }
+            hass.bus.async_fire(f"{DOMAIN}_message", event_data)
 
     if broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS]:
         broker.client.create_client(process_msg)

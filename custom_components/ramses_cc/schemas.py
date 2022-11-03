@@ -65,17 +65,17 @@ SVC_SEND_PACKET = "send_packet"
 
 SCH_FAKE_DEVICE = vol.Schema(
     {
-        vol.Required(SZ_DEVICE_ID): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
-        vol.Optional("create_device", default=False): vol.Any(None, bool),
-        vol.Optional("start_binding", default=False): vol.Any(None, bool),
+        vol.Required(SZ_DEVICE_ID): cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$"),
+        vol.Optional("create_device", default=False): vol.Any(None, cv.boolean),
+        vol.Optional("start_binding", default=False): vol.Any(None, cv.boolean),
     }
 )
 SCH_SEND_PACKET = vol.Schema(
     {
-        vol.Required(SZ_DEVICE_ID): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
+        vol.Required(SZ_DEVICE_ID): cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$"),
         vol.Required("verb"): vol.In((" I", "I", "RQ", "RP", " W", "W")),
-        vol.Required("code"): vol.Match(r"^[0-9A-F]{4}$"),
-        vol.Required("payload"): vol.Match(r"^[0-9A-F]{1,48}$"),
+        vol.Required("code"): cv.matches_regex(r"^[0-9A-F]{4}$"),
+        vol.Required("payload"): cv.matches_regex(r"^[0-9A-F]{1,48}$"),
     }
 )
 
@@ -197,7 +197,7 @@ SCH_PUT_ZONE_TEMP = _SCH_ENTITY_ID.extend(
     }
 )
 
-SCH_SET_ZONE_SCHED = _SCH_ENTITY_ID.extend({vol.Required(CONF_SCHEDULE): str})
+SCH_SET_ZONE_SCHED = _SCH_ENTITY_ID.extend({vol.Required(CONF_SCHEDULE): cv.string})
 
 
 SVCS_CLIMATE_EVO_ZONE = {
@@ -266,7 +266,7 @@ SCH_PUT_DHW_TEMP = _SCH_ENTITY_ID.extend(
     }
 )
 
-SCH_SET_DHW_SCHED = _SCH_ENTITY_ID.extend({vol.Required(CONF_SCHEDULE): str})
+SCH_SET_DHW_SCHED = _SCH_ENTITY_ID.extend({vol.Required(CONF_SCHEDULE): cv.string})
 
 
 SVCS_WATER_HEATER_EVO_DHW = {
@@ -361,12 +361,13 @@ SZ_MESSAGE_EVENTS = "message_events"
 SZ_DEV_MODE = "dev_mode"
 SZ_UNKNOWN_CODES = "unknown_codes"
 
+
 SCH_ADVANCED_FEATURES = vol.Schema(
     {
-        vol.Optional(SVC_SEND_PACKET, default=False): bool,
-        vol.Optional(SZ_MESSAGE_EVENTS, default=False): bool,
-        vol.Optional(SZ_DEV_MODE): bool,
-        vol.Optional(SZ_UNKNOWN_CODES): bool,
+        vol.Optional(SVC_SEND_PACKET, default=False): cv.boolean,
+        vol.Optional(SZ_MESSAGE_EVENTS, default=None): vol.All(cv.is_regex),
+        vol.Optional(SZ_DEV_MODE): cv.boolean,
+        vol.Optional(SZ_UNKNOWN_CODES): cv.boolean,
     }
 )
 
