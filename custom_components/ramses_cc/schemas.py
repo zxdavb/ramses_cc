@@ -365,7 +365,7 @@ SZ_UNKNOWN_CODES = "unknown_codes"
 SCH_ADVANCED_FEATURES = vol.Schema(
     {
         vol.Optional(SVC_SEND_PACKET, default=False): cv.boolean,
-        vol.Optional(SZ_MESSAGE_EVENTS, default=None): vol.All(cv.is_regex),
+        vol.Optional(SZ_MESSAGE_EVENTS, default=None): vol.Any(None, cv.is_regex),
         vol.Optional(SZ_DEV_MODE): cv.boolean,
         vol.Optional(SZ_UNKNOWN_CODES): cv.boolean,
     }
