@@ -58,7 +58,9 @@ send_packet:
 
   fields:
     device_id:
-      description: The destination device ID (a RAMSES ID, not an entity_id).
+      description: >-
+        The destination device ID (a RAMSES ID, not an entity_id).
+        Use "18:000730" (a sentinel value) to send a broadcast from the gateway.
       example: 01:123456
       required: true
 
