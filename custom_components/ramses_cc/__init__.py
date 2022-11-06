@@ -83,13 +83,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
-@callback  # TODO: add async_ to routines where required to do so
-def register_domain_events(hass: HomeAssistantType, broker):
+# TODO: add async_ to routines where required to do so
+@callback  # TODO: the following is a mess - to add register/deregister of clients
+def register_domain_events(hass: HomeAssistantType, broker: RamsesBroker) -> None:
     """Set up the handlers for the system-wide events."""
 
     @callback
     def process_msg(msg, *args, **kwargs):  # process_msg(msg, prev_msg=None)
-        if broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS].match(f"{msg!r}"):
+        if (
+            regex := broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS]
+        ) and regex.match(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
                 "src": msg.src.id,
@@ -101,8 +104,15 @@ def register_domain_events(hass: HomeAssistantType, broker):
             }
             hass.bus.async_fire(f"{DOMAIN}_message", event_data)
 
-    if broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS]:
-        broker.client.create_client(process_msg)
+        if broker.learn_device_id and broker.learn_device_id == msg.src.id:
+            event_data = {
+                "src": msg.src.id,
+                "code": msg.code,
+                "packet": str(msg._pkt),
+            }
+            hass.bus.async_fire(f"{DOMAIN}_learn", event_data)
+
+    broker.client.create_client(process_msg)
 
 
 @callback  # TODO: add async_ to routines where required to do so

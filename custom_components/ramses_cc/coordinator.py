@@ -85,6 +85,8 @@ class RamsesBroker:
         self._last_update = dt.min
         self._sem = Semaphore(value=1)
 
+        self.learn_device_id = None
+
     async def start(self) -> None:
         """Start the RAMSES co-ordinator."""
 
@@ -94,7 +96,10 @@ class RamsesBroker:
             await self._async_load_client_state()
             _LOGGER.info("Restored the cached state.")
         else:
-            _LOGGER.info("Not restoring any cached state (disabled).")
+            _LOGGER.info(
+                "Not restoring any cached state (disabled), "
+                "consider using 'restore_cache: restore_state: true"
+            )
 
         _LOGGER.debug("Starting the RF monitor...")
         self.loop_task = self.hass.async_create_task(
@@ -152,6 +157,14 @@ class RamsesBroker:
         _LOGGER.info("Restoring the client state cache (packets only)...")
         app_storage = await self._async_load_storage()
         if client_state := app_storage.get("client_state"):
+            # packets = {
+            #     k: m
+            #     for k, m in client_state["packets"]
+            #     if (
+            #         not self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA]
+            #         or m.code not in ("0004", "0005", "000C")
+            #     )  # force-load new schema (dont use cached schema pkts)
+            # }
             await self.client._set_state(packets=client_state["packets"])
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
