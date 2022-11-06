@@ -621,15 +621,15 @@ learn_command:
     command: *command_remote
 
     timeout:
-      description: Timeout for the command to be learned.
+      description: Timeout for the command to be learned. Default is 60 seconds.
       required: false
-      default: 120
-      example: 120
+      default: 60
+      example: 60
       selector:
         number:
           min: 30
           max: 300
-          steps: 1
+          steps: 5
           unit_of_measurement: seconds
           mode: slider
 

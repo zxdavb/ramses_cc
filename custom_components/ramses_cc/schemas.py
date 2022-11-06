@@ -335,7 +335,9 @@ SVC_SEND_COMMAND = "send_command"
 SCH_LEARN_COMMAND_BASE = _SCH_ENTITY_ID.extend({vol.Required(SZ_COMMAND): cv.string})
 SCH_LEARN_COMMAND = SCH_LEARN_COMMAND_BASE.extend(
     {
-        vol.Required(SZ_TIMEOUT): cv.positive_int,
+        vol.Required(SZ_TIMEOUT, default=60): vol.All(
+            cv.positive_int, vol.Range(min=30, max=300)
+        )
     }
 )
 SCH_SEND_COMMAND = SCH_LEARN_COMMAND_BASE.extend(
