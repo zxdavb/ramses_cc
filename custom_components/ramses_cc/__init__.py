@@ -140,7 +140,7 @@ def register_domain_services(hass: HomeAssistantType, broker: RamsesBroker):
             and kwargs.get("from_id", "18:000730") == "18:000730"
             and broker.client.hgi.id
         ):
-            kwargs["device_id"] = kwargs["from_id"] = broker.client.hgi.id
+            kwargs["device_id"] = broker.client.hgi.id
         broker.client.send_cmd(broker.client.create_cmd(**kwargs))
         hass.helpers.event.async_call_later(5, broker.async_update)
 
