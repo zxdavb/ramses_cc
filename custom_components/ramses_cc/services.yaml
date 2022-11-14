@@ -116,9 +116,9 @@ set_system_mode:
     entity_id: *entity_id_system
 
     mode:
-      name: Mode
+      name: System Mode
       description: "One of: auto, eco_boost, away, day_off, heat_off, or custom."
-      default: quto
+      default: auto
       example: away
       required: true
       selector:
@@ -204,7 +204,7 @@ put_zone_temp:
     temperature:
       description: >-
         The current temperature in degrees Celsius. This is the measured temperature,
-        not the target temperature (i.e. the setpoint).
+        not the target temperature (i.e. not the setpoint).
       example: 21.3
       required: true
       selector:
@@ -240,7 +240,7 @@ set_zone_config:
     entity_id: *entity_id_zone
 
     min_temp:
-      description: The minimum permitted setpoint (5-21 °C).
+      description: The minimum permitted setpoint in degrees Celsius (5-21 °C).
       example: 5
       selector:
         number:
@@ -251,7 +251,7 @@ set_zone_config:
           mode: slider
 
     max_temp:
-      description: The maximum permitted setpoint (21-35 °C).
+      description: The maximum permitted setpoint in degrees Celsius (21-35 °C).
       example: 30
       selector:
         number:
@@ -271,21 +271,41 @@ set_zone_mode:
     entity_id: *entity_id_zone
 
     mode:
+      name: Zone Mode
       description: >-
         The permanency of the override. Optional, one of: follow_schedule,
         advanced_override (until next scheduled setpoint), temporary_override (see:
         duration and until), or permanent_override (indefinitely).
+      default: follow_schedule
       example: advanced_override
+      required: true
+      selector:
+        select:
+          mode: dropdown
+          options:
+            - follow_schedule
+            - advanced_override
+            - permanent_override
+            - temporary_override
 
     setpoint:
       description: >-
         The target temperature in degrees Celsius. Default is 21.0.
+      default: 19.5
       example: 21.0
+      selector:
+        number:
+          min: 5
+          max: 35
+          step: 0.5
+          unit_of_measurement: °C
+          mode: slider
 
     duration:
       description: >-
         The duration of the temporary_override. Mutually exclusive with until.
       example: '{"minutes": 135}'
+      required: true
       selector:
         duration:
 
@@ -293,6 +313,9 @@ set_zone_mode:
       description: >-
         The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
+      required: true
+      selector:
+        datetime:
 
 
 set_zone_schedule:
@@ -348,9 +371,16 @@ put_dhw_temp:
     temperature:
       description: >-
         The current temperature in degrees Celsius. This is the measured temperature,
-        not the target temperature (i.e. the setpoint).
+        not the target temperature (i.e. not the setpoint).
       example: 63.4
       required: true
+      selector:
+        number:
+          min: -99
+          max: 99
+          step: 0.5
+          unit_of_measurement: °C
+          mode: slider
 
 
 reset_dhw_mode:
@@ -391,7 +421,9 @@ set_dhw_mode:
         The permanency of the override. Optional, one of: follow_schedule,
         advanced_override (until next scheduled setpoint), temporary_override (see:
         duration and until), or permanent_override (indefinitely).
+      default: follow_schedule
       example: advanced_override
+      required: true
       selector:
         select:
           mode: dropdown
