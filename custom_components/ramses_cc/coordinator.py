@@ -154,18 +154,20 @@ class RamsesBroker:
     async def _async_load_client_state(self) -> None:
         """Restore the client state from the application store."""
 
-        _LOGGER.info("Restoring the client state cache (packets only)...")
+        _LOGGER.info("Restoring the client state cache (packets)...")
         app_storage = await self._async_load_storage()
         if client_state := app_storage.get("client_state"):
-            # packets = {
-            #     k: m
-            #     for k, m in client_state["packets"]
-            #     if (
-            #         not self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA]
-            #         or m.code not in ("0004", "0005", "000C")
-            #     )  # force-load new schema (dont use cached schema pkts)
-            # }
-            await self.client._set_state(packets=client_state["packets"])
+            packets = {
+                k: m
+                for k, m in client_state["packets"].items()
+                if dt.fromisoformat(k) > dt.now() - td(days=1)
+                and (
+                    m[41:45] in ("10E0")
+                    or self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA]
+                    or m[41:45] not in ("0004", "0005", "000C")
+                )  # force-load new schema (dont use cached schema pkts)
+            }
+            await self.client._set_state(packets=packets)
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
         """Save the client state to the application store."""
