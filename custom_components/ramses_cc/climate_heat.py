@@ -342,10 +342,10 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
     @callback
     def set_preset_mode(self, preset_mode: str | None) -> None:
         """Set the preset mode; if None, then revert to following the schedule."""
-        if PRESET_TO_ZONE.get(preset_mode, ZoneMode.SCHEDULE) == ZoneMode.SCHEDULE:
-            self.svc_reset_zone_mode()
-        else:
-            self.svc_set_zone_mode(mode=ZoneMode.TEMPORARY)
+        self.svc_set_zone_mode(
+            mode=PRESET_TO_ZONE.get(preset_mode),
+            setpoint=self.target_temperature if preset_mode == "permanent" else None,
+        )
 
     @callback
     def set_temperature(self, temperature: float = None, **kwargs) -> None:
