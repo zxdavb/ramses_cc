@@ -12,7 +12,7 @@ from typing import Any
 
 from homeassistant.components.climate import (
     PRECISION_TENTHS,
-    TEMP_CELSIUS,
+    UnitOfTemperature,
     ClimateEntity,
     ClimateEntityFeature,
     HVACAction,
@@ -42,7 +42,7 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
 
     # Climate attrs....
     _attr_precision: float = PRECISION_TENTHS
-    _attr_temperature_unit: str = TEMP_CELSIUS
+    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
     _attr_fan_modes: list[str] | None = [
         FAN_OFF,
         FAN_AUTO,
