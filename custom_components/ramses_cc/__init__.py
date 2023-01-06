@@ -15,8 +15,8 @@ import voluptuous as vol
 from homeassistant.const import (
     EVENT_HOMEASSISTANT_START,
     PRECISION_TENTHS,
-    TEMP_CELSIUS,
     Platform,
+    UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -275,7 +275,7 @@ class EvohomeZoneBase(RamsesEntity):  # for: climate & water_heater
     """Base for any RAMSES RF-compatible entity (e.g. Controller, DHW, Zones)."""
 
     _attr_precision: float = PRECISION_TENTHS
-    _attr_temperature_unit: str = TEMP_CELSIUS
+    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
     def __init__(self, broker, device) -> None:
         """Initialize the sensor."""
