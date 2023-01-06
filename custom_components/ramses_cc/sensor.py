@@ -12,7 +12,6 @@ from typing import Any
 
 from homeassistant.components.sensor import DOMAIN as PLATFORM
 from homeassistant.components.sensor import (
-    TEMP_CELSIUS,
     SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
@@ -20,7 +19,9 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
-    TIME_MINUTES,
+    UnitOfPressure,
+    UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
@@ -62,13 +63,7 @@ from ramses_rf.protocol.const import (
 )
 
 from . import RamsesDeviceBase as RamsesDeviceBase
-from .const import (
-    ATTR_SETPOINT,
-    BROKER,
-    DOMAIN,
-    VOLUME_FLOW_RATE_LITERS_PER_MINUTE,
-    VOLUME_FLOW_RATE_LITERS_PER_SECOND,
-)
+from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
 from .helpers import migrate_to_ramses_rf
 from .schemas import SVCS_SENSOR
 
@@ -300,38 +295,38 @@ SENSOR_ATTRS_HEAT = {
     # SENSOR_ATTRS_OTB = {  # excl. actuator
     SZ_BOILER_OUTPUT_TEMP: {  # 3200, 3220|19
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_BOILER_RETURN_TEMP: {  # 3210, 3220|1C
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_BOILER_SETPOINT: {  # 22D9, 3220|01
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_CH_MAX_SETPOINT: {  # 1081, 3220|39
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_CH_SETPOINT: {  # 3EF0
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_CH_WATER_PRESSURE: {  # 1300, 3220|12
         DEVICE_CLASS: SensorDeviceClass.PRESSURE,
-        DEVICE_UNITS: "bar",
+        DEVICE_UNITS: UnitOfPressure.BAR,
     },
     SZ_DHW_FLOW_RATE: {  # 12F0, 3220|13
-        DEVICE_UNITS: VOLUME_FLOW_RATE_LITERS_PER_MINUTE,
+        DEVICE_UNITS: UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
     },
     SZ_DHW_SETPOINT: {  # 10A0, 3220|38
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_DHW_TEMP: {  # 1290, 3220|1A
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_MAX_REL_MODULATION: {  # 3200|0E
         DEVICE_UNITS: PERCENTAGE,
@@ -339,7 +334,7 @@ SENSOR_ATTRS_HEAT = {
     },
     SZ_OUTSIDE_TEMP: {  # 1290, 3220|1B
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_REL_MODULATION_LEVEL: {  # 3EFx, 3200|11
         DEVICE_UNITS: PERCENTAGE,
@@ -352,7 +347,7 @@ SENSOR_ATTRS_HEAT = {
     },
     "temperature": {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
         ENTITY_CLASS: RamsesTemperature,
         "fakable": True,
     },
@@ -360,7 +355,7 @@ SENSOR_ATTRS_HEAT = {
 
 
 SENSOR_ATTRS_HVAC = {
-    # "boost_timer": {DEVICE_UNITS: TIME_MINUTES,},
+    # "boost_timer": {DEVICE_UNITS: UnitOfTime.MINUTES,},
     # "fan_rate":    {DEVICE_UNITS: PERCENTAGE,},
     SZ_AIR_QUALITY: {
         DEVICE_UNITS: PERCENTAGE,
@@ -379,11 +374,11 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_UNITS: PERCENTAGE,
     },
     SZ_EXHAUST_FLOW: {
-        DEVICE_UNITS: VOLUME_FLOW_RATE_LITERS_PER_SECOND,
+        DEVICE_UNITS: UnitOfVolumeFlowRate.LITERS_PER_SECOND,
     },
     SZ_EXHAUST_TEMPERATURE: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_FAN_INFO: {STATE_CLASS: None},
     SZ_INDOOR_HUMIDITY: {
@@ -393,7 +388,7 @@ SENSOR_ATTRS_HVAC = {
     },
     SZ_INDOOR_TEMPERATURE: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_OUTDOOR_HUMIDITY: {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
@@ -401,7 +396,7 @@ SENSOR_ATTRS_HVAC = {
     },
     SZ_OUTDOOR_TEMPERATURE: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_POST_HEAT: {
         DEVICE_UNITS: PERCENTAGE,
@@ -410,7 +405,7 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_UNITS: PERCENTAGE,
     },
     SZ_REMAINING_TIME: {
-        DEVICE_UNITS: TIME_MINUTES,
+        DEVICE_UNITS: UnitOfTime.MINUTES,
         # DEVICE_CLASS: SensorDeviceClass.DURATION,
     },
     SZ_SPEED_CAP: {
@@ -420,11 +415,11 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_UNITS: PERCENTAGE,
     },
     SZ_SUPPLY_FLOW: {
-        DEVICE_UNITS: VOLUME_FLOW_RATE_LITERS_PER_SECOND,
+        DEVICE_UNITS: UnitOfVolumeFlowRate.LITERS_PER_SECOND,
     },
     SZ_SUPPLY_TEMPERATURE: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        DEVICE_UNITS: TEMP_CELSIUS,
+        DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
 }
 

@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from homeassistant.backports.enum import StrEnum
+
 DOMAIN = "ramses_cc"
 
 STORAGE_VERSION = 1
@@ -30,9 +32,6 @@ ATTR_HUMIDITY = "relative_humidity"
 ATTR_BATTERY_LEVEL = "battery_level"
 ATTR_SETPOINT = "setpoint"
 
-VOLUME_FLOW_RATE_LITERS_PER_MINUTE = "L/min"
-VOLUME_FLOW_RATE_LITERS_PER_SECOND = "L/s"
-
 DATA = "data"
 SERVICE = "service"
 UNIQUE_ID = "unique_id"
@@ -45,6 +44,14 @@ SENSOR_ATTRS = (
     ATTR_RELAY_DEMAND,
     ATTR_TEMPERATURE,
 )  # ATTR_FAULT_LOG
+
+
+# Volume Flow Rate units, these are not defined in HA v2023.1
+class UnitOfVolumeFlowRate(StrEnum):
+    """Volume flow rate units (defined by integration)."""
+
+    LITERS_PER_MINUTE = "L/min"
+    LITERS_PER_SECOND = "L/s"
 
 
 SystemMode = SimpleNamespace(
