@@ -214,7 +214,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         await self.async_learn_command(*args, **kwargs)
 
     async def svc_send_command(self, *args, **kwargs) -> None:
-        """Send a command as is from a RAMSES remote.
+        """Send a command as if from a RAMSES remote.
 
         This is a RAMSES-specific convenience wrapper for async_send_command().
         """
