@@ -384,6 +384,9 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
     SZ_FAN_INFO: {STATE_CLASS: None},
+    SZ_FILTER_REMAINING: {
+        DEVICE_UNITS: UnitOfTime.DAYS,    
+    },
     SZ_INDOOR_HUMIDITY: {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         DEVICE_UNITS: PERCENTAGE,
