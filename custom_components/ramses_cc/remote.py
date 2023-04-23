@@ -203,7 +203,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
 
         This is a RAMSES-specific convenience wrapper for async_delete_command().
         """
-        await self.async_learn_command(*args, **kwargs)
+        await self.async_delete_command(*args, **kwargs)
 
     async def svc_learn_command(self, *args, **kwargs) -> None:
         """Learn a command from a RAMSES remote and add to the database.
