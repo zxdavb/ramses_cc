@@ -44,25 +44,25 @@ from ramses_rf.device.heat import (
     SZ_OUTSIDE_TEMP,
     SZ_REL_MODULATION_LEVEL,
 )
-from ramses_rf.protocol.const import (
+from ramses_rf.const import (
     SZ_AIR_QUALITY,
-    SZ_AIR_QUALITY_BASE,
+    SZ_AIR_QUALITY_BASIS,
     SZ_CO2_LEVEL,
     SZ_EXHAUST_FAN_SPEED,
     SZ_EXHAUST_FLOW,
-    SZ_EXHAUST_TEMPERATURE,
+    SZ_EXHAUST_TEMP,
     SZ_FAN_INFO,
     SZ_INDOOR_HUMIDITY,
-    SZ_INDOOR_TEMPERATURE,
+    SZ_INDOOR_TEMP,
     SZ_OUTDOOR_HUMIDITY,
-    SZ_OUTDOOR_TEMPERATURE,
+    SZ_OUTDOOR_TEMP,
     SZ_POST_HEAT,
     SZ_PRE_HEAT,
-    SZ_REMAINING_TIME,
+    SZ_REMAINING_MINS,
     SZ_SPEED_CAP,
     SZ_SUPPLY_FAN_SPEED,
     SZ_SUPPLY_FLOW,
-    SZ_SUPPLY_TEMPERATURE,
+    SZ_SUPPLY_TEMP,
 )
 
 from . import RamsesDeviceBase as RamsesDeviceBase
@@ -364,7 +364,7 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_UNITS: PERCENTAGE,
         # DEVICE_CLASS: SensorDeviceClass.AQI,
     },
-    SZ_AIR_QUALITY_BASE: {
+    SZ_AIR_QUALITY_BASIS: {
         DEVICE_UNITS: PERCENTAGE,
         # DEVICE_CLASS: SensorDeviceClass.AQI,
     },
@@ -379,7 +379,7 @@ SENSOR_ATTRS_HVAC = {
     SZ_EXHAUST_FLOW: {
         DEVICE_UNITS: UnitOfVolumeFlowRate.LITERS_PER_SECOND,
     },
-    SZ_EXHAUST_TEMPERATURE: {
+    SZ_EXHAUST_TEMP: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
@@ -389,7 +389,7 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: RamsesIndoorHumidity,
     },
-    SZ_INDOOR_TEMPERATURE: {
+    SZ_INDOOR_TEMP: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
@@ -397,7 +397,7 @@ SENSOR_ATTRS_HVAC = {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         DEVICE_UNITS: PERCENTAGE,
     },
-    SZ_OUTDOOR_TEMPERATURE: {
+    SZ_OUTDOOR_TEMP: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
@@ -407,7 +407,7 @@ SENSOR_ATTRS_HVAC = {
     SZ_PRE_HEAT: {
         DEVICE_UNITS: PERCENTAGE,
     },
-    SZ_REMAINING_TIME: {
+    SZ_REMAINING_MINS: {
         DEVICE_UNITS: UnitOfTime.MINUTES,
         # DEVICE_CLASS: SensorDeviceClass.DURATION,
     },
@@ -420,7 +420,7 @@ SENSOR_ATTRS_HVAC = {
     SZ_SUPPLY_FLOW: {
         DEVICE_UNITS: UnitOfVolumeFlowRate.LITERS_PER_SECOND,
     },
-    SZ_SUPPLY_TEMPERATURE: {
+    SZ_SUPPLY_TEMP: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
