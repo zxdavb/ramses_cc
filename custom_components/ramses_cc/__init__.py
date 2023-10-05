@@ -112,7 +112,7 @@ def register_domain_events(hass: HomeAssistantType, broker: RamsesBroker) -> Non
             }
             hass.bus.async_fire(f"{DOMAIN}_learn", event_data)
 
-    broker.client.create_client(process_msg)
+    broker.client.add_msg_handler(process_msg)
 
 
 @callback  # TODO: add async_ to routines where required to do so
@@ -254,7 +254,8 @@ class RamsesDeviceBase(RamsesEntity):  # for: binary_sensor & sensor
         self.entity_id = f"{DOMAIN}.{device.id}-{state_attr}"
 
         self._attr_device_class = device_class
-        self._attr_unique_id = f"{device.id}-{state_attr}"  # dont include domain (ramses_cc) / platform (binary_sesnor/sensor)
+        self._attr_unique_id = f"{device.id}-{state_attr}"
+        # dont include domain (ramses_cc) / platform (binary_sensor/sensor)
 
         self._state_attr = state_attr
 
