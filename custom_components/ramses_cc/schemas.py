@@ -382,7 +382,10 @@ SCH_DEVICE_LIST = vol.Schema(
     extra=vol.PREVENT_EXTRA,
 )  # TODO: what is this for?
 
-SCH_GATEWAY_CONFIG = SCH_GATEWAY_CONFIG.extend(SCH_ENGINE_DICT)
+SCH_GATEWAY_CONFIG = SCH_GATEWAY_CONFIG.extend(
+    SCH_ENGINE_DICT,
+    extra=vol.PREVENT_EXTRA,
+)
 
 SCH_DOMAIN_CONFIG = (
     vol.Schema(
