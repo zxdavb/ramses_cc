@@ -679,7 +679,7 @@ send_command:
 
     command: *command_remote
 
-    repeats:
+    num_repeats:
       description: The number of times you want to repeat the command.
       required: false
       default: 3
@@ -691,7 +691,7 @@ send_command:
           steps: 1
           mode: slider
 
-    delay:
+    delay_secs:
       description: The time you want to wait in between repeated commands.
       required: false
       default: 0.2

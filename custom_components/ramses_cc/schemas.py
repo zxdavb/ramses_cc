@@ -326,8 +326,8 @@ SVCS_SENSOR = {
 # Remote platform services for HVAC
 SZ_COMMAND = "command"
 SZ_TIMEOUT = "timeout"
-SZ_REPEATS = "repeats"
-SZ_DELAY = "delay"
+SZ_NUM_REPEATS = "num_repeats"
+SZ_DELAY_SECS = "delay_secs"
 SVC_DELETE_COMMAND = "delete_command"
 SVC_LEARN_COMMAND = "learn_command"
 SVC_SEND_COMMAND = "send_command"
@@ -343,8 +343,8 @@ SCH_LEARN_COMMAND = SCH_VERB_COMMAND_BASE.extend(
 )
 SCH_SEND_COMMAND = SCH_VERB_COMMAND_BASE.extend(
     {
-        vol.Required(SZ_REPEATS, default=3): cv.positive_int,
-        vol.Required(SZ_DELAY, default=0.2): cv.positive_float,
+        vol.Required(SZ_NUM_REPEATS, default=3): cv.positive_int,
+        vol.Required(SZ_DELAY_SECS, default=0.2): cv.positive_float,
     }
 )
 
