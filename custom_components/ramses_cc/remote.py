@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime as dt
-from datetime import timedelta as td
-from typing import Any, Iterable
+from collections.abc import Iterable
+from datetime import datetime as dt, timedelta as td
+from typing import Any
 
-from homeassistant.components.remote import DOMAIN as PLATFORM
-from homeassistant.components.remote import RemoteEntity, RemoteEntityFeature
+from homeassistant.components.remote import (
+    DOMAIN as PLATFORM,
+    RemoteEntity,
+    RemoteEntityFeature,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.entity_platform import (
@@ -22,7 +25,7 @@ from homeassistant.helpers.entity_platform import (
     async_get_current_platform,
 )
 from homeassistant.helpers.typing import DiscoveryInfoType
-from ramses_rf.protocol import Command, Priority
+from ramses_tx import Command, Priority
 
 from . import RamsesEntity
 from .const import BROKER, DOMAIN
@@ -135,7 +138,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
 
         if len(command) != 1:  # TODO: Bug was here
             raise TypeError("must be exactly one command to learn")
-        if not isinstance(timeout, (float, int)) or not 5 <= timeout <= 300:
+        if not isinstance(timeout, float | int) or not 5 <= timeout <= 300:
             raise TypeError("timeout must be 5 to 300 (default 60)")
 
         if command[0] in self._commands:
@@ -176,7 +179,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
 
         if len(command) != 1:
             raise TypeError("must be exactly one command to send")
-        if not isinstance(delay_secs, (float, int)) or not 0.02 <= delay_secs <= 1:
+        if not isinstance(delay_secs, float | int) or not 0.02 <= delay_secs <= 1:
             raise TypeError("delay_secs must be 0.02 to 1.0 (default 0.05)")
         if not isinstance(num_repeats, int) or not 1 <= num_repeats <= 5:
             raise TypeError("num_repeats must be 1 to 5 (default 3)")

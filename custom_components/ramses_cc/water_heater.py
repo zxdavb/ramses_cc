@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime as dt
-from datetime import timedelta as td
+from datetime import datetime as dt, timedelta as td
 from typing import Any
 
-from homeassistant.components.water_heater import DOMAIN as PLATFORM
 from homeassistant.components.water_heater import (
+    DOMAIN as PLATFORM,
     STATE_OFF,
     STATE_ON,
     WaterHeaterEntity,

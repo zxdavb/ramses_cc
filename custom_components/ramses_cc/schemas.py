@@ -9,20 +9,11 @@ from copy import deepcopy
 from datetime import timedelta as td
 
 import voluptuous as vol
-from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID
-from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID, CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from ramses_rf.const import SZ_DEVICE_ID
 from ramses_rf.helpers import merge, shrink
-from ramses_rf.protocol.schemas import (
-    SZ_PORT_CONFIG,
-    SZ_SERIAL_PORT,
-    extract_serial_port,
-    sch_global_traits_dict_factory,
-    sch_packet_log_dict_factory,
-    sch_serial_port_dict_factory,
-)
 from ramses_rf.schemas import (
     SCH_DEVICE_ID_ANY,
     SCH_GATEWAY_DICT,
@@ -31,6 +22,14 @@ from ramses_rf.schemas import (
     SZ_CONFIG,
     SZ_RESTORE_CACHE,
     SZ_RESTORE_SCHEMA,
+)
+from ramses_tx.schemas import (
+    SZ_PORT_CONFIG,
+    SZ_SERIAL_PORT,
+    extract_serial_port,
+    sch_global_traits_dict_factory,
+    sch_packet_log_dict_factory,
+    sch_serial_port_dict_factory,
 )
 
 from .const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode

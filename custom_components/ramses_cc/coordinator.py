@@ -9,28 +9,29 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable  # , Callable, Coroutine, Generator
-from datetime import datetime as dt
-from datetime import timedelta as td
+from datetime import datetime as dt, timedelta as td
 from threading import Semaphore
 
-import serial
 import voluptuous as vol
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
-from homeassistant.core import callback  # CALLBACK_TYPE, HassJob, HomeAssistant,
+from homeassistant.core import HomeAssistant, callback  # CALLBACK_TYPE, HassJob,
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.typing import ConfigType
 
 # om homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from ramses_rf import Gateway
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
 from ramses_rf.helpers import merge
 from ramses_rf.schemas import (
+    SZ_CONFIG,
     SZ_RESTORE_CACHE,
     SZ_RESTORE_SCHEMA,
     SZ_RESTORE_STATE,
     SZ_SCHEMA,
-    extract_schema,
 )
+from ramses_tx.exceptions import TransportSerialError
+from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 
 from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
 from .schemas import merge_schemas, normalise_config
@@ -47,15 +48,15 @@ async def async_handle_exceptions(
     """Wrap the serial port interface to catch/report exceptions."""
     try:
         return await awaitable
-    except serial.SerialException as exc:
-        logger.exception("There is a problem with the serial port: %s", exc)
+    except TransportSerialError as exc:
+        logger.error("There is a problem with the serial port: %s", exc)
         raise exc
 
 
 class RamsesBroker:
     """Container for client and data."""
 
-    def __init__(self, hass, hass_config) -> None:
+    def __init__(self, hass: HomeAssistant, hass_config: ConfigType) -> None:
         """Initialize the client and its data structure(s)."""
 
         self.hass = hass
@@ -122,8 +123,9 @@ class RamsesBroker:
         storage = await self._async_load_storage()
         self._known_commands = merge(self._known_commands, storage.get("remotes", {}))
 
-        schema = extract_schema(**self._client_config)
-        config = {k: v for k, v in self._client_config.items() if k not in schema}
+        CONFIG_KEYS = (SZ_CONFIG, SZ_PACKET_LOG, SZ_PORT_CONFIG)
+        config = {k: v for k, v in self._client_config.items() if k in CONFIG_KEYS}
+        schema = {k: v for k, v in self._client_config.items() if k not in config}
 
         schemas = merge_schemas(
             self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA],

@@ -8,12 +8,11 @@ Provides support for binary sensors.
 from __future__ import annotations
 
 import logging
-from datetime import datetime as dt
-from datetime import timedelta as td
+from datetime import datetime as dt, timedelta as td
 from typing import Any
 
-from homeassistant.components.binary_sensor import DOMAIN as PLATFORM
 from homeassistant.components.binary_sensor import (
+    DOMAIN as PLATFORM,
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
@@ -25,6 +24,7 @@ from homeassistant.helpers.entity_platform import (
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 #
+from ramses_rf import Gateway
 from ramses_rf.device.heat import (
     SZ_CH_ACTIVE,
     SZ_CH_ENABLED,
@@ -35,7 +35,7 @@ from ramses_rf.device.heat import (
     SZ_FAULT_PRESENT,
     SZ_FLAME_ACTIVE,
 )
-from ramses_rf.protocol.const import SZ_BYPASS_POSITION
+from ramses_tx.const import SZ_BYPASS_POSITION, SZ_IS_EVOFW3
 
 from . import RamsesDeviceBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
@@ -82,18 +82,18 @@ async def async_setup_platform(
     ]
     # TODO: has a bug:
     # Traceback (most recent call last):
-    # File "/usr/src/homeassistant/homeassistant/helpers/entity_platform.py", line 249, in _async_setup_platform
+    # File ".../ha/helpers/entity_platform.py", line 249, in _async_setup_platform
     #     await asyncio.shield(task)
-    # File "/config/custom_components/ramses_cc/binary_sensor.py", line 64, in async_setup_platform
+    # File ".../ramses_cc/binary_sensor.py", line 64, in async_setup_platform
     #     new_sensors += [
-    # File "/config/custom_components/ramses_cc/binary_sensor.py", line 68, in <listcomp>
+    # File ".../ramses_cc/binary_sensor.py", line 68, in <listcomp>
     #     if getattr(tcs, "tcs") is tcs
     # AttributeError: 'NoneType' object has no attribute 'tcs'
     new_sensors += [
         entity_factory(broker, dev, k, **v)
         for dev in discovery_info.get("domains", [])  # not "devices"
         for k, v in BINARY_SENSOR_ATTRS["systems"].items()
-        if dev and getattr(dev, "tcs") is dev  # HACK
+        if dev and dev.tcs is dev  # HACK
     ]  # 01:xxxxxx - active_fault, schema
 
     async_add_entities(new_sensors)
@@ -207,7 +207,7 @@ class RamsesGateway(RamsesBinarySensor):
     @property
     def available(self) -> bool:
         """Return True if the device is available."""
-        return bool(self._device._gwy.pkt_protocol._hgi80.get("device_id"))
+        return bool(self._device._gwy.hgi)  # TODO: look at most recent packet
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -225,22 +225,22 @@ class RamsesGateway(RamsesBinarySensor):
                 if k in ("alias", "class", "faked") and v not in (None, False)
             }
 
-        gwy = self._device._gwy
+        gwy: Gateway = self._device._gwy
         return {
             "schema": {gwy.tcs.id: gwy.tcs._schema_min} if gwy.tcs else {},
-            "config": {"enforce_known_list": gwy.config.enforce_known_list},
+            "config": {"enforce_known_list": gwy._enforce_known_list},
             "known_list": [{k: shrink(v)} for k, v in gwy.known_list.items()],
             "block_list": [{k: shrink(v)} for k, v in gwy._exclude.items()],
             "other_list": sorted(
-                d for d in gwy.pkt_protocol._unwanted if d not in gwy._exclude
+                d for d in gwy._transport._unwanted if d not in gwy._exclude
             ),
-            "_is_evofw3": gwy.pkt_protocol._hgi80["is_evofw3"],
+            SZ_IS_EVOFW3: gwy._transport.get_extra_info(SZ_IS_EVOFW3),  # TODO: FIXME
         }
 
     @property
     def is_on(self) -> bool | None:
         """Return True if the controller has been seen recently."""
-        if msg := self._device._gwy.msg_protocol._this_msg:
+        if msg := self._device._gwy._protocol._this_msg:  # TODO
             return dt.now() - msg.dtm > td(seconds=300)
 
 

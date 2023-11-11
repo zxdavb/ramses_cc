@@ -27,7 +27,6 @@ def migrate_to_ramses_rf(hass: HomeAssistant, domain: str, unique_id: str):
     registry: EntityRegistry = async_get(hass)
 
     if entity_id := registry.async_get_entity_id(domain, OLD_PLATFORM, unique_id):
-
         if (entity := hass.states.get(entity_id)) and entity.state == STATE_UNAVAILABLE:
             hass.states.get(entity_id).state = STATE_UNKNOWN  # HACK
 

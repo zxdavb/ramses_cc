@@ -260,7 +260,7 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
         """Return the Zone's current running hvac operation."""
 
         if self._device.tcs.system_mode is None:
-            return  # unable to determine
+            return None  # unable to determine
         if self._device.tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACAction.OFF
 
@@ -268,6 +268,7 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
             return HVACAction.HEATING
         if self._device.heat_demand is not None:
             return HVACAction.IDLE
+        return None
 
     @property
     def hvac_mode(self) -> str | None:
