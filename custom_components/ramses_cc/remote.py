@@ -199,7 +199,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
             )
             self._broker.client.send_cmd(cmd)
 
-        self._broker.async_update()
+        await self._broker.async_update()
 
     async def svc_delete_command(self, *args, **kwargs) -> None:
         """Delete a RAMSES remote command from the database.
