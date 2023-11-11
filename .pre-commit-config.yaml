@@ -1,27 +1,18 @@
 # .pre-commit-config.yaml file for https://github.com/zxdavb
+# last updated 2023-11-11
+
+#
 
 repos:
-  - repo: https://github.com/psf/black
-    rev: 22.6.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.4
     hooks:
-      - id: black
-        args:
-          - --safe
-          - --quiet
-        files: ^(custom.*/.+)?[^/]+\.py$
+      - id: ruff
+      - id: ruff-format
+        args: [--check]
 
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.2
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
     hooks:
-      - id: flake8
-        additional_dependencies:
-          - flake8-docstrings==1.5.0
-          - pydocstyle==5.1.1
-        files: ^custom.*/.+\.py$
-        exclude: ^xxx.*/tests\.py$
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.10.1
-    hooks:
-      - id: isort
-        args: ["--profile", "black", "--filter-files"]
+    - id: python-check-blanket-noqa
+    - id: python-check-blanket-type-ignore

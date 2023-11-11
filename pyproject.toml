@@ -1,3 +1,48 @@
-[tool.isort]
-  profile = "black"
-  multi_line_output = 3
+#
+### project ##########################################################################
+# updated: 2023-11-11
+#
+
+
+### mypy ############################################################################
+
+[tool.mypy]
+  # exclude = "tests"
+  files = ["custom_components"]
+  follow_imports = "skip"  # TODO: don't use this feature
+
+
+[[tool.mypy.overrides]]
+  module = ["homeassistant.*", "ramses_rf.*", "ramses_tx.*"]
+
+  ignore_missing_imports = true
+
+
+
+#
+## ruff ##############################################################################
+
+[tool.ruff]
+  # exclude = ["tests/deprecated/*.py"]
+  src = ["custom_components"]
+  target-version = "py311"  # Assume Python 3.11
+
+
+[tool.ruff.lint]
+  select = [
+    "B",  # flake8-bugbear
+    "E",  # pycodestyle
+    "F",  # Pyflakes
+    "I",  # isort
+    # "SIM",  # flake8-simplify
+    "UP",  # pyupgrade
+  ]
+  ignore = ["E501", "UP009"]
+  # E501  - Line too long
+  # UP009 - UTF-8 encoding declaration is unnecessary
+
+
+[tool.ruff.lint.isort]
+  combine-as-imports = true  # default is false
+
+
