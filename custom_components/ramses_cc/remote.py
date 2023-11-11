@@ -186,7 +186,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         if isinstance(command, str):  # HACK to make it work as per HA service call
             command = [command]
 
-        if len(command) != 1:  # command= 'normal' vs 'normal'
+        if len(command) != 1:
             raise TypeError("must be exactly one command to send")
         if not isinstance(delay_secs, float | int) or not 0.02 <= delay_secs <= 1:
             raise TypeError("delay_secs must be 0.02 to 1.0 (default 0.05)")
