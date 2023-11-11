@@ -16,7 +16,7 @@ from ramses_rf.const import SZ_DEVICE_ID
 from ramses_rf.helpers import merge, shrink
 from ramses_rf.schemas import (
     SCH_DEVICE_ID_ANY,
-    SCH_GATEWAY_DICT,
+    SCH_GATEWAY_CONFIG,
     SCH_GLOBAL_SCHEMAS_DICT,
     SCH_RESTORE_CACHE_DICT,
     SZ_CONFIG,
@@ -24,6 +24,7 @@ from ramses_rf.schemas import (
     SZ_RESTORE_SCHEMA,
 )
 from ramses_tx.schemas import (
+    SCH_ENGINE_DICT,
     SZ_PORT_CONFIG,
     SZ_SERIAL_PORT,
     extract_serial_port,
@@ -380,10 +381,12 @@ SCH_DEVICE_LIST = vol.Schema(
     extra=vol.PREVENT_EXTRA,
 )  # TODO: what is this for?
 
+SCH_GATEWAY_CONFIG = SCH_GATEWAY_CONFIG.extend(SCH_ENGINE_DICT)
+
 SCH_DOMAIN_CONFIG = (
     vol.Schema(
         {
-            vol.Optional("ramses_rf", default={}): SCH_GATEWAY_DICT,
+            vol.Optional("ramses_rf", default={}): SCH_GATEWAY_CONFIG,
             vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT): vol.All(
                 cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)
             ),
