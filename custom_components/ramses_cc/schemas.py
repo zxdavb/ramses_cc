@@ -332,25 +332,26 @@ SVC_DELETE_COMMAND = "delete_command"
 SVC_LEARN_COMMAND = "learn_command"
 SVC_SEND_COMMAND = "send_command"
 
-SCH_LEARN_COMMAND_BASE = _SCH_ENTITY_ID.extend({vol.Required(SZ_COMMAND): cv.string})
-SCH_LEARN_COMMAND = SCH_LEARN_COMMAND_BASE.extend(
+SCH_VERB_COMMAND_BASE = _SCH_ENTITY_ID.extend({vol.Required(SZ_COMMAND): cv.string})
+SCH_DELETE_COMMAND = SCH_VERB_COMMAND_BASE
+SCH_LEARN_COMMAND = SCH_VERB_COMMAND_BASE.extend(
     {
         vol.Required(SZ_TIMEOUT, default=60): vol.All(
             cv.positive_int, vol.Range(min=30, max=300)
         )
     }
 )
-SCH_SEND_COMMAND = SCH_LEARN_COMMAND_BASE.extend(
+SCH_SEND_COMMAND = SCH_VERB_COMMAND_BASE.extend(
     {
-        vol.Required(SZ_REPEATS): cv.positive_int,
-        vol.Required(SZ_DELAY): cv.positive_float,
+        vol.Required(SZ_REPEATS, default=3): cv.positive_int,
+        vol.Required(SZ_DELAY, default=0.2): cv.positive_float,
     }
 )
 
 SVCS_REMOTE = {
-    SVC_DELETE_COMMAND: SCH_LEARN_COMMAND_BASE,
+    SVC_DELETE_COMMAND: SCH_DELETE_COMMAND,
     SVC_LEARN_COMMAND: SCH_LEARN_COMMAND,
-    SVC_SEND_COMMAND: SCH_LEARN_COMMAND_BASE,
+    SVC_SEND_COMMAND: SCH_SEND_COMMAND,
 }
 
 #

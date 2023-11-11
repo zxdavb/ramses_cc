@@ -161,7 +161,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
 
     async def async_send_command(
         self,
-        command: Iterable[str],
+        command: Iterable[str] | str,  # HA is Iterable, ramses is str
         delay_secs: float = 0.05,
         num_repeats: int = 3,
         **kwargs: Any,
@@ -177,7 +177,10 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
           entity_id: remote.device_id
         """
 
-        if len(command) != 1:
+        if isinstance(command, str):  # HACK to make it work as HA service call
+            command = [command]
+
+        if len(command) != 1:  # command= 'normal' vs 'normal'
             raise TypeError("must be exactly one command to send")
         if not isinstance(delay_secs, float | int) or not 0.02 <= delay_secs <= 1:
             raise TypeError("delay_secs must be 0.02 to 1.0 (default 0.05)")
@@ -221,4 +224,4 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
 
         This is a RAMSES-specific convenience wrapper for async_send_command().
         """
-        await self.async_send_command(*args, **kwargs)
+        await self.async_send_command(*args, **kwargs)  # TODO: make call_soon
