@@ -55,6 +55,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     _LOGGER.info(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
     _LOGGER.debug("\r\n\nConfig = %s\r\n", config[DOMAIN])
 
+    _LOGGER.error("Disabling QoS (disable_qos=True)")
+    config[DOMAIN]["ramses_rf"]["disable_qos"] = True
+
     coordinator: DataUpdateCoordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
