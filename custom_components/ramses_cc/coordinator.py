@@ -51,6 +51,9 @@ async def async_handle_exceptions(
     except TransportSerialError as exc:
         logger.error("There is a problem with the serial port: %s", exc)
         raise exc
+    except Exception as exc:  # TODO: fixme
+        logger.error("There is a problem with the serial port: %s", exc)
+        raise exc
 
 
 class RamsesBroker:
@@ -102,10 +105,11 @@ class RamsesBroker:
                 "consider using 'restore_cache: restore_state: true"
             )
 
-        _LOGGER.debug("Starting the RF monitor...")
-        self.loop_task = self.hass.async_create_task(
-            async_handle_exceptions(self.client.start())
-        )
+        _LOGGER.debug("Starting the RF monitor...")  # TODO: fixme, below
+        # self.loop_task = self.hass.async_create_task(
+        #     async_handle_exceptions(self.client.start())
+        # )
+        self.loop_task = self.hass.async_create_task(self.client.start())
 
         self.hass.helpers.event.async_track_time_interval(
             self.async_save_client_state, SAVE_STATE_INTERVAL
