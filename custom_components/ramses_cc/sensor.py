@@ -102,12 +102,14 @@ async def async_setup_platform(
         for k, v in SENSOR_ATTRS.items()
         if hasattr(device, k)
     ]  # and (not device._is_faked or device["fakable"])
+
     new_sensors += [
         entity_factory(broker, device, f"{k}_ot", **v)
         for device in discovery_info.get("devices", [])
         for k, v in SENSOR_ATTRS_HEAT.items()
         if device._SLUG == "OTB" and hasattr(device, f"{k}_ot")
     ]
+
     new_sensors += [
         entity_factory(broker, domain, k, **v)
         for domain in discovery_info.get("domains", [])
@@ -139,7 +141,7 @@ class RamsesSensor(RamsesDeviceBase, SensorEntity):
         device_class=None,  # attr_dict value
         device_units=None,  # attr_dict value
         state_class=SensorStateClass.MEASUREMENT,  # attr_dict value, maybe None
-        **kwargs,  # leftover attr_dict values
+        **kwargs,  # leftover attr_dict values, incl. 'name'
     ) -> None:
         """Initialize a sensor."""
 
@@ -270,6 +272,8 @@ DEVICE_UNITS = "device_units"  # _attr_native_unit_of_measurement
 ENTITY_CLASS = "entity_class"  # subclass of RamsesSensor
 STATE_CLASS = "state_class"  # _attr_state_class
 
+SZ_UNIQUE_ID_ATTR = "unique_id_attr"
+
 # These are all: SensorStateClass.MEASUREMENT
 
 SENSOR_ATTRS_HEAT = {
@@ -335,7 +339,7 @@ SENSOR_ATTRS_HEAT = {
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: RamsesModLevel,
     },
-    SZ_OUTSIDE_TEMP: {  # 1290, 3220|1B
+    SZ_OUTSIDE_TEMP: {  # 1290, 3220|1B  # NOTE: outdoor_temp, below
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: UnitOfTemperature.CELSIUS,
     },
@@ -355,7 +359,6 @@ SENSOR_ATTRS_HEAT = {
         "fakable": True,
     },
 }
-
 
 SENSOR_ATTRS_HVAC = {
     # "boost_timer": {DEVICE_UNITS: UnitOfTime.MINUTES,},
@@ -382,8 +385,11 @@ SENSOR_ATTRS_HVAC = {
     SZ_EXHAUST_TEMP: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: UnitOfTemperature.CELSIUS,
+        SZ_UNIQUE_ID_ATTR: f"{SZ_EXHAUST_TEMP}erature",
     },
-    SZ_FAN_INFO: {STATE_CLASS: None},
+    SZ_FAN_INFO: {
+        STATE_CLASS: None,
+    },
     SZ_INDOOR_HUMIDITY: {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         DEVICE_UNITS: PERCENTAGE,
@@ -392,14 +398,16 @@ SENSOR_ATTRS_HVAC = {
     SZ_INDOOR_TEMP: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: UnitOfTemperature.CELSIUS,
+        SZ_UNIQUE_ID_ATTR: f"{SZ_INDOOR_TEMP}erature",
     },
     SZ_OUTDOOR_HUMIDITY: {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         DEVICE_UNITS: PERCENTAGE,
     },
-    SZ_OUTDOOR_TEMP: {
+    SZ_OUTDOOR_TEMP: {  # NOTE: outside_temp, above
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: UnitOfTemperature.CELSIUS,
+        SZ_UNIQUE_ID_ATTR: f"{SZ_OUTDOOR_TEMP}erature",
     },
     SZ_POST_HEAT: {
         DEVICE_UNITS: PERCENTAGE,
@@ -410,6 +418,7 @@ SENSOR_ATTRS_HVAC = {
     SZ_REMAINING_MINS: {
         DEVICE_UNITS: UnitOfTime.MINUTES,
         # DEVICE_CLASS: SensorDeviceClass.DURATION,
+        SZ_UNIQUE_ID_ATTR: "remaining_time",
     },
     SZ_SPEED_CAP: {
         DEVICE_UNITS: "units",
@@ -423,6 +432,7 @@ SENSOR_ATTRS_HVAC = {
     SZ_SUPPLY_TEMP: {
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         DEVICE_UNITS: UnitOfTemperature.CELSIUS,
+        SZ_UNIQUE_ID_ATTR: f"{SZ_SUPPLY_TEMP}erature",
     },
 }
 

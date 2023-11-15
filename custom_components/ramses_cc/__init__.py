@@ -12,6 +12,7 @@ from typing import Any
 
 import ramses_rf
 import voluptuous as vol
+from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import (
     EVENT_HOMEASSISTANT_START,
     PRECISION_TENTHS,
@@ -246,7 +247,8 @@ class RamsesDeviceBase(RamsesEntity):  # for: binary_sensor & sensor
         broker,
         device,
         state_attr,
-        device_class=None,
+        device_class: SensorDeviceClass | None = None,
+        unique_id_attr: str | None = None,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(broker, device)
@@ -254,9 +256,7 @@ class RamsesDeviceBase(RamsesEntity):  # for: binary_sensor & sensor
         self.entity_id = f"{DOMAIN}.{device.id}-{state_attr}"
 
         self._attr_device_class = device_class
-        self._attr_unique_id = f"{device.id}-{state_attr}"
-        # dont include domain (ramses_cc) / platform (binary_sensor/sensor)
-
+        self._attr_unique_id = f"{device.id}-{unique_id_attr or state_attr}"
         self._state_attr = state_attr
 
     @property
