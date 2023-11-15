@@ -71,11 +71,12 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         """Return the current humidity."""
         if self._device.indoor_humidity is not None:
             return int(self._device.indoor_humidity * 100)
+        return None
 
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
-        return self._device.indoor_temperature
+        return self._device.indoor_temp
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
