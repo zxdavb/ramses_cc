@@ -116,7 +116,8 @@ class EvohomeController(EvohomeZoneBase, ClimateEntity):
         try:
             return round(sum(temps) / len(temps), 1) if temps else None
         except TypeError:
-            _LOGGER.error(f"temp ({temps}) contains None")
+            _LOGGER.warning(f"temp ({temps}) contains None")
+            return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -143,6 +144,8 @@ class EvohomeController(EvohomeZoneBase, ClimateEntity):
             return HVACAction.HEATING
         if self._device.heat_demand is not None:
             return HVACAction.IDLE
+
+        return None
 
     @property
     def hvac_mode(self) -> str | None:
@@ -296,7 +299,7 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
         try:
             return self._device.config["max_temp"]
         except TypeError:  # 'NoneType' object is not subscriptable
-            return
+            return None
 
     @property
     def min_temp(self) -> float | None:
@@ -304,14 +307,14 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
         try:
             return self._device.config["min_temp"]
         except TypeError:  # 'NoneType' object is not subscriptable
-            return
+            return None
 
     @property
     def preset_mode(self) -> str | None:
         """Return the Zone's current preset mode, e.g., home, away, temp."""
 
         if self._device.tcs.system_mode is None:
-            return  # unable to determine
+            return None  # unable to determine
         # if self._device.tcs.system_mode[CONF_SYSTEM_MODE] in MODE_TCS_TO_HA:
         if self._device.tcs.system_mode[CONF_SYSTEM_MODE] in (
             SystemMode.AWAY,
@@ -320,7 +323,7 @@ class EvohomeZone(EvohomeZoneBase, ClimateEntity):
             return PRESET_TCS_TO_HA[self._device.tcs.system_mode[CONF_SYSTEM_MODE]]
 
         if self._device.mode is None:
-            return  # unable to determine
+            return None  # unable to determine
         if self._device.mode[CONF_MODE] == ZoneMode.SCHEDULE:
             return PRESET_TCS_TO_HA[self._device.tcs.system_mode[CONF_SYSTEM_MODE]]
         return PRESET_ZONE_TO_HA.get(self._device.mode[CONF_MODE])
