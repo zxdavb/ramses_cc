@@ -451,48 +451,49 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
 def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -> dict:
     """Return a hierarchy of schema to try (merged/cached, config)."""
 
-    if not merge_cache:
-        _LOGGER.debug("A cached schema was not enabled (not recommended)")
+    if not merge_cache:  # should not be None
+        _LOGGER.debug("A cached schema was not provided/enabled")
         # cached_schema = {}  # in case is None
     else:
-        _LOGGER.debug("Loaded a cached schema: %s", cached_schema)
+        _LOGGER.debug("Loading a cached schema: %s", cached_schema)
 
     if not config_schema:  # could be None
         _LOGGER.debug("A config schema was not provided")
         config_schema = {}  # in case is None
     else:  # normalise config_schema
-        _LOGGER.debug("Loaded a config schema: %s", config_schema)
+        _LOGGER.debug("Loading a config schema: %s", config_schema)
 
     if not merge_cache or not cached_schema:
-        _LOGGER.info(
-            "Using the config schema (cached schema is not enabled / is invalid)"
+        _LOGGER.warn(  # .warning(
+            "Using the config schema (cached schema IS NOT valid / enabled)"
             f", consider using '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: true'"
         )
         return {"the config": config_schema}  # maybe config = {}
 
     if _is_subset(shrink(config_schema), shrink(cached_schema)):
-        _LOGGER.info(
-            "Using the cached schema (cached schema is a superset of config schema)"
+        _LOGGER.warn(  # .info(
+            "Using the cached schema (cached schema is a superset of the config schema)"
         )
         return {
             "the cached": cached_schema,
             "the config": config_schema,
-        }  # maybe cached = config
+        }  # maybe even cached = config
 
+    # maybe the config schema has changed...
     merged_schema = merge(config_schema, cached_schema)  # config takes precidence
     _LOGGER.debug("Created a merged schema: %s", merged_schema)
 
-    if not _is_subset(shrink(config_schema), shrink(merged_schema)):
-        _LOGGER.info(
-            "Using the config schema (merged schema not a superset of config schema)"
-        )  # something went wrong!
-        return {"the config": config_schema}  # maybe config = {}
+    if _is_subset(shrink(config_schema), shrink(merged_schema)):
+        _LOGGER.warn(  # .info(
+            "Using a merged schema (cached schema IS a superset of the config schema)"
+        )
+        return {
+            "a merged (config/cached)": merged_schema,
+            "the config": config_schema,
+        }
 
-    _LOGGER.warning(
-        "Using a merged schema (cached schema is not a superset of config schema)"
-        f", if required, use '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: false'"
-    )
-    return {
-        "a merged (config/cached)": merged_schema,
-        "the config": config_schema,
-    }  # maybe merged = config
+    _LOGGER.warn(  # .warning(
+        "Using the config schema (merged schema IS NOT a superset of the config schema)"
+        ", this is unexpected, unless you have changed the config schema"
+    )  # something went wrong!
+    return {"the config": config_schema}  # maybe config = {}
