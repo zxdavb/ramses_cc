@@ -464,14 +464,14 @@ def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -
         _LOGGER.debug("Loading a config schema: %s", config_schema)
 
     if not merge_cache or not cached_schema:
-        _LOGGER.warn(  # .warning(
+        _LOGGER.warning(
             "Using the config schema (cached schema IS NOT valid / enabled)"
             f", consider using '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: true'"
         )
         return {"the config": config_schema}  # maybe config = {}
 
     if _is_subset(shrink(config_schema), shrink(cached_schema)):
-        _LOGGER.warn(  # .info(
+        _LOGGER.info(
             "Using the cached schema (cached schema is a superset of the config schema)"
         )
         return {
@@ -484,7 +484,7 @@ def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -
     _LOGGER.debug("Created a merged schema: %s", merged_schema)
 
     if _is_subset(shrink(config_schema), shrink(merged_schema)):
-        _LOGGER.warn(  # .info(
+        _LOGGER.info(
             "Using a merged schema (cached schema IS a superset of the config schema)"
         )
         return {
@@ -492,8 +492,50 @@ def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -
             "the config": config_schema,
         }
 
-    _LOGGER.warn(  # .warning(
+    _LOGGER.warning(
         "Using the config schema (merged schema IS NOT a superset of the config schema)"
         ", this is unexpected, unless you have changed the config schema"
     )  # something went wrong!
     return {"the config": config_schema}  # maybe config = {}
+
+
+
+SCH_MINIMUM_TCS = vol.Schema(
+    {
+        vol.Optional("system"): vol.Schema(
+            {vol.Required("appliance_control"): vol.Match(r"^10:[0-9]{6}$")}
+        ),
+        vol.Optional("zones", default={}): vol.Schema(
+            {
+                vol.Required(str): vol.Schema(
+                    {vol.Required("sensor"): vol.Match(r"^01:[0-9]{6}$")}
+                )
+            }
+        ),
+    },
+    extra=vol.PREVENT_EXTRA,
+)
+
+
+
+@callback
+def schema_is_minimal(schema: dict) -> bool:
+    """Return True if the schema is minimal (i.e. no optional keys)."""
+
+    key: str
+    sch: dict
+
+    for key, sch in schema.items():
+
+        if key in ("block_list", "known_list", "orphans_heat", "orphans_hvac"):
+            continue
+
+        try:
+            _ = SCH_MINIMUM_TCS(shrink(sch))
+        except vol.Invalid:
+            return False
+
+        if "zones" in sch and [d for d in sch["zones"].values()][0]["sensor"] != key:
+            return False
+
+        return True

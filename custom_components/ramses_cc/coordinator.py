@@ -34,7 +34,7 @@ from ramses_tx.exceptions import TransportSerialError
 from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 
 from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
-from .schemas import merge_schemas, normalise_config
+from .schemas import merge_schemas, normalise_config, schema_is_minimal
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -130,6 +130,9 @@ class RamsesBroker:
         CONFIG_KEYS = (SZ_CONFIG, SZ_PACKET_LOG, SZ_PORT_CONFIG)
         config = {k: v for k, v in self._client_config.items() if k in CONFIG_KEYS}
         schema = {k: v for k, v in self._client_config.items() if k not in config}
+
+        if not schema_is_minimal(schema):  # TODO: move all this logix in ramses_rf
+            _LOGGER.warning("The config schema is not minimal (consider minimising it)")
 
         schemas = merge_schemas(
             self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA],
