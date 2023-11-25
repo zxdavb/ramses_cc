@@ -231,9 +231,6 @@ class RamsesGateway(RamsesBinarySensor):
             "config": {"enforce_known_list": gwy._enforce_known_list},
             "known_list": [{k: shrink(v)} for k, v in gwy.known_list.items()],
             "block_list": [{k: shrink(v)} for k, v in gwy._exclude.items()],
-            "other_list": sorted(
-                d for d in gwy._transport._unwanted if d not in gwy._exclude
-            ),
             SZ_IS_EVOFW3: gwy._transport.get_extra_info(SZ_IS_EVOFW3),  # TODO: FIXME
         }
 
