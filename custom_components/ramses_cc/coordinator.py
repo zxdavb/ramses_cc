@@ -176,7 +176,7 @@ class RamsesBroker:
                     or m[41:45] not in ("0004", "0005", "000C")
                 )  # force-load new schema (dont use cached schema pkts)
             }
-            await self.client._set_state(packets=packets)
+            await self.client._set_state(packets=packets)  # FIXME, issue #79
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
         """Save the client state to the application store."""

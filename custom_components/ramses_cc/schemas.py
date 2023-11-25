@@ -499,7 +499,6 @@ def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -
     return {"the config": config_schema}  # maybe config = {}
 
 
-
 SCH_MINIMUM_TCS = vol.Schema(
     {
         vol.Optional("system"): vol.Schema(
@@ -515,7 +514,6 @@ SCH_MINIMUM_TCS = vol.Schema(
     },
     extra=vol.PREVENT_EXTRA,
 )
-
 
 
 @callback
