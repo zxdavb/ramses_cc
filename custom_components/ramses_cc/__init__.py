@@ -14,6 +14,7 @@ import ramses_rf
 import voluptuous as vol
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import (
+    CONF_SCAN_INTERVAL,
     EVENT_HOMEASSISTANT_START,
     PRECISION_TENTHS,
     Platform,
@@ -60,7 +61,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         hass,
         _LOGGER,
         name=DOMAIN,
-        update_interval=config[DOMAIN]["scan_interval"],
+        update_interval=config[DOMAIN][CONF_SCAN_INTERVAL],
     )
 
     hass.data[DOMAIN] = {}

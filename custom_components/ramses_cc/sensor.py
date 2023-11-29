@@ -37,6 +37,7 @@ from ramses_rf.const import (
     SZ_EXHAUST_FLOW,
     SZ_EXHAUST_TEMP,
     SZ_FAN_INFO,
+    SZ_FILTER_REMAINING,
     SZ_INDOOR_HUMIDITY,
     SZ_INDOOR_TEMP,
     SZ_OUTDOOR_HUMIDITY,
@@ -389,6 +390,9 @@ SENSOR_ATTRS_HVAC = {
     },
     SZ_FAN_INFO: {
         STATE_CLASS: None,
+    },
+    SZ_FILTER_REMAINING: {
+        DEVICE_UNITS: UnitOfTime.DAYS,
     },
     SZ_INDOOR_HUMIDITY: {
         DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
