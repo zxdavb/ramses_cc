@@ -96,7 +96,7 @@ class RamsesBroker:
         else:
             _LOGGER.info(
                 "Not restoring any cached state (disabled), "
-                "consider using 'restore_cache: restore_state: true"
+                "consider using 'restore_cache: restore_state: true'"
             )
 
         _LOGGER.debug("Starting the RF monitor")  # TODO: fixme, below

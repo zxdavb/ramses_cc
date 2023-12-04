@@ -40,7 +40,6 @@
   ignore = ["E501"]
   # E501  - Line too long
 
-
 [tool.ruff.flake8-import-conventions.extend-aliases]
   voluptuous = "vol"
   "homeassistant.helpers.area_registry" = "ar"

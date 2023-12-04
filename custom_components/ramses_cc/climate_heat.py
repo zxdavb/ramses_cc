@@ -1,4 +1,4 @@
-"""Support for RAMSES climate entities."""
+"""Support for RAMSES heat climate entities."""
 from __future__ import annotations
 
 from datetime import datetime as dt
