@@ -1,17 +1,13 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC.
-
-Provides support for HVAC RF remotes.
-"""
+"""Support for RAMSES HVAC RF remotes."""
 from __future__ import annotations
 
 import asyncio
-import logging
 from collections.abc import Iterable
 from datetime import datetime as dt, timedelta as td
+import logging
 from typing import Any
+
+from ramses_tx import Command, Priority
 
 from homeassistant.components.remote import (
     DOMAIN as PLATFORM,
@@ -20,12 +16,9 @@ from homeassistant.components.remote import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers.entity_platform import (
-    AddEntitiesCallback,
-    async_get_current_platform,
-)
+from homeassistant.helpers import entity_platform
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
-from ramses_tx import Command, Priority
 
 from . import RamsesEntity
 from .const import BROKER, DOMAIN
@@ -49,8 +42,10 @@ async def async_setup_platform(
 
     broker = hass.data[DOMAIN][BROKER]
 
-    register_svc = async_get_current_platform().async_register_entity_service
-    [register_svc(k, v, f"svc_{k}") for k, v in SVCS_REMOTE.items()]
+    platform = entity_platform.async_get_current_platform()
+
+    for name, schema in SVCS_REMOTE.items():
+        platform.async_register_entity_service(name, schema, f"svc_{name}")
 
     async_add_entities(
         [RamsesRemote(broker, device) for device in discovery_info["remotes"]]

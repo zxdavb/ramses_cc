@@ -1,29 +1,21 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by HVAC.
-
-Provides support for climate entities.
-"""
+"""Support for RAMSES HVAC climate entities."""
 from __future__ import annotations
 
 import logging
 from typing import Any
 
 from homeassistant.components.climate import (
-    PRECISION_TENTHS,
-    ClimateEntity,
-    ClimateEntityFeature,
-    HVACAction,
-    HVACMode,
-)
-from homeassistant.components.climate.const import (
     FAN_AUTO,
     FAN_HIGH,
     FAN_LOW,
     FAN_MEDIUM,
     FAN_OFF,
+    PRECISION_TENTHS,
     PRESET_NONE,
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
 )
 from homeassistant.const import UnitOfTemperature
 

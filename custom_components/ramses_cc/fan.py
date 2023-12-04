@@ -1,21 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by HVAC.
-
-Provides support for fan entities.
-"""
+"""Support for RAMSES fan entities."""
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from homeassistant.components.climate.const import (
-    FAN_AUTO,
-    FAN_HIGH,
-    FAN_LOW,
-    FAN_MEDIUM,
-)
+from homeassistant.components.climate import FAN_AUTO, FAN_HIGH, FAN_LOW, FAN_MEDIUM
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -41,7 +30,7 @@ async def async_setup_platform(
     broker = hass.data[DOMAIN][BROKER]
     new_entities = []
 
-    for fan in [f for f in discovery_info.get("fans", [])]:
+    for fan in list(discovery_info.get("fans", [])):
         new_entities.append(RamsesFan(broker, fan))
 
     if new_entities:

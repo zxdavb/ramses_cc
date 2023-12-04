@@ -1,34 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC.
-
-Provides support for sensors.
-"""
+"""Support for RAMSES sensors."""
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import (
-    DOMAIN as PLATFORM,
-    SensorDeviceClass,
-    SensorEntity,
-    SensorStateClass,
-)
-from homeassistant.const import (
-    CONCENTRATION_PARTS_PER_MILLION,
-    PERCENTAGE,
-    UnitOfPressure,
-    UnitOfTemperature,
-    UnitOfTime,
-)
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import (
-    AddEntitiesCallback,
-    async_get_current_platform,
-)
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from ramses_rf.const import (
     SZ_AIR_QUALITY,
     SZ_AIR_QUALITY_BASIS,
@@ -66,7 +41,25 @@ from ramses_rf.device.heat import (
     SZ_REL_MODULATION_LEVEL,
 )
 
-from . import RamsesDeviceBase as RamsesDeviceBase
+from homeassistant.components.sensor import (
+    DOMAIN as PLATFORM,
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
+from homeassistant.const import (
+    CONCENTRATION_PARTS_PER_MILLION,
+    PERCENTAGE,
+    UnitOfPressure,
+    UnitOfTemperature,
+    UnitOfTime,
+)
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_platform
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+
+from . import RamsesDeviceBase
 from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
 from .helpers import migrate_to_ramses_rf
 from .schemas import SVCS_SENSOR
@@ -123,8 +116,10 @@ async def async_setup_platform(
     if not broker._services.get(PLATFORM) and new_sensors:
         broker._services[PLATFORM] = True
 
-        register_svc = async_get_current_platform().async_register_entity_service
-        [register_svc(k, v, f"svc_{k}") for k, v in SVCS_SENSOR.items()]
+        platform = entity_platform.async_get_current_platform()
+
+        for name, schema in SVCS_SENSOR.items():
+            platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
 class RamsesSensor(RamsesDeviceBase, SensorEntity):

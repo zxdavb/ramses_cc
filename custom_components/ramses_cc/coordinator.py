@@ -1,23 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC.
-
-Requires a Honeywell HGI80 (or compatible) gateway.
-"""
+"""Coordinator for RAMSES integration."""
 from __future__ import annotations
 
-import logging
 from collections.abc import Awaitable  # , Callable, Coroutine, Generator
 from datetime import datetime as dt, timedelta as td
+import logging
 from threading import Semaphore
-
-import voluptuous as vol
-from homeassistant.const import CONF_SCAN_INTERVAL, Platform
-from homeassistant.core import HomeAssistant, callback  # CALLBACK_TYPE, HassJob,
-from homeassistant.helpers.discovery import async_load_platform
-from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.typing import ConfigType
 
 # om homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from ramses_rf import Gateway
@@ -32,6 +19,13 @@ from ramses_rf.schemas import (
 )
 from ramses_tx.exceptions import TransportSerialError
 from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
+import voluptuous as vol
+
+from homeassistant.const import CONF_SCAN_INTERVAL, Platform
+from homeassistant.core import HomeAssistant, callback  # CALLBACK_TYPE, HassJob,
+from homeassistant.helpers.discovery import async_load_platform
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
 from .schemas import merge_schemas, normalise_config, schema_is_minimal
@@ -98,14 +92,14 @@ class RamsesBroker:
 
         if self.config[SZ_RESTORE_CACHE][SZ_RESTORE_STATE]:
             await self._async_load_client_state()
-            _LOGGER.info("Restored the cached state.")
+            _LOGGER.info("Restored the cached state")
         else:
             _LOGGER.info(
                 "Not restoring any cached state (disabled), "
                 "consider using 'restore_cache: restore_state: true"
             )
 
-        _LOGGER.debug("Starting the RF monitor...")  # TODO: fixme, below
+        _LOGGER.debug("Starting the RF monitor")  # TODO: fixme, below
         # self.loop_task = self.hass.async_create_task(
         #     async_handle_exceptions(self.client.start())
         # )
@@ -147,9 +141,9 @@ class RamsesBroker:
             except (LookupError, vol.MultipleInvalid) as exc:
                 # LookupError:     ...in the schema, but also in the block_list
                 # MultipleInvalid: ...extra keys not allowed @ data['???']
-                _LOGGER.warning(f"Failed to initialise with {msg} schema: %s", exc)
+                _LOGGER.warning("Failed to initialise with %s schema: %s", msg, exc)
             else:
-                _LOGGER.info(f"Success initialising with {msg} schema: %s", schema)
+                _LOGGER.info("Success initialising with %s schema: %s", msg, schema)
                 break
         else:
             self.client = Gateway(self._ser_name, loop=self.hass.loop, **config)
@@ -163,7 +157,7 @@ class RamsesBroker:
     async def _async_load_client_state(self) -> None:
         """Restore the client state from the application store."""
 
-        _LOGGER.info("Restoring the client state cache (packets)...")
+        _LOGGER.info("Restoring the client state cache (packets)")
         app_storage = await self._async_load_storage()
         if client_state := app_storage.get("client_state"):
             packets = {
@@ -181,7 +175,7 @@ class RamsesBroker:
     async def async_save_client_state(self, *args, **kwargs) -> None:
         """Save the client state to the application store."""
 
-        _LOGGER.info("Saving the client state cache (packets, schema)...")
+        _LOGGER.info("Saving the client state cache (packets, schema)")
 
         (schema, packets) = self.client._get_state()
         remote_commands = self._known_commands | {
@@ -197,7 +191,7 @@ class RamsesBroker:
 
     @callback
     def _find_new_heat_entities(self) -> bool:
-        """Create Heat entities: Climate, WaterHeater, BinarySensor & Sensor"""
+        """Create Heat entities: Climate, WaterHeater, BinarySensor & Sensor."""
 
         if self.client.tcs is None:  # may only be HVAC
             return False
@@ -247,7 +241,7 @@ class RamsesBroker:
 
     @callback
     def _find_new_hvac_entities(self) -> bool:
-        """Create HVAC entities: Climate, Remote"""
+        """Create HVAC entities: Climate, Remote."""
 
         if new_fans := [
             f
@@ -287,7 +281,7 @@ class RamsesBroker:
 
     @callback
     def _find_new_sensors(self) -> bool:
-        """Create HVAC entities: BinarySensor & Sensor"""
+        """Create HVAC entities: BinarySensor & Sensor."""
 
         discovery_info = {}
 
@@ -323,5 +317,6 @@ class RamsesBroker:
         self.async_dispatcher_send()
 
     def async_dispatcher_send(self, *args, **kwargs) -> None:
-        # inform the devices that their state data may have changed
+        """Inform the devices that their state data may have changed."""
+
         async_dispatcher_send(self.hass, DOMAIN, *args, **kwargs)

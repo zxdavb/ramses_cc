@@ -1,12 +1,8 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC."""
+"""Constants for RAMSES integration."""
 from __future__ import annotations
 
+from enum import StrEnum
 from types import SimpleNamespace
-
-from homeassistant.backports.enum import StrEnum
 
 DOMAIN = "ramses_cc"
 
