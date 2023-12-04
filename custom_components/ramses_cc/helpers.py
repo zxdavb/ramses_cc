@@ -1,17 +1,11 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC.
-
-Requires a Honeywell HGI80 (or compatible) gateway.
-"""
+"""Helpers for RAMSES integration."""
 from __future__ import annotations
 
 import logging
 
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_registry import EntityRegistry, async_get
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN as PLATFORM
 
@@ -24,21 +18,27 @@ _LOGGER = logging.getLogger(__name__)
 def migrate_to_ramses_rf(hass: HomeAssistant, domain: str, unique_id: str):
     """Migrate an entity to the ramses_rf platform (from evohome_rf)."""
 
-    registry: EntityRegistry = async_get(hass)
+    entity_registry = er.async_get(hass)
 
-    if entity_id := registry.async_get_entity_id(domain, OLD_PLATFORM, unique_id):
+    if entity_id := entity_registry.async_get_entity_id(
+        domain, OLD_PLATFORM, unique_id
+    ):
         if (entity := hass.states.get(entity_id)) and entity.state == STATE_UNAVAILABLE:
             hass.states.get(entity_id).state = STATE_UNKNOWN  # HACK
 
         try:
-            registry.async_update_entity_platform(entity_id, PLATFORM)
+            entity_registry.async_update_entity_platform(entity_id, PLATFORM)
         except ValueError as exc:
             _LOGGER.error(
-                f"migrating {entity_id} ({unique_id}) to {PLATFORM} failed: {exc}"
+                "Migrating %s (%s) to %s failed: %s",
+                entity_id,
+                unique_id,
+                PLATFORM,
+                exc,
             )
         else:
             _LOGGER.warning(
-                f"migrating {entity_id} ({unique_id}) to {PLATFORM}: success"
+                "Migrating %s (%s) to %s: success", entity_id, unique_id, PLATFORM
             )
 
     # if (

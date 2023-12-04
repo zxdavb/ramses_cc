@@ -1,29 +1,21 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW (heat).
-
-Provides support for climate entities.
-"""
+"""Support for RAMSES climate entities."""
 from __future__ import annotations
 
+from datetime import datetime as dt
 import json
 import logging
-from datetime import datetime as dt
 from typing import Any
 
 from homeassistant.components.climate import (
     PRECISION_TENTHS,
-    ClimateEntity,
-    ClimateEntityFeature,
-    HVACAction,
-    HVACMode,
-)
-from homeassistant.components.climate.const import (
     PRESET_AWAY,
     PRESET_ECO,
     PRESET_HOME,
     PRESET_NONE,
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
 )
 from homeassistant.core import callback
 
@@ -116,7 +108,7 @@ class EvohomeController(EvohomeZoneBase, ClimateEntity):
         try:
             return round(sum(temps) / len(temps), 1) if temps else None
         except TypeError:
-            _LOGGER.warning(f"temp ({temps}) contains None")
+            _LOGGER.warning("Temp (%s) contains None", temps)
             return None
 
     @property

@@ -1,17 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC."""
+"""Schemas for RAMSES integration."""
 from __future__ import annotations
 
-import logging
 from copy import deepcopy
 from datetime import timedelta as td
+import logging
 
-import voluptuous as vol
-from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID, CONF_SCAN_INTERVAL
-from homeassistant.core import callback
-from homeassistant.helpers import config_validation as cv
 from ramses_rf.const import SZ_DEVICE_ID
 from ramses_rf.helpers import merge, shrink
 from ramses_rf.schemas import (
@@ -32,6 +25,11 @@ from ramses_tx.schemas import (
     sch_packet_log_dict_factory,
     sch_serial_port_dict_factory,
 )
+import voluptuous as vol
+
+from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID, CONF_SCAN_INTERVAL
+from homeassistant.core import callback
+from homeassistant.helpers import config_validation as cv
 
 from .const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
 
@@ -413,7 +411,7 @@ def _is_subset(subset, superset) -> bool:  # TODO: move to ramses_rf?
             key in superset and _is_subset(val, superset[key])
             for key, val in subset.items()
         )
-    if isinstance(subset, list) or isinstance(subset, set):
+    if isinstance(subset, list | set):
         return all(
             any(_is_subset(subitem, superitem) for superitem in superset)
             for subitem in subset
@@ -465,8 +463,9 @@ def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -
 
     if not merge_cache or not cached_schema:
         _LOGGER.warning(
-            "Using the config schema (cached schema IS NOT valid / enabled)"
-            f", consider using '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: true'"
+            "Using the config schema (cached schema IS NOT valid / enabled), consider using '%s: %s: true'",
+            SZ_RESTORE_CACHE,
+            SZ_RESTORE_SCHEMA,
         )
         return {"the config": config_schema}  # maybe config = {}
 
@@ -524,7 +523,6 @@ def schema_is_minimal(schema: dict) -> bool:
     sch: dict
 
     for key, sch in schema.items():
-
         if key in ("block_list", "known_list", "orphans_heat", "orphans_hvac"):
             continue
 
@@ -533,7 +531,7 @@ def schema_is_minimal(schema: dict) -> bool:
         except vol.Invalid:
             return False
 
-        if "zones" in sch and [d for d in sch["zones"].values()][0]["sensor"] != key:
+        if "zones" in sch and list(sch["zones"].values())[0]["sensor"] != key:
             return False
 
         return True

@@ -1,20 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW (heat) & HVAC.
-
-Provides support for climate entities.
-"""
+"""Support for RAMSES climate entities."""
 from __future__ import annotations
 
 import logging
 
 from homeassistant.components.climate import DOMAIN as PLATFORM
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import (
-    AddEntitiesCallback,
-    async_get_current_platform,
-)
+from homeassistant.helpers import entity_platform
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .climate_heat import EvohomeController, EvohomeZone
@@ -41,14 +33,16 @@ async def async_setup_platform(
     if discovery_info is None:
         return
 
-    register_svc = async_get_current_platform().async_register_entity_service
+    platform = entity_platform.async_get_current_platform()
+
     broker = hass.data[DOMAIN][BROKER]
     new_entities = []
 
     if discovery_info.get("fans"):
         if not broker._services.get(f"{PLATFORM}_hvac"):
             broker._services[f"{PLATFORM}_hvac"] = True
-            # [register_svc(k, v, f"svc_{k}") for k, v in SVCS_CLIMATE_HVAC.items()]
+            # for name, schema in SVCS_CLIMATE_HVAC.items():
+            #     platform.async_register_entity_service(name, schema, f"svc_{name}")
 
         for fan in discovery_info["fans"]:
             new_entities.append(RamsesHvac(broker, fan))
@@ -56,8 +50,10 @@ async def async_setup_platform(
     if discovery_info.get("ctls") or discovery_info.get("zons"):
         if not broker._services.get(f"{PLATFORM}_heat"):
             broker._services[f"{PLATFORM}_heat"] = True
-            [register_svc(k, v, f"svc_{k}") for k, v in SVCS_CLIMATE_EVO_TCS.items()]
-            [register_svc(k, v, f"svc_{k}") for k, v in SVCS_CLIMATE_EVO_ZONE.items()]
+            for name, schema in SVCS_CLIMATE_EVO_TCS.items():
+                platform.async_register_entity_service(name, schema, f"svc_{name}")
+            for name, schema in SVCS_CLIMATE_EVO_ZONE.items():
+                platform.async_register_entity_service(name, schema, f"svc_{name}")
 
         for tcs in discovery_info.get("ctls", []):
             new_entities.append(entity_factory(EvohomeController, broker, tcs))

@@ -1,16 +1,13 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW (heat).
-
-Provides support for water_heater entities.
-"""
+"""Support for RAMSES water_heater entities."""
 from __future__ import annotations
 
+import contextlib
+from datetime import datetime as dt, timedelta as td
 import json
 import logging
-from datetime import datetime as dt, timedelta as td
 from typing import Any
+
+from ramses_rf.system.heat import StoredHw
 
 from homeassistant.components.water_heater import (
     DOMAIN as PLATFORM,
@@ -20,12 +17,9 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntityFeature,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import (
-    AddEntitiesCallback,
-    async_get_current_platform,
-)
+from homeassistant.helpers import entity_platform
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from ramses_rf.system.heat import StoredHw
 
 from . import EvohomeZoneBase
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
@@ -82,8 +76,10 @@ async def async_setup_platform(
     if not broker._services.get(PLATFORM):
         broker._services[PLATFORM] = True
 
-        register_svc = async_get_current_platform().async_register_entity_service
-        [register_svc(k, v, f"svc_{k}") for k, v in SVCS_WATER_HEATER_EVO_DHW.items()]
+        platform = entity_platform.async_get_current_platform()
+
+        for name, schema in SVCS_WATER_HEATER_EVO_DHW.items():
+            platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
 class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
@@ -165,10 +161,8 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
         if payload.get(UNIQUE_ID) != self.unique_id:
             return
 
-        try:
+        with contextlib.suppress(AttributeError):
             getattr(self, f"svc_{payload[SERVICE]}")(**dict(payload[DATA]))
-        except AttributeError:
-            pass
 
     def set_operation_mode(self, operation_mode: str) -> None:
         """Set the operating mode of the water heater."""

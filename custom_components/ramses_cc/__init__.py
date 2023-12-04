@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
 """Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC.
 
 Requires a Honeywell HGI80 (or compatible) gateway.
@@ -12,6 +9,7 @@ from typing import Any
 
 import ramses_rf
 import voluptuous as vol
+
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import (
     CONF_SCAN_INTERVAL,
@@ -24,7 +22,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.service import verify_domain_control
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import BROKER, DOMAIN
@@ -54,7 +52,12 @@ PLATFORMS = [
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
 
-    _LOGGER.info(f"{DOMAIN} v{VERSION}, is using ramses_rf v{ramses_rf.VERSION}")
+    _LOGGER.info(
+        "%s v%s, is using ramses_rf v%s",
+        DOMAIN,
+        VERSION,
+        ramses_rf.VERSION,
+    )
     _LOGGER.debug("\r\n\nConfig = %s\r\n", config[DOMAIN])
 
     coordinator: DataUpdateCoordinator = DataUpdateCoordinator(
@@ -87,7 +90,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 # TODO: add async_ to routines where required to do so
 @callback  # TODO: the following is a mess - to add register/deregister of clients
-def register_domain_events(hass: HomeAssistantType, broker: RamsesBroker) -> None:
+def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
     """Set up the handlers for the system-wide events."""
 
     @callback
@@ -118,7 +121,7 @@ def register_domain_events(hass: HomeAssistantType, broker: RamsesBroker) -> Non
 
 
 @callback  # TODO: add async_ to routines where required to do so
-def register_domain_services(hass: HomeAssistantType, broker: RamsesBroker):
+def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)
@@ -136,7 +139,7 @@ def register_domain_services(hass: HomeAssistantType, broker: RamsesBroker):
 
     @verify_domain_control(hass, DOMAIN)
     async def svc_send_packet(call: ServiceCall) -> None:
-        kwargs = {k: v for k, v in call.data.items()}  # is ReadOnlyDict
+        kwargs = dict(call.data.items())  # is ReadOnlyDict
         if (
             call.data["device_id"] == "18:000730"
             and kwargs.get("from_id", "18:000730") == "18:000730"
@@ -151,11 +154,11 @@ def register_domain_services(hass: HomeAssistantType, broker: RamsesBroker):
         del domain_service[SVC_SEND_PACKET]
 
     services = {k: v for k, v in locals().items() if k.startswith("svc")}
-    [
-        hass.services.async_register(DOMAIN, k, services[f"svc_{k}"], schema=v)
-        for k, v in SVCS_DOMAIN.items()
-        if f"svc_{k}" in services
-    ]
+    for name, schema in SVCS_DOMAIN.items():
+        if f"svc_{name}" in services:
+            hass.services.async_register(
+                DOMAIN, name, services[f"svc_{name}"], schema=schema
+            )
 
 
 class RamsesEntity(Entity):

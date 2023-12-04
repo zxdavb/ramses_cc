@@ -1,27 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC.
-
-Provides support for binary sensors.
-"""
+"""Support for RAMSES binary sensors."""
 from __future__ import annotations
 
-import logging
 from datetime import datetime as dt, timedelta as td
+import logging
 from typing import Any
-
-from homeassistant.components.binary_sensor import (
-    DOMAIN as PLATFORM,
-    BinarySensorDeviceClass,
-    BinarySensorEntity,
-)
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import (
-    AddEntitiesCallback,
-    async_get_current_platform,
-)
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 #
 from ramses_rf import Gateway
@@ -36,6 +18,16 @@ from ramses_rf.device.heat import (
     SZ_FLAME_ACTIVE,
 )
 from ramses_tx.const import SZ_BYPASS_POSITION, SZ_IS_EVOFW3
+
+from homeassistant.components.binary_sensor import (
+    DOMAIN as PLATFORM,
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_platform
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesDeviceBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
@@ -101,8 +93,10 @@ async def async_setup_platform(
     if not broker._services.get(PLATFORM) and new_sensors:
         broker._services[PLATFORM] = True
 
-        register_svc = async_get_current_platform().async_register_entity_service
-        [register_svc(k, v, f"svc_{k}") for k, v in SVCS_BINARY_SENSOR.items()]
+        platform = entity_platform.async_get_current_platform()
+
+        for name, schema in SVCS_BINARY_SENSOR.items():
+            platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
 class RamsesBinarySensor(RamsesDeviceBase, BinarySensorEntity):
