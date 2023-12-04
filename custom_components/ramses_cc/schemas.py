@@ -14,7 +14,6 @@ from ramses_rf.schemas import (
     SCH_RESTORE_CACHE_DICT,
     SZ_CONFIG,
     SZ_RESTORE_CACHE,
-    SZ_RESTORE_SCHEMA,
 )
 from ramses_tx.schemas import (
     SCH_ENGINE_DICT,
@@ -463,9 +462,8 @@ def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -
 
     if not merge_cache or not cached_schema:
         _LOGGER.warning(
-            "Using the config schema (cached schema IS NOT valid / enabled), consider using '%s: %s: true'",
-            SZ_RESTORE_CACHE,
-            SZ_RESTORE_SCHEMA,
+            "Using the config schema (cached schema IS NOT valid / enabled), "
+            "consider using 'restore_cache: restore_schema: true'"
         )
         return {"the config": config_schema}  # maybe config = {}
 
