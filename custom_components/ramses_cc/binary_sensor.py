@@ -5,7 +5,6 @@ from datetime import datetime as dt, timedelta as td
 import logging
 from typing import Any
 
-#
 from ramses_rf import Gateway
 from ramses_rf.device.heat import (
     SZ_CH_ACTIVE,

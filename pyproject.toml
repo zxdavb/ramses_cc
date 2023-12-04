@@ -43,6 +43,10 @@
 
 
 [tool.ruff.lint.isort]
-  combine-as-imports = true  # default is false
-
+  force-sort-within-sections = true
+  known-first-party = [
+      "homeassistant",
+  ]
+  combine-as-imports = true
+  split-on-trailing-comma = false
 
