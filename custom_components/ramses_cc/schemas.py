@@ -26,11 +26,11 @@ from ramses_tx.schemas import (
 )
 import voluptuous as vol
 
-from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID, CONF_SCAN_INTERVAL
+from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 
-from .const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
+from .const import ZoneMode
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,130 +82,12 @@ SVCS_DOMAIN = {
     SVC_SEND_PACKET: SCH_SEND_PACKET,
 }
 
-_SCH_ENTITY_ID = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
-
-#
-# Climate platform services for CH/DHW CTLs
-SVC_RESET_SYSTEM_MODE = "reset_system_mode"
-SVC_SET_SYSTEM_MODE = "set_system_mode"
-
-SCH_SYSTEM_MODE = _SCH_ENTITY_ID.extend(
-    {
-        vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),  # incl. DAY_OFF_ECO
-    }
-)
-SCH_SYSTEM_MODE_HOURS = _SCH_ENTITY_ID.extend(
-    {
-        vol.Required(CONF_MODE): vol.In([SystemMode.ECO_BOOST]),
-        vol.Optional(CONF_DURATION, default=td(hours=1)): vol.All(
-            cv.time_period, vol.Range(min=td(hours=1), max=td(hours=24))
-        ),
-    }
-)
-SCH_SYSTEM_MODE_DAYS = _SCH_ENTITY_ID.extend(
-    {
-        vol.Required(CONF_MODE): vol.In(
-            [SystemMode.AWAY, SystemMode.CUSTOM, SystemMode.DAY_OFF]
-        ),
-        vol.Optional(CONF_DURATION_DAYS, default=td(days=0)): vol.All(
-            cv.time_period, vol.Range(min=td(days=0), max=td(days=99))
-        ),  # 0 means until the end of the day
-    }
-)
-SCH_SYSTEM_MODE = vol.Any(SCH_SYSTEM_MODE, SCH_SYSTEM_MODE_HOURS, SCH_SYSTEM_MODE_DAYS)
-
-SVCS_CLIMATE_EVO_TCS = {
-    SVC_RESET_SYSTEM_MODE: _SCH_ENTITY_ID,
-    SVC_SET_SYSTEM_MODE: SCH_SYSTEM_MODE,
-}
-
-#
-# Climate platform services for CH/DHW Zones
-SVC_GET_ZONE_SCHED = "get_zone_schedule"
-SVC_PUT_ZONE_TEMP = "put_zone_temp"
-SVC_RESET_ZONE_CONFIG = "reset_zone_config"
-SVC_RESET_ZONE_MODE = "reset_zone_mode"
-SVC_SET_ZONE_CONFIG = "set_zone_config"
-SVC_SET_ZONE_MODE = "set_zone_mode"
-SVC_SET_ZONE_SCHED = "set_zone_schedule"
-
 CONF_ZONE_MODES = (
     ZoneMode.SCHEDULE,
     ZoneMode.PERMANENT,
     ZoneMode.ADVANCED,
     ZoneMode.TEMPORARY,
 )
-
-SCH_SET_ZONE_CONFIG = _SCH_ENTITY_ID.extend(
-    {
-        vol.Optional(CONF_MAX_TEMP, default=35): vol.All(
-            cv.positive_float,
-            vol.Range(min=21, max=35),
-        ),
-        vol.Optional(CONF_MIN_TEMP, default=5): vol.All(
-            cv.positive_float,
-            vol.Range(min=5, max=21),
-        ),
-        vol.Optional(CONF_LOCAL_OVERRIDE, default=True): cv.boolean,
-        vol.Optional(CONF_OPENWINDOW, default=True): cv.boolean,
-        vol.Optional(CONF_MULTIROOM, default=True): cv.boolean,
-    }
-)
-
-SCH_SET_ZONE_MODE = _SCH_ENTITY_ID.extend(
-    {
-        vol.Optional(CONF_MODE): vol.In([ZoneMode.SCHEDULE]),
-    }
-)
-SCH_SET_ZONE_MODE_SETPOINT = _SCH_ENTITY_ID.extend(
-    {
-        vol.Optional(CONF_MODE): vol.In([ZoneMode.PERMANENT, ZoneMode.ADVANCED]),
-        vol.Optional(CONF_SETPOINT, default=21): vol.All(
-            cv.positive_float,
-            vol.Range(min=5, max=30),
-        ),
-    }
-)
-SCH_SET_ZONE_MODE_UNTIL = _SCH_ENTITY_ID.extend(
-    {
-        vol.Optional(CONF_MODE): vol.In([ZoneMode.TEMPORARY]),
-        vol.Optional(CONF_SETPOINT, default=21): vol.All(
-            cv.positive_float,
-            vol.Range(min=5, max=30),
-        ),
-        vol.Exclusive(CONF_UNTIL, CONF_UNTIL): cv.datetime,
-        vol.Exclusive(CONF_DURATION, CONF_UNTIL): vol.All(
-            cv.time_period,
-            vol.Range(min=td(minutes=5), max=td(days=1)),
-        ),
-    }
-)
-SCH_SET_ZONE_MODE = vol.Any(
-    SCH_SET_ZONE_MODE,
-    SCH_SET_ZONE_MODE_SETPOINT,
-    SCH_SET_ZONE_MODE_UNTIL,
-)
-
-SCH_PUT_ZONE_TEMP = _SCH_ENTITY_ID.extend(
-    {
-        vol.Required(CONF_TEMPERATURE): vol.All(
-            vol.Coerce(float), vol.Range(min=-20, max=99)
-        ),
-    }
-)
-
-SCH_SET_ZONE_SCHED = _SCH_ENTITY_ID.extend({vol.Required(CONF_SCHEDULE): cv.string})
-
-
-SVCS_CLIMATE_EVO_ZONE = {
-    SVC_GET_ZONE_SCHED: _SCH_ENTITY_ID,
-    SVC_PUT_ZONE_TEMP: SCH_PUT_ZONE_TEMP,
-    SVC_RESET_ZONE_CONFIG: _SCH_ENTITY_ID,
-    SVC_RESET_ZONE_MODE: _SCH_ENTITY_ID,
-    SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
-    SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,
-    SVC_SET_ZONE_SCHED: SCH_SET_ZONE_SCHED,
-}
 
 #
 # WaterHeater platform services for CH/DHW
@@ -275,48 +157,6 @@ SVCS_WATER_HEATER_EVO_DHW = {
     SVC_SET_DHW_PARAMS: SCH_SET_DHW_CONFIG,
     SVC_PUT_DHW_TEMP: SCH_PUT_DHW_TEMP,
     SVC_SET_DHW_SCHED: SCH_SET_DHW_SCHED,
-}
-
-#
-# BinarySensor/Sensor platform services for HVAC
-SZ_CO2_LEVEL = "co2_level"
-SZ_INDOOR_HUMIDITY = "indoor_humidity"
-SZ_PRESENCE_DETECTED = "presence_detected"
-SVC_PUT_CO2_LEVEL = f"put_{SZ_CO2_LEVEL}"
-SVC_PUT_INDOOR_HUMIDITY = f"put_{SZ_INDOOR_HUMIDITY}"
-SVC_PUT_PRESENCE_DETECT = f"put_{SZ_PRESENCE_DETECTED}"
-
-SCH_PUT_CO2_LEVEL = _SCH_ENTITY_ID.extend(
-    {
-        vol.Required(SZ_CO2_LEVEL): vol.All(
-            cv.positive_int,
-            vol.Range(min=0, max=16384),
-        ),
-    }
-)
-
-SCH_PUT_INDOOR_HUMIDITY = _SCH_ENTITY_ID.extend(
-    {
-        vol.Required(SZ_INDOOR_HUMIDITY): vol.All(
-            cv.positive_float,
-            vol.Range(min=0, max=100),
-        ),
-    }
-)
-
-SCH_PUT_PRESENCE_DETECT = _SCH_ENTITY_ID.extend(
-    {
-        vol.Required(SZ_PRESENCE_DETECTED): cv.boolean,
-    }
-)
-
-SVCS_BINARY_SENSOR = {
-    SVC_PUT_PRESENCE_DETECT: SCH_PUT_PRESENCE_DETECT,
-}
-
-SVCS_SENSOR = {
-    SVC_PUT_CO2_LEVEL: SCH_PUT_CO2_LEVEL,
-    SVC_PUT_INDOOR_HUMIDITY: SCH_PUT_INDOOR_HUMIDITY,
 }
 
 #

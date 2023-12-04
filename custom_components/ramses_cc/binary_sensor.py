@@ -17,6 +17,7 @@ from ramses_rf.device.heat import (
     SZ_FLAME_ACTIVE,
 )
 from ramses_tx.const import SZ_BYPASS_POSITION, SZ_IS_EVOFW3
+import voluptuous as vol
 
 from homeassistant.components.binary_sensor import (
     DOMAIN as PLATFORM,
@@ -24,16 +25,18 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_platform
+from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesDeviceBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
 from .helpers import migrate_to_ramses_rf
-from .schemas import SVCS_BINARY_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
+
+SZ_PRESENCE_DETECTED = "presence_detected"
+SVC_PUT_PRESENCE_DETECT = f"put_{SZ_PRESENCE_DETECTED}"
 
 
 async def async_setup_platform(
@@ -89,13 +92,17 @@ async def async_setup_platform(
 
     async_add_entities(new_sensors)
 
-    if not broker._services.get(PLATFORM) and new_sensors:
-        broker._services[PLATFORM] = True
+    platform = entity_platform.async_get_current_platform()
 
-        platform = entity_platform.async_get_current_platform()
-
-        for name, schema in SVCS_BINARY_SENSOR.items():
-            platform.async_register_entity_service(name, schema, f"svc_{name}")
+    platform.async_register_entity_service(
+        SVC_PUT_PRESENCE_DETECT,
+        cv.make_entity_service_schema(
+            {
+                vol.Required(SZ_PRESENCE_DETECTED): cv.boolean,
+            },
+            "svc_put_presence_detect",
+        ),
+    )
 
 
 class RamsesBinarySensor(RamsesDeviceBase, BinarySensorEntity):

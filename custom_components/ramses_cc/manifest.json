@@ -3,11 +3,20 @@
     "name": "RAMSES RF",
     "documentation": "https://github.com/zxdavb/ramses_cc",
     "requirements": [
-      "ramses-rf==0.30.3",
+      "ramses-rf==0.30.2",
       "pyserial-asyncio==0.6"
     ],
     "dependencies": [],
     "issue_tracker": "https://github.com/zxdavb/ramses_cc/issues",
     "codeowners": ["@zxdavb"],
-    "version": "0.0.2"
+    "version": "0.0.2",
+    "config_flow": true,
+    "usb": [
+      {
+        "vid": "1b4f",
+        "pid": "9206",
+        "manufacturer": "SparkFun",
+        "description": "evofw3 atmega32u4"
+      }
+    ]
   }
