@@ -2,89 +2,136 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterable
-from datetime import datetime as dt, timedelta as td
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from datetime import datetime as dt, timedelta
 import logging
 from typing import Any
 
+from ramses_rf.device.base import Entity as RamsesRFEntity
+from ramses_rf.device.hvac import HvacRemote
 from ramses_tx import Command, Priority
+import voluptuous as vol
 
 from homeassistant.components.remote import (
-    DOMAIN as PLATFORM,
     RemoteEntity,
+    RemoteEntityDescription,
     RemoteEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers import entity_platform
+from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
 
-from . import RamsesEntity
-from .const import BROKER, DOMAIN
-from .schemas import SVCS_REMOTE
+from . import RamsesController, RamsesEntity, RamsesEntityDescription
+from .const import (
+    ATTR_COMMAND,
+    ATTR_DELAY_SECS,
+    ATTR_NUM_REPEATS,
+    ATTR_TIMEOUT,
+    CONTROLLER,
+    DOMAIN,
+    SERVICE_DELETE_COMMAND,
+    SERVICE_LEARN_COMMAND,
+    SERVICE_SEND_COMMAND,
+)
 
-QOS_HIGH = {"priority": Priority.HIGH, "retries": 3}
+
+@dataclass(kw_only=True)
+class RamsesRemoteEntityDescription(RamsesEntityDescription, RemoteEntityDescription):
+    """Class describing Ramses remote entities."""
+
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
     hass: HomeAssistant,
-    _: ConfigEntry,
+    config: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType = None,
+    discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Create remotes for HVAC."""
-
-    if discovery_info is None:  # or not discovery_info.get("remotes")  # not needed
-        return
-
-    broker = hass.data[DOMAIN][BROKER]
-
+    """Set up Ramses remotes."""
+    controller: RamsesController = hass.data[DOMAIN][CONTROLLER]
     platform = entity_platform.async_get_current_platform()
 
-    for name, schema in SVCS_REMOTE.items():
-        platform.async_register_entity_service(name, schema, f"svc_{name}")
-
-    async_add_entities(
-        [RamsesRemote(broker, device) for device in discovery_info["remotes"]]
+    platform.async_register_entity_service(
+        SERVICE_LEARN_COMMAND,
+        {
+            vol.Required(ATTR_COMMAND): cv.string,
+            vol.Required(ATTR_TIMEOUT, default=60): vol.All(
+                cv.positive_int, vol.Range(min=30, max=300)
+            ),
+        },
+        "async_learn_command",
     )
 
-    if not broker._services.get(PLATFORM):
-        broker._services[PLATFORM] = True
+    platform.async_register_entity_service(
+        SERVICE_SEND_COMMAND,
+        {
+            vol.Required(ATTR_COMMAND): cv.string,
+            vol.Required(ATTR_NUM_REPEATS, default=3): cv.positive_int,
+            vol.Required(ATTR_DELAY_SECS, default=0.2): cv.positive_float,
+        },
+        "async_send_command",
+    )
+
+    platform.async_register_entity_service(
+        SERVICE_DELETE_COMMAND,
+        {vol.Required(ATTR_COMMAND): cv.string},
+        "async_delete_command",
+    )
+
+    async def async_add_new_entity(entity: RamsesRFEntity) -> None:
+        entities = []
+
+        if isinstance(entity, HvacRemote):
+            entities.append(
+                RamsesRemote(
+                    controller,
+                    entity,
+                    RamsesRemoteEntityDescription(key="remote"),
+                )
+            )
+
+        async_add_entities(entities)
+
+    controller.async_register_platform(platform, async_add_new_entity)
 
 
 class RamsesRemote(RamsesEntity, RemoteEntity):
-    """Representation of a generic sensor."""
+    """Representation of a Ramses remote."""
 
-    # entity_description: RemoteEntityDescription
-    # _attr_activity_list: list[str] | None = None
-    _attr_assumed_state: bool = True
-    # _attr_current_activity: str | None = None
-    _attr_supported_features: int = (
+    rf_entity: HvacRemote
+
+    _attr_assumed_state = True
+    _attr_is_on = True
+    _attr_supported_features = (
         RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
     )
-    # _attr_state: None = None
 
-    def __init__(self, broker, device, **kwargs) -> None:
-        """Initialize a sensor."""
-        _LOGGER.info("Found a Remote: %s", device)
-        super().__init__(broker, device)
+    def __init__(
+        self, controller, device, entity_description: RamsesRemoteEntityDescription
+    ) -> None:
+        """Initialize a remote."""
+        super().__init__(controller, device, entity_description)
 
         self.entity_id = f"{DOMAIN}.{device.id}"
 
-        self._attr_is_on = True
-        self._attr_unique_id = (
-            device.id
-        )  # dont include domain (ramses_cc) / platform (remote)
-
-        self._commands: dict[str, dict] = broker._known_commands.get(device.id, {})
+        self._commands: dict[str, dict] = controller._known_commands.get(device.id, {})
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> Mapping[str, Any]:
         """Return the integration-specific state attributes."""
-        return super().extra_state_attributes | {"commands": self._commands}
+        return super().extra_state_attributes | {
+            "commands": self._commands,
+        }
+
+    @property
+    def name(self) -> str:
+        """Return the name of the remote."""
+        return self.rf_entity.id
 
     async def async_delete_command(
         self,
@@ -125,7 +172,9 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         def event_filter(event: Event) -> bool:
             """Return True if the listener callable should run."""
             codes = ("22F1", "22F3", "22F7")
-            return event.data["src"] == self._device.id and event.data["code"] in codes
+            return (
+                event.data["src"] == self.rf_entity.id and event.data["code"] in codes
+            )
 
         @callback
         def listener(event: Event) -> None:
@@ -145,19 +194,19 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         if command[0] in self._commands:
             await self.async_delete_command(command)
 
-        with self._broker._sem:
-            self._broker.learn_device_id = self._device.id
+        with self.controller._sem:
+            self.controller.learn_device_id = self.rf_entity.id
             remove_listener = self.hass.bus.async_listen(
                 f"{DOMAIN}_learn", listener, event_filter
             )
 
-            dt_expires = dt.now() + td(seconds=timeout)
+            dt_expires = dt.now() + timedelta(seconds=timeout)
             while dt.now() < dt_expires:
                 await asyncio.sleep(0.005)
                 if self._commands.get(command[0]):
                     break
 
-            self._broker.learn_device_id = None
+            self.controller.learn_device_id = None
             remove_listener()
 
     async def async_send_command(
@@ -191,8 +240,10 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         if command[0] not in self._commands:
             raise LookupError(f"command '{command[0]}' is not known")
 
-        if not self._device.is_faked:  # have to check here, as not using device method
-            raise TypeError(f"{self._device.id} is not enabled for faking")
+        if (
+            not self.rf_entity.is_faked
+        ):  # have to check here, as not using device method
+            raise TypeError(f"{self.rf_entity.id} is not enabled for faking")
 
         for x in range(num_repeats):
             if x != 0:
@@ -201,28 +252,6 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
                 self._commands[command[0]],
                 qos={"priority": Priority.HIGH, "retries": 0},
             )
-            self._broker.client.send_cmd(cmd)
+            self.controller.client.send_cmd(cmd)
 
-        await self._broker.async_update()
-
-    async def svc_delete_command(self, *args, **kwargs) -> None:
-        """Delete a RAMSES remote command from the database.
-
-        This is a RAMSES-specific convenience wrapper for async_delete_command().
-        """
-        await self.async_delete_command(*args, **kwargs)
-
-    async def svc_learn_command(self, *args, **kwargs) -> None:
-        """Learn a command from a RAMSES remote and add to the database.
-
-        This is a RAMSES-specific convenience wrapper for async_learn_command().
-        """
-        kwargs["command"] = [kwargs.pop("command")]
-        await self.async_learn_command(*args, **kwargs)
-
-    async def svc_send_command(self, *args, **kwargs) -> None:
-        """Send a command as if from a RAMSES remote.
-
-        This is a RAMSES-specific convenience wrapper for async_send_command().
-        """
-        await self.async_send_command(*args, **kwargs)  # TODO: make call_soon
+        await self.controller.async_update()

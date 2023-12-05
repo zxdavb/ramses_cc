@@ -31,8 +31,7 @@ fake_device:
         Default is False.
       default: false
       example: false
-      selector:
-        boolean
+      selector: boolean
 
     start_binding:
       name: Start binding mode
@@ -41,15 +40,12 @@ fake_device:
         Default is False
       default: false
       example: false
-      selector:
-        boolean
-
+      selector: boolean
 
 force_update:
   name: Update the System state
   description: >-
     Immediately update the system state, without waiting for the next scheduled update.
-
 
 send_packet:
   name: Send a Command packet
@@ -65,7 +61,7 @@ send_packet:
       required: true
 
     verb:
-      description: 'The packet verb, one of: I, RQ, RP, W.'
+      description: "The packet verb, one of: I, RQ, RP, W."
       example: RQ
       required: true
 
@@ -78,7 +74,6 @@ send_packet:
       description: The packet payload as a hexadecimal string.
       example: '"00"'
       required: true
-
 
 #
 # evohome controller service calls (CH/DHW)
@@ -102,7 +97,6 @@ reset_system_mode:
         entity:
           integration: ramses_cc
           domain: climate
-
 
 set_system_mode:
   name: Set the Mode of a TCS
@@ -161,7 +155,6 @@ set_system_mode:
           unit_of_measurement: minutes
           mode: slider
 
-
 #
 # evohome zone service calls (CH/DHW)
 
@@ -191,7 +184,6 @@ get_zone_schedule:
           integration: ramses_cc
           domain: climate
 
-
 put_zone_temp:
   name: Fake the Sensor temperature of a Zone
   description: >-
@@ -215,7 +207,6 @@ put_zone_temp:
           unit_of_measurement: °C
           mode: slider
 
-
 reset_zone_config:
   name: Reset the Configuration of a Zone
   description: Reset the configuration of the zone.
@@ -223,14 +214,12 @@ reset_zone_config:
   fields:
     entity_id: *entity_id_zone
 
-
 reset_zone_mode:
   name: Reset the Mode of a Zone
   description: Reset the operating mode of the zone.
 
   fields:
     entity_id: *entity_id_zone
-
 
 set_zone_config:
   name: Set the Configuration of a Zone
@@ -260,7 +249,6 @@ set_zone_config:
           step: 0.5
           unit_of_measurement: °C
           mode: slider
-
 
 set_zone_mode:
   name: Set the Mode of a Zone
@@ -317,7 +305,6 @@ set_zone_mode:
       selector:
         datetime:
 
-
 set_zone_schedule:
   name: Set the Weekly schedule of a Zone
   description: >-
@@ -333,7 +320,6 @@ set_zone_schedule:
       selector:
         text:
           multiline: true
-
 
 #
 # evohome DHW service calls (CH/DHW)
@@ -358,7 +344,6 @@ get_dhw_schedule:
           integration: ramses_cc
           domain: water_heater
 
-
 put_dhw_temp:
   name: Fake the Sensor temperature of a DHW
   description: >-
@@ -382,14 +367,12 @@ put_dhw_temp:
           unit_of_measurement: °C
           mode: slider
 
-
 reset_dhw_mode:
   name: Reset the Mode of a DHW
   description: Reset the operating mode of the system's DHW.
 
   fields:
     entity_id: *entity_id_dhw
-
 
 reset_dhw_params:
   name: Reset the Configuration of a DHW
@@ -398,14 +381,12 @@ reset_dhw_params:
   fields:
     entity_id: *entity_id_dhw
 
-
 set_dhw_boost:
   name: Start Boost mode for a DHW
   description: Enable the system's DHW for an hour.
 
   fields:
     entity_id: *entity_id_dhw
-
 
 set_dhw_mode:
   name: Set the Mode of a DHW
@@ -461,7 +442,6 @@ set_dhw_mode:
         The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
 
-
 set_dhw_params:
   name: Set the Configuration of a DHW
   description: Set the configuration of the system's DHW.
@@ -505,7 +485,6 @@ set_dhw_params:
           unit_of_measurement: °C
           mode: slider
 
-
 set_dhw_schedule:
   name: Set the Weekly schedule of a DHW
   description: >-
@@ -521,7 +500,6 @@ set_dhw_schedule:
       selector:
         text:
           multiline: true
-
 
 #
 # HVAC sensor service calls
@@ -555,7 +533,6 @@ put_co2_level:
           max: 9999
           mode: slider
 
-
 put_indoor_humidity:
   name: Fake a Humidity sensor's reading
   description: >-
@@ -586,34 +563,6 @@ put_indoor_humidity:
           step: 0.5
           mode: slider
 
-
-put_presence_detect:
-  name: Fake a Presence sensor's reading
-  description: >-
-    Announce the CO2 level of a faked presence sensor (experimental).
-    To be useful, the sensor must bound to a fan (see the `fake_device` service call).
-
-  fields:
-    entity_id:
-      description: >-
-        The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an exception if not is not bound.
-      example: binary_sensor.30_123456_presence_detect
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: binary_sensor
-          device_class: presence_detect
-
-    presence_detected:
-      description: The current state.
-      required: true
-      example: True
-      selector:
-        boolean:
-
-
 #
 # HVAC remote service calls
 
@@ -642,7 +591,6 @@ delete_command:
       selector:
         text:
 
-
 learn_command:
   name: Learn a Remote command
   description: >-
@@ -666,7 +614,6 @@ learn_command:
           steps: 5
           unit_of_measurement: seconds
           mode: slider
-
 
 send_command:
   name: Send a Remote command
@@ -703,8 +650,6 @@ send_command:
           steps: 0.1
           unit_of_measurement: seconds
           mode: slider
-
-
 # If the service accepts entity IDs, target allows the user to specify entities by
 # entity, device, or area. If `target` is specified, `entity_id` should not be defined
 # in the `fields` map. By default it shows only targets matching entities from the same
