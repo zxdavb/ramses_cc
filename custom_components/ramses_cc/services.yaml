@@ -65,7 +65,7 @@ send_packet:
       required: true
 
     verb:
-      description: 'The packet verb, one of: I, RQ, RP, W.'
+      description: 'The packet verb, one of: I, RQ, RP, W (leading space not required).'
       example: RQ
       required: true
 
