@@ -321,7 +321,7 @@ class RamsesController:
     async def async_save_client_state(self, _: dt | None = None) -> None:
         """Save the client state to the application store."""
 
-        _LOGGER.info("Saving the client state cache (packets, schema)")
+        _LOGGER.debug("Saving the client state cache (packets, schema)")
 
         (schema, packets) = self._client._get_state()
         remote_commands = self._known_commands | {
