@@ -483,7 +483,7 @@ class RamsesEvohomeZoneEntity(RamsesEntity, ClimateEntity):
     @property
     def name(self) -> str:
         """Return the name of the zone."""
-        return self.rf_entity.name or f"Zone {self.rf_entity.idx}"
+        return self.rf_entity.name
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         """Set a Zone to one of its native operating modes."""

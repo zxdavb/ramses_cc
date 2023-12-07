@@ -346,7 +346,7 @@ class RamsesController:
         for system in self._client.systems:
             rf_entities.append(system)
             if isinstance(system, MultiZone):
-                rf_entities.extend(system.zones)
+                rf_entities.extend([z for z in system.zones if z.name])
 
         have_new_entities = False
         for rf_entity in rf_entities:
