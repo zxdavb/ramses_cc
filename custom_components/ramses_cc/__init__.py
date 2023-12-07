@@ -109,7 +109,7 @@ class RamsesController:
 
     _port_name: str
     _client_config: dict
-    _client: Gateway
+    _client: Gateway | None
 
     _entities: dict[str, Entity] = {}
 
@@ -129,11 +129,15 @@ class RamsesController:
         )
         self._known_commands = self._config["remotes"]
         self._sem = Semaphore(value=1)
+        self._client = None
 
     async def start(self) -> None:
         """Start the RAMSES co-ordinator."""
 
-        await self._create_client()
+        try:
+            await self._create_client()
+        except TransportSerialError as exc:
+            _LOGGER.error("There is a problem with the serial port: %s", exc)
 
         if self._config[SZ_RESTORE_CACHE][SZ_RESTORE_STATE]:
             await self._async_load_client_state()
@@ -148,14 +152,9 @@ class RamsesController:
         self._hass.async_create_task(self.async_register_domain_services())
 
         _LOGGER.debug("Starting the RF monitor")
-        try:
-            await self._client.start()
-        except TransportSerialError as exc:
-            _LOGGER.error("There is a problem with the serial port: %s", exc)
+        await self._client.start()
 
-        async_track_time_interval(
-            self._hass, self.async_save_client_state, timedelta(seconds=300)
-        )
+        self._async_create_update_tasks()
 
     async def _create_client(self) -> None:
         """Create a client with an inital schema.
@@ -368,11 +367,18 @@ class RamsesController:
         """Register a platform as ready and connect new entity listener."""
         self._platforms[platform.domain] = True
         async_dispatcher_connect(self._hass, "RAMSES_RF_NEW_ENTITY", add_new_entity)
+        self._async_create_update_tasks()
 
-        if all(self._platforms.values()):
+    @callback
+    def _async_create_update_tasks(self):
+        """Create tasks to watch for updates when initalised."""
+        if all(self._platforms.values()) and self._client:
             self._hass.create_task(self.async_update())
             async_track_time_interval(
                 self._hass, self.async_update, self._update_interval
+            )
+            async_track_time_interval(
+                self._hass, self.async_save_client_state, timedelta(seconds=300)
             )
 
     @callback
