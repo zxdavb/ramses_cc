@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import contextlib
-from datetime import datetime as dt, timedelta as td
+from datetime import datetime as dt, timedelta
 import json
 import logging
 from typing import Any
@@ -23,7 +23,6 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import EvohomeZoneBase
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
-from .helpers import migrate_to_ramses_rf
 from .schemas import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE, SVCS_WATER_HEATER_EVO_DHW
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,7 +60,6 @@ async def async_setup_platform(
     """Create DHW controllers for CH/DHW (heat)."""
 
     def entity_factory(entity_class, broker, device):  # TODO: deprecate
-        migrate_to_ramses_rf(hass, PLATFORM, device.id)
         return entity_class(broker, device)
 
     if discovery_info is None:  # or not discovery_info.get("dhw"):  # not needed
@@ -169,7 +167,7 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
         active = until = None  # for STATE_AUTO
         if operation_mode == STATE_BOOST:
             active = True
-            until = dt.now() + td(hours=1)
+            until = dt.now() + timedelta(hours=1)
         elif operation_mode == STATE_OFF:
             active = False
         elif operation_mode == STATE_ON:

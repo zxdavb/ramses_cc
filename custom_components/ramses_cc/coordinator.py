@@ -1,7 +1,7 @@
 """Coordinator for RAMSES integration."""
 from __future__ import annotations
 
-from datetime import datetime as dt, timedelta as td
+from datetime import datetime as dt, timedelta
 import logging
 from threading import Semaphore
 
@@ -30,7 +30,7 @@ from .schemas import merge_schemas, normalise_config, schema_is_minimal
 _LOGGER = logging.getLogger(__name__)
 
 
-SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
+SAVE_STATE_INTERVAL = timedelta(seconds=300)  # TODO: 5 minutes
 
 
 class RamsesBroker:
@@ -143,7 +143,7 @@ class RamsesBroker:
             packets = {
                 k: m
                 for k, m in client_state["packets"].items()
-                if dt.fromisoformat(k) > dt.now() - td(days=1)
+                if dt.fromisoformat(k) > dt.now() - timedelta(days=1)
                 and (
                     m[41:45] in ("10E0")
                     or self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA]

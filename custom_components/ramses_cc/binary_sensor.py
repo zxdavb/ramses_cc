@@ -1,7 +1,7 @@
 """Support for RAMSES binary sensors."""
 from __future__ import annotations
 
-from datetime import datetime as dt, timedelta as td
+from datetime import datetime as dt, timedelta
 import logging
 from typing import Any
 
@@ -30,7 +30,6 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesDeviceBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
-from .helpers import migrate_to_ramses_rf
 from .schemas import SVCS_BINARY_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,7 +50,6 @@ async def async_setup_platform(
     """
 
     def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
-        migrate_to_ramses_rf(hass, PLATFORM, f"{device.id}-{attr}")
         return (entity_class or RamsesBinarySensor)(broker, device, attr, **kwargs)
 
     if discovery_info is None:
@@ -155,7 +153,7 @@ class RamsesFaultLog(RamsesBinarySensor):
     def available(self) -> bool:
         """Return True if the device has been seen recently."""
         if msg := self._device._msgs.get("0418"):
-            return dt.now() - msg.dtm < td(seconds=1200)
+            return dt.now() - msg.dtm < timedelta(seconds=1200)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -179,7 +177,9 @@ class RamsesSystem(RamsesBinarySensor):
     def available(self) -> bool:
         """Return True if the device has been seen recently."""
         if msg := self._device._msgs.get("1F09"):
-            return dt.now() - msg.dtm < td(seconds=msg.payload["remaining_seconds"] * 3)
+            return dt.now() - msg.dtm < timedelta(
+                seconds=msg.payload["remaining_seconds"] * 3
+            )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -231,7 +231,7 @@ class RamsesGateway(RamsesBinarySensor):
     def is_on(self) -> bool | None:
         """Return True if the controller has been seen recently."""
         if msg := self._device._gwy._protocol._this_msg:  # TODO
-            return dt.now() - msg.dtm > td(seconds=300)
+            return dt.now() - msg.dtm > timedelta(seconds=300)
 
 
 DEVICE_CLASS = "device_class"

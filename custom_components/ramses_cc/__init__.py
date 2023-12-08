@@ -35,7 +35,6 @@ from .schemas import (
     SZ_ADVANCED_FEATURES,
     SZ_MESSAGE_EVENTS,
 )
-from .version import __version__ as VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,12 +52,6 @@ PLATFORMS = [
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
 
-    _LOGGER.info(
-        "%s v%s, is using ramses_rf v%s",
-        DOMAIN,
-        VERSION,
-        ramses_rf.VERSION,
-    )
     _LOGGER.debug("\r\n\nConfig = %s\r\n", config[DOMAIN])
 
     broker = RamsesBroker(hass, config)
