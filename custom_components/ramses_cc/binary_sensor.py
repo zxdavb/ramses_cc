@@ -30,7 +30,6 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesDeviceBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
-from .helpers import migrate_to_ramses_rf
 from .schemas import SVCS_BINARY_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,7 +50,6 @@ async def async_setup_platform(
     """
 
     def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
-        migrate_to_ramses_rf(hass, PLATFORM, f"{device.id}-{attr}")
         return (entity_class or RamsesBinarySensor)(broker, device, attr, **kwargs)
 
     if discovery_info is None:
