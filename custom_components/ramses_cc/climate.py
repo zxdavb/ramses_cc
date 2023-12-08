@@ -40,7 +40,6 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
-from .helpers import migrate_to_ramses_rf
 from .schemas import (
     CONF_MODE,
     CONF_SYSTEM_MODE,
@@ -112,7 +111,6 @@ async def async_setup_platform(
     """Create climate entities for CH/DHW (heat) & HVAC."""
 
     def entity_factory(entity_class, broker, device):  # TODO: deprecate
-        migrate_to_ramses_rf(hass, PLATFORM, device.id)
         return entity_class(broker, device)
 
     if discovery_info is None:

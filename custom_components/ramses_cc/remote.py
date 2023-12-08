@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterable
-from datetime import datetime as dt, timedelta as td
+from datetime import datetime as dt, timedelta
 import logging
 from typing import Any
 
@@ -151,7 +151,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
                 f"{DOMAIN}_learn", listener, event_filter
             )
 
-            dt_expires = dt.now() + td(seconds=timeout)
+            dt_expires = dt.now() + timedelta(seconds=timeout)
             while dt.now() < dt_expires:
                 await asyncio.sleep(0.005)
                 if self._commands.get(command[0]):

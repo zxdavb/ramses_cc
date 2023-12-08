@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from datetime import timedelta as td
+from datetime import timedelta
 import logging
 
 from ramses_rf.const import SZ_DEVICE_ID
@@ -97,8 +97,8 @@ SCH_SYSTEM_MODE = _SCH_ENTITY_ID.extend(
 SCH_SYSTEM_MODE_HOURS = _SCH_ENTITY_ID.extend(
     {
         vol.Required(CONF_MODE): vol.In([SystemMode.ECO_BOOST]),
-        vol.Optional(CONF_DURATION, default=td(hours=1)): vol.All(
-            cv.time_period, vol.Range(min=td(hours=1), max=td(hours=24))
+        vol.Optional(CONF_DURATION, default=timedelta(hours=1)): vol.All(
+            cv.time_period, vol.Range(min=timedelta(hours=1), max=timedelta(hours=24))
         ),
     }
 )
@@ -107,8 +107,8 @@ SCH_SYSTEM_MODE_DAYS = _SCH_ENTITY_ID.extend(
         vol.Required(CONF_MODE): vol.In(
             [SystemMode.AWAY, SystemMode.CUSTOM, SystemMode.DAY_OFF]
         ),
-        vol.Optional(CONF_DURATION_DAYS, default=td(days=0)): vol.All(
-            cv.time_period, vol.Range(min=td(days=0), max=td(days=99))
+        vol.Optional(CONF_DURATION_DAYS, default=timedelta(days=0)): vol.All(
+            cv.time_period, vol.Range(min=timedelta(days=0), max=timedelta(days=99))
         ),  # 0 means until the end of the day
     }
 )
@@ -176,7 +176,7 @@ SCH_SET_ZONE_MODE_UNTIL = _SCH_ENTITY_ID.extend(
         vol.Exclusive(CONF_UNTIL, CONF_UNTIL): cv.datetime,
         vol.Exclusive(CONF_DURATION, CONF_UNTIL): vol.All(
             cv.time_period,
-            vol.Range(min=td(minutes=5), max=td(days=1)),
+            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
         ),
     }
 )
@@ -233,7 +233,7 @@ SCH_SET_DHW_MODE = _SCH_ENTITY_ID.extend(
         vol.Exclusive(CONF_UNTIL, CONF_UNTIL): cv.datetime,
         vol.Exclusive(CONF_DURATION, CONF_UNTIL): vol.All(
             cv.time_period,
-            vol.Range(min=td(minutes=5), max=td(days=1)),
+            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
         ),
     }
 )
@@ -353,8 +353,8 @@ SVCS_REMOTE = {
 
 #
 # Configuration schema for Integration/domain
-SCAN_INTERVAL_DEFAULT = td(seconds=60)
-SCAN_INTERVAL_MINIMUM = td(seconds=3)
+SCAN_INTERVAL_DEFAULT = timedelta(seconds=60)
+SCAN_INTERVAL_MINIMUM = timedelta(seconds=3)
 
 SZ_ADVANCED_FEATURES = "advanced_features"
 SZ_MESSAGE_EVENTS = "message_events"
