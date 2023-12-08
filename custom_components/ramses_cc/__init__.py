@@ -7,7 +7,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import ramses_rf
 from ramses_tx.exceptions import TransportSerialError
 import voluptuous as vol
 
