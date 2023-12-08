@@ -12,7 +12,6 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from .climate_heat import EvohomeController, EvohomeZone
 from .climate_hvac import RamsesHvac
 from .const import BROKER, DOMAIN
-from .helpers import migrate_to_ramses_rf
 from .schemas import SVCS_CLIMATE_EVO_TCS, SVCS_CLIMATE_EVO_ZONE
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,7 +26,6 @@ async def async_setup_platform(
     """Create climate entities for CH/DHW (heat) & HVAC."""
 
     def entity_factory(entity_class, broker, device):  # TODO: deprecate
-        migrate_to_ramses_rf(hass, PLATFORM, device.id)
         return entity_class(broker, device)
 
     if discovery_info is None:
