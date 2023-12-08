@@ -8,7 +8,6 @@ import logging
 from ramses_rf.const import SZ_DEVICE_ID
 from ramses_rf.helpers import merge, shrink
 from ramses_rf.schemas import (
-    SCH_DEVICE_ID_ANY,
     SCH_GATEWAY_CONFIG,
     SCH_GLOBAL_SCHEMAS_DICT,
     SCH_RESTORE_CACHE_DICT,
@@ -129,13 +128,6 @@ SVC_SET_ZONE_CONFIG = "set_zone_config"
 SVC_SET_ZONE_MODE = "set_zone_mode"
 SVC_SET_ZONE_SCHED = "set_zone_schedule"
 
-CONF_ZONE_MODES = (
-    ZoneMode.SCHEDULE,
-    ZoneMode.PERMANENT,
-    ZoneMode.ADVANCED,
-    ZoneMode.TEMPORARY,
-)
-
 SCH_SET_ZONE_CONFIG = _SCH_ENTITY_ID.extend(
     {
         vol.Optional(CONF_MAX_TEMP, default=35): vol.All(
@@ -217,12 +209,6 @@ SVC_SET_DHW_BOOST = "set_dhw_boost"
 SVC_SET_DHW_MODE = "set_dhw_mode"
 SVC_SET_DHW_PARAMS = "set_dhw_params"
 SVC_SET_DHW_SCHED = "set_dhw_schedule"
-
-# CONF_DHW_MODES = (
-#     ZoneMode.PERMANENT,
-#     ZoneMode.ADVANCED,
-#     ZoneMode.TEMPORARY,
-# )
 
 SCH_SET_DHW_MODE = _SCH_ENTITY_ID.extend(
     {
@@ -374,10 +360,6 @@ SCH_ADVANCED_FEATURES = vol.Schema(
 SCH_GLOBAL_TRAITS_DICT, SCH_TRAITS = sch_global_traits_dict_factory(
     hvac_traits={vol.Optional("commands"): dict}
 )
-SCH_DEVICE_LIST = vol.Schema(
-    [{vol.Optional(SCH_DEVICE_ID_ANY): SCH_TRAITS}],  # vol.Length(min=0)
-    extra=vol.PREVENT_EXTRA,
-)  # TODO: what is this for?
 
 SCH_GATEWAY_CONFIG = SCH_GATEWAY_CONFIG.extend(
     SCH_ENGINE_DICT,
