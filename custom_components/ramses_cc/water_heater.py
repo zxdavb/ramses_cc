@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import contextlib
-from datetime import datetime as dt, timedelta as td
+from datetime import datetime as dt, timedelta
 import json
 import logging
 from typing import Any
@@ -169,7 +169,7 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
         active = until = None  # for STATE_AUTO
         if operation_mode == STATE_BOOST:
             active = True
-            until = dt.now() + td(hours=1)
+            until = dt.now() + timedelta(hours=1)
         elif operation_mode == STATE_OFF:
             active = False
         elif operation_mode == STATE_ON:
