@@ -30,25 +30,13 @@ _LOGGER = logging.getLogger(__name__)
 
 STATE_AUTO = "auto"
 STATE_BOOST = "boost"
-STATE_UNKNOWN = None
 
-STATE_EVO_TO_HA = {True: STATE_ON, False: STATE_OFF}
-STATE_HA_TO_EVO = {v: k for k, v in STATE_EVO_TO_HA.items()}
-
-MODE_EVO_TO_HA = {
-    ZoneMode.SCHEDULE: STATE_AUTO,
-    ZoneMode.TEMPORARY: "temporary",
-    ZoneMode.PERMANENT: "permanent",
-}
-# MODE_HA_TO_EVO = {v: k for k, v in MODE_EVO_TO_HA.items()}
-MODE_HA_TO_EVO = {
+MODE_HA_TO_RAMSES = {
     STATE_AUTO: ZoneMode.SCHEDULE,
     STATE_BOOST: ZoneMode.TEMPORARY,
     STATE_OFF: ZoneMode.PERMANENT,
     STATE_ON: ZoneMode.PERMANENT,
 }
-
-STATE_ATTRS_DHW = ("config", "mode", "status")
 
 
 async def async_setup_platform(
@@ -86,7 +74,7 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
     _attr_icon: str = "mdi:thermometer-lines"
     _attr_max_temp: float = StoredHw.MAX_SETPOINT
     _attr_min_temp: float = StoredHw.MIN_SETPOINT
-    _attr_operation_list: list[str] = list(MODE_HA_TO_EVO)
+    _attr_operation_list: list[str] = list(MODE_HA_TO_RAMSES)
     _attr_supported_features: int = (
         WaterHeaterEntityFeature.OPERATION_MODE
         | WaterHeaterEntityFeature.TARGET_TEMPERATURE
@@ -102,13 +90,6 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
     @property
     def current_operation(self) -> str:
         """Return the current operating mode (Auto, On, or Off)."""
-        # if self.is_away_mode_on:
-        #     return STATE_OFF
-        # try:
-        #     return STATE_EVO_TO_HA[self._device.mode[CONF_ACTIVE]]
-        # except (KeyError, TypeError):
-        #     return
-
         try:
             mode = self._device.mode[CONF_MODE]
         except TypeError:
@@ -174,7 +155,7 @@ class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
             active = True
 
         self.svc_set_dhw_mode(
-            mode=MODE_HA_TO_EVO[operation_mode], active=active, until=until
+            mode=MODE_HA_TO_RAMSES[operation_mode], active=active, until=until
         )
 
     def set_temperature(self, temperature: float = None, **kwargs) -> None:
