@@ -56,7 +56,10 @@ async def async_setup_platform(
     broker = hass.data[DOMAIN][BROKER]
 
     async_add_entities(
-        [entity_factory(EvohomeDHW, broker, dhw) for dhw in discovery_info["dhw"]]
+        [
+            entity_factory(RamsesWaterHeater, broker, dhw)
+            for dhw in discovery_info["dhw"]
+        ]
     )
 
     if not broker._services.get(PLATFORM):
@@ -68,7 +71,7 @@ async def async_setup_platform(
             platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
-class EvohomeDHW(EvohomeZoneBase, WaterHeaterEntity):
+class RamsesWaterHeater(EvohomeZoneBase, WaterHeaterEntity):
     """Base for a DHW controller (aka boiler)."""
 
     _attr_icon: str = "mdi:thermometer-lines"
