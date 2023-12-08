@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 import ramses_rf
+from ramses_tx.exceptions import TransportSerialError
 import voluptuous as vol
 
 from homeassistant.components.sensor import SensorDeviceClass
@@ -60,18 +61,22 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     )
     _LOGGER.debug("\r\n\nConfig = %s\r\n", config[DOMAIN])
 
+    broker = RamsesBroker(hass, config)
+    try:
+        await broker.start()
+    except TransportSerialError as exc:
+        _LOGGER.error("There is a problem with the serial port: %s", exc)
+        return False
+
+    hass.data.setdefault(DOMAIN, {})[BROKER] = broker
+
     coordinator: DataUpdateCoordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=DOMAIN,
         update_interval=config[DOMAIN][CONF_SCAN_INTERVAL],
     )
-
-    hass.data[DOMAIN] = {}
-    hass.data[DOMAIN][BROKER] = broker = RamsesBroker(hass, config)
-
     coordinator.update_method = broker.async_update
-    await broker.start()
 
     if _LOGGER.isEnabledFor(logging.DEBUG):  # TODO: remove
         app_storage = await broker._async_load_storage()

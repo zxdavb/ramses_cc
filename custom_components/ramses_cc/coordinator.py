@@ -1,12 +1,10 @@
 """Coordinator for RAMSES integration."""
 from __future__ import annotations
 
-from collections.abc import Awaitable  # , Callable, Coroutine, Generator
 from datetime import datetime as dt, timedelta as td
 import logging
 from threading import Semaphore
 
-# om homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from ramses_rf import Gateway
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
 from ramses_rf.helpers import merge
@@ -17,12 +15,11 @@ from ramses_rf.schemas import (
     SZ_RESTORE_STATE,
     SZ_SCHEMA,
 )
-from ramses_tx.exceptions import TransportSerialError
 from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 import voluptuous as vol
 
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
-from homeassistant.core import HomeAssistant, callback  # CALLBACK_TYPE, HassJob,
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
@@ -34,20 +31,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 SAVE_STATE_INTERVAL = td(seconds=300)  # TODO: 5 minutes
-
-
-async def async_handle_exceptions(
-    awaitable: Awaitable, logger: logging.Logger = _LOGGER
-) -> None:
-    """Wrap the serial port interface to catch/report exceptions."""
-    try:
-        return await awaitable
-    except TransportSerialError as exc:
-        logger.error("There is a problem with the serial port: %s", exc)
-        raise exc
-    except Exception as exc:  # TODO: fixme
-        logger.error("There is a problem with the serial port: %s", exc)
-        raise exc
 
 
 class RamsesBroker:
@@ -99,10 +82,7 @@ class RamsesBroker:
                 "consider using 'restore_cache: restore_state: true'"
             )
 
-        _LOGGER.debug("Starting the RF monitor")  # TODO: fixme, below
-        # self.loop_task = self.hass.async_create_task(
-        #     async_handle_exceptions(self.client.start())
-        # )
+        _LOGGER.debug("Starting the RF monitor")
         self.loop_task = self.hass.async_create_task(self.client.start())
 
         self.hass.helpers.event.async_track_time_interval(
