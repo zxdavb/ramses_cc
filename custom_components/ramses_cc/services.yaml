@@ -587,33 +587,6 @@ put_indoor_humidity:
           mode: slider
 
 
-put_presence_detect:
-  name: Fake a Presence sensor's reading
-  description: >-
-    Announce the CO2 level of a faked presence sensor (experimental).
-    To be useful, the sensor must bound to a fan (see the `fake_device` service call).
-
-  fields:
-    entity_id:
-      description: >-
-        The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an exception if not is not bound.
-      example: binary_sensor.30_123456_presence_detect
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: binary_sensor
-          device_class: presence_detect
-
-    presence_detected:
-      description: The current state.
-      required: true
-      example: True
-      selector:
-        boolean:
-
-
 #
 # HVAC remote service calls
 
