@@ -274,7 +274,7 @@ class RamsesDeviceBase(RamsesEntity):  # for: binary_sensor & sensor
         return f"{self._device.name} {self._state_attr}"
 
 
-class EvohomeZoneBase(RamsesEntity):  # for: climate & water_heater
+class RamsesZoneBase(RamsesEntity):  # for: climate & water_heater
     """Base for any RAMSES RF-compatible entity (e.g. Controller, DHW, Zones)."""
 
     _attr_precision: float = PRECISION_TENTHS

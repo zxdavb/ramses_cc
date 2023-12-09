@@ -21,7 +21,7 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import EvohomeZoneBase
+from . import RamsesZoneBase
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
 from .schemas import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE, SVCS_WATER_HEATER_EVO_DHW
 
@@ -71,7 +71,7 @@ async def async_setup_platform(
             platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
-class RamsesWaterHeater(EvohomeZoneBase, WaterHeaterEntity):
+class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
     """Base for a DHW controller (aka boiler)."""
 
     _attr_icon: str = "mdi:thermometer-lines"

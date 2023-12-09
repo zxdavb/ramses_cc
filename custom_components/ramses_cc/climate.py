@@ -29,7 +29,7 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import EvohomeZoneBase, RamsesEntity
+from . import RamsesEntity, RamsesZoneBase
 from .const import (
     ATTR_SETPOINT,
     BROKER,
@@ -139,16 +139,16 @@ async def async_setup_platform(
                 platform.async_register_entity_service(name, schema, f"svc_{name}")
 
         for tcs in discovery_info.get("ctls", []):
-            new_entities.append(entity_factory(EvohomeController, broker, tcs))
+            new_entities.append(entity_factory(RamsesController, broker, tcs))
 
         for zone in discovery_info.get("zons", []):
-            new_entities.append(entity_factory(EvohomeZone, broker, zone))
+            new_entities.append(entity_factory(RamsesZone, broker, zone))
 
     if new_entities:
         async_add_entities(new_entities)
 
 
-class EvohomeController(EvohomeZoneBase, ClimateEntity):
+class RamsesController(RamsesZoneBase, ClimateEntity):
     """Base for a Honeywell Controller/Location."""
 
     _attr_icon: str = "mdi:thermostat"
@@ -287,7 +287,7 @@ class EvohomeController(EvohomeZoneBase, ClimateEntity):
         self._call_client_api(self._device.set_mode, system_mode=mode, until=until)
 
 
-class EvohomeZone(EvohomeZoneBase, ClimateEntity):
+class RamsesZone(RamsesZoneBase, ClimateEntity):
     """Base for a Honeywell TCS Zone."""
 
     _attr_icon: str = "mdi:radiator"
