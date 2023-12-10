@@ -503,6 +503,11 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     )
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
+    def __init__(self, broker, device) -> None:
+        """Initialize a Ramses hvac."""
+        _LOGGER.info("Found HVAC %r", device)
+        super().__init__(broker, device)
+
     @property
     def current_humidity(self) -> int | None:
         """Return the current humidity."""
