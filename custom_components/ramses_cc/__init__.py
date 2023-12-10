@@ -7,16 +7,16 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_tx.exceptions import TransportSerialError
 import voluptuous as vol
 
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import (
+    ATTR_ID,
     CONF_SCAN_INTERVAL,
     EVENT_HOMEASSISTANT_START,
-    PRECISION_TENTHS,
     Platform,
-    UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -162,23 +162,10 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
 class RamsesEntity(Entity):
     """Base for any RAMSES II-compatible entity (e.g. Climate, Sensor)."""
 
-    entity_id: str = None  # type: ignore[assignment]
-    # _attr_assumed_state: bool = False
-    # _attr_attribution: str | None = None
-    # _attr_context_recent_time: timedelta = timedelta(seconds=5)
-    # _attr_device_info: DeviceInfo | None = None
-    # _attr_entity_category: EntityCategory | None
-    # _attr_has_entity_name: bool
-    # _attr_entity_picture: str | None = None
-    # _attr_entity_registry_enabled_default: bool
-    # _attr_entity_registry_visible_default: bool
-    # _attr_extra_state_attributes: MutableMapping[str, Any]
-    # _attr_force_update: bool
-    _attr_icon: str | None
-    _attr_name: str | None
-    _attr_should_poll: bool = True
-    _attr_unique_id: str | None = None
-    # _attr_unit_of_measurement: str | None
+    _broker: RamsesBroker
+    _device: RamsesRFEntity
+
+    _attr_should_poll = False
 
     def __init__(self, broker, device) -> None:
         """Initialize the entity."""
@@ -186,23 +173,14 @@ class RamsesEntity(Entity):
         self._broker = broker
         self._device = device
 
-        self._attr_should_poll = False
-
-        self._entity_state_attrs = ()
-
-        # NOTE: this is bad: self.update_ha_state(delay=5)
+        self._attr_unique_id = device.id
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        attrs = {
-            a: getattr(self._device, a)
-            for a in self._entity_state_attrs
-            if hasattr(self._device, a)
+        return {
+            ATTR_ID: self._device.id,
         }
-        # TODO: use self._device._parent?
-        # attrs["controller_id"] = self._device.ctl.id if self._device.ctl else None
-        return attrs
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
@@ -241,8 +219,8 @@ class RamsesEntity(Entity):
         )  # HACK: call_soon_threadsafe should not be needed
 
 
-class RamsesDeviceBase(RamsesEntity):  # for: binary_sensor & sensor
-    """Base for any RAMSES II-compatible entity (e.g. BinarySensor, Sensor)."""
+class RamsesSensorBase(RamsesEntity):
+    """Base for any Ramses sensor entity."""
 
     def __init__(
         self,
@@ -272,36 +250,3 @@ class RamsesDeviceBase(RamsesEntity):  # for: binary_sensor & sensor
         if not hasattr(self._device, "name") or not self._device.name:
             return f"{self._device.id} {self._state_attr}"
         return f"{self._device.name} {self._state_attr}"
-
-
-class RamsesZoneBase(RamsesEntity):  # for: climate & water_heater
-    """Base for any RAMSES RF-compatible entity (e.g. Controller, DHW, Zones)."""
-
-    _attr_precision: float = PRECISION_TENTHS
-    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
-
-    def __init__(self, broker, device) -> None:
-        """Initialize the sensor."""
-        super().__init__(broker, device)
-
-        # dont include platform/domain (climate.ramses_cc)
-        self._attr_unique_id = device.id
-
-    @property
-    def current_temperature(self) -> float | None:
-        """Return the current temperature."""
-        return self._device.temperature
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        return {
-            **super().extra_state_attributes,
-            "schema": self._device.schema,
-            "params": self._device.params,
-        }
-
-    @property
-    def name(self) -> str | None:
-        """Return the name of the climate/water_heater entity."""
-        return self._device.name

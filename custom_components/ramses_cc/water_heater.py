@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 from ramses_rf.system.heat import StoredHw
+from ramses_rf.system.zones import DhwZone
 
 from homeassistant.components.water_heater import (
     DOMAIN as PLATFORM,
@@ -21,7 +22,7 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import RamsesZoneBase
+from . import RamsesEntity
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
 from .schemas import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE, SVCS_WATER_HEATER_EVO_DHW
 
@@ -71,8 +72,10 @@ async def async_setup_platform(
             platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
-class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
-    """Base for a DHW controller (aka boiler)."""
+class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
+    """Representation of a Rames DHW controller."""
+
+    _device: DhwZone
 
     _attr_icon: str = "mdi:thermometer-lines"
     _attr_max_temp: float = StoredHw.MAX_SETPOINT
@@ -84,11 +87,9 @@ class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
     )
 
     def __init__(self, broker, device) -> None:
-        """Initialize an TCS DHW controller."""
-        _LOGGER.info("Found a DHW controller: %s", device)
+        """Initialize a Ramses water heater."""
+        _LOGGER.info("Found %r", device)
         super().__init__(broker, device)
-
-        self._attr_unique_id = device.id
 
     @property
     def current_operation(self) -> str:
@@ -112,9 +113,8 @@ class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
+        return super().extra_state_attributes | {
             "mode": self._device.mode,
-            **super().extra_state_attributes,
             "schedule": self._device.schedule,
             "schedule_version": self._device.schedule_version,
         }
@@ -126,6 +126,11 @@ class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
             return self._device.tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY
         except TypeError:
             return
+
+    @property
+    def name(self) -> str | None:
+        """Return the name of the zone."""
+        return self.rf_entity.name
 
     @property
     def target_temperature(self) -> float | None:

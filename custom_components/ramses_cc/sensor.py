@@ -59,7 +59,7 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import RamsesDeviceBase
+from . import RamsesSensorBase
 from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
 from .schemas import SVCS_SENSOR
 
@@ -120,7 +120,7 @@ async def async_setup_platform(
             platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
-class RamsesSensor(RamsesDeviceBase, SensorEntity):
+class RamsesSensor(RamsesSensorBase, SensorEntity):
     """Representation of a generic sensor."""
 
     # Strictly: fan_info, oem_code are not a measurements
@@ -138,15 +138,8 @@ class RamsesSensor(RamsesDeviceBase, SensorEntity):
         **kwargs,  # leftover attr_dict values, incl. 'name'
     ) -> None:
         """Initialize a sensor."""
-
-        _LOGGER.info("Found a Sensor for %s: %s", device.id, state_attr)
-
-        super().__init__(
-            broker,
-            device,
-            state_attr,
-            device_class=device_class,
-        )
+        _LOGGER.info("Found %r: %s", device, state_attr)
+        super().__init__(broker, device, state_attr, device_class=device_class)
 
         self._attr_native_unit_of_measurement = device_units
         self._attr_state_class = state_class
@@ -223,42 +216,6 @@ class RamsesTemperature(RamsesSensor):
         if hasattr(self._device, ATTR_SETPOINT):
             attrs[ATTR_SETPOINT] = self._device.setpoint
         return attrs
-
-
-class RamsesFaultLog(RamsesDeviceBase):
-    """Representation of a system's fault log."""
-
-    # DEVICE_CLASS = DEVICE_CLASS_PROBLEM
-    DEVICE_UNITS = "entries"
-
-    def __init__(self, broker, device) -> None:
-        """Initialize the sensor."""
-        super().__init__(broker, device, None, None)  # TODO
-
-        self._fault_log = None
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._device._fault_log._fault_log_done
-
-    @property
-    def native_value(self) -> int:
-        """Return the number of issues."""
-        return len(self._fault_log)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the device state attributes."""
-        return {
-            **super().extra_state_attributes,
-            "fault_log": self._device._fault_log,
-        }
-
-    async def async_update(self) -> None:
-        """Process the sensor's state data."""
-        # self._fault_log = self._device.fault_log()  # TODO: needs sorting out
-        pass
 
 
 DEVICE_CLASS = "device_class"  # _attr_device_class
