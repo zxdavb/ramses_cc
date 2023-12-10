@@ -21,11 +21,12 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import BROKER, DOMAIN
+from .const import BROKER, DOMAIN, SIGNAL_UPDATE
 from .coordinator import RamsesBroker
 from .schemas import (
     SCH_DOMAIN_CONFIG,
@@ -190,8 +191,6 @@ class RamsesEntity(Entity):
 
         self._entity_state_attrs = ()
 
-        # NOTE: this is bad: self.update_ha_state(delay=5)
-
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
@@ -207,38 +206,16 @@ class RamsesEntity(Entity):
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
         self._broker._entities[self.unique_id] = self
-        async_dispatcher_connect(self.hass, DOMAIN, self.async_handle_dispatch)
-
-    @callback  # TODO: WIP
-    def _call_client_api(self, func, *args, **kwargs) -> None:
-        """Wrap client APIs to make them threadsafe."""
-        # self.hass.loop.call_soon_threadsafe(
-        #     func(*args, **kwargs)
-        # )  # HACK: call_soon_threadsafe should not be needed
-
-        func(*args, **kwargs)
-        self.update_ha_state()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, SIGNAL_UPDATE, self.async_write_ha_state
+            )
+        )
 
     @callback
-    def async_handle_dispatch(self, *args) -> None:  # TODO: remove as unneeded?
-        """Process a dispatched message.
-
-        Data validation is not required, it will have been done upstream.
-        This routine is threadsafe.
-        """
-        if not args:
-            self.update_ha_state()
-
-    @callback
-    def update_ha_state(self, delay=3) -> None:
-        """Update HA state after a short delay to allow system to quiesce.
-
-        This routine is threadsafe.
-        """
-        args = (delay, self.async_schedule_update_ha_state)
-        self.hass.loop.call_soon_threadsafe(
-            self.hass.helpers.event.async_call_later, *args
-        )  # HACK: call_soon_threadsafe should not be needed
+    def async_write_ha_state_delayed(self, delay=3) -> None:
+        """Write the state to the state machine after a short delay to allow system to quiesce."""
+        async_call_later(self.hass, delay, self.async_write_ha_state)
 
 
 class RamsesDeviceBase(RamsesEntity):  # for: binary_sensor & sensor
