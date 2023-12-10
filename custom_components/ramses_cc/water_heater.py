@@ -114,6 +114,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         return super().extra_state_attributes | {
+            "params": self._device.params,
             "mode": self._device.mode,
             "schedule": self._device.schedule,
             "schedule_version": self._device.schedule_version,
