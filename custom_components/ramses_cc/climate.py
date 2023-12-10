@@ -188,7 +188,6 @@ class RamsesController(RamsesEntity, ClimateEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         return super().extra_state_attributes | {
-            "params": self._device.params,
             "heat_demand": self._device.heat_demand,
             "heat_demands": self._device.heat_demands,
             "relay_demands": self._device.relay_demands,
