@@ -4,10 +4,10 @@ from __future__ import annotations
 from datetime import datetime as dt, timedelta
 import logging
 from threading import Semaphore
+from typing import Any
 
 from ramses_rf import Gateway
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
-from ramses_rf.helpers import merge
 from ramses_rf.schemas import (
     SZ_CONFIG,
     SZ_RESTORE_CACHE,
@@ -22,6 +22,7 @@ from homeassistant.const import CONF_SCAN_INTERVAL, Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
@@ -29,6 +30,9 @@ from .schemas import merge_schemas, normalise_config, schema_is_minimal
 
 _LOGGER = logging.getLogger(__name__)
 
+SZ_CLIENT_STATE = "client_state"
+SZ_PACKETS = "packets"
+SZ_REMOTES = "remotes"
 
 SAVE_STATE_INTERVAL = timedelta(seconds=300)  # TODO: 5 minutes
 
@@ -40,18 +44,19 @@ class RamsesBroker:
         """Initialize the client and its data structure(s)."""
 
         self.hass = hass
-        self._store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
+        self._store: Store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
 
         self.hass_config = hass_config
         self._ser_name, self._client_config, self.config = normalise_config(
             hass_config[DOMAIN]
         )
 
-        self.status = None
+        # self.status = None
         self.client: Gateway = None  # type: ignore[assignment]
+        self._known_remotes: dict[str, str] = None  # type: ignore[assignment]
+
         self._services = {}
         self._entities = {}  # domain entities
-        self._known_commands = self.config["remotes"]
 
         # Discovered client objects...
         self._hgi = None  # HGI, is distinct from devices
@@ -66,24 +71,44 @@ class RamsesBroker:
         self._last_update = dt.min
         self._sem = Semaphore(value=1)
 
-        self.learn_device_id = None
+        self.learn_device_id = None  # TODO: remove me
 
     async def start(self) -> None:
-        """Start the RAMSES co-ordinator."""
+        """Invoke the client/co-ordinator (according to the config/cache)."""
 
-        await self._create_client()
+        CONFIG_KEYS = (SZ_CONFIG, SZ_PACKET_LOG, SZ_PORT_CONFIG)
 
-        if self.config[SZ_RESTORE_CACHE][SZ_RESTORE_STATE]:
-            await self._async_load_client_state()
-            _LOGGER.info("Restored the cached state")
+        storage = await self._async_load_storage()
+
+        self._known_remotes = storage.get(SZ_REMOTES, {}) | self.config[SZ_REMOTES]
+        client_cache: dict[str, Any] = storage.get(SZ_CLIENT_STATE, {})
+
+        restore = self.config[SZ_RESTORE_CACHE]
+
+        self.client = self._create_client(
+            {k: v for k, v in self._client_config.items() if k in CONFIG_KEYS},
+            {k: v for k, v in self._client_config.items() if k not in CONFIG_KEYS},
+            client_cache.get(SZ_SCHEMA, {}) if restore[SZ_RESTORE_SCHEMA] else {},
+        )
+
+        if restore[SZ_RESTORE_STATE]:
+            cached_packets = {
+                dtm: pkt
+                for dtm, pkt in client_cache.get(SZ_PACKETS, {}).items()
+                if dt.fromisoformat(dtm) > dt.now() - timedelta(days=1)
+                and pkt[41:45] not in ("313F",)
+            }
         else:
-            _LOGGER.info(
-                "Not restoring any cached state (disabled), "
-                "consider using 'restore_cache: restore_state: true'"
-            )
+            cached_packets = {}
 
-        _LOGGER.debug("Starting the RF monitor")
-        self.loop_task = self.hass.async_create_task(self.client.start())
+        if not restore[SZ_RESTORE_SCHEMA]:
+            cached_packets = {
+                dtm: pkt
+                for dtm, pkt in cached_packets.items()
+                if pkt[41:45] not in ("0005", "000C")
+            }
+
+        await self.client.start(cached_packets=cached_packets)
 
         self.hass.helpers.event.async_track_time_interval(
             self.async_save_client_state, SAVE_STATE_INTERVAL
@@ -92,45 +117,35 @@ class RamsesBroker:
             self.async_update, self.hass_config[DOMAIN][CONF_SCAN_INTERVAL]
         )
 
-    async def _create_client(self) -> None:
-        """Create a client with an inital schema.
+    def _create_client(
+        self,
+        client_config: dict[str:Any],
+        config_schema: dict[str:Any],
+        cached_schema: dict[str:Any] | None = None,
+    ) -> Gateway:
+        """Create a client with an inital schema (merged or config)."""
 
-        The order of preference for the schema is: merged/cached/config/null.
-        """
-
-        storage = await self._async_load_storage()
-        self._known_commands = merge(self._known_commands, storage.get("remotes", {}))
-
-        CONFIG_KEYS = (SZ_CONFIG, SZ_PACKET_LOG, SZ_PORT_CONFIG)
-        config = {k: v for k, v in self._client_config.items() if k in CONFIG_KEYS}
-        schema = {k: v for k, v in self._client_config.items() if k not in config}
-
-        if not schema_is_minimal(schema):  # TODO: move all this logix in ramses_rf
+        # TODO: move this to volutuous schema
+        if not schema_is_minimal(config_schema):  # move this logic into ramses_rf?
             _LOGGER.warning("The config schema is not minimal (consider minimising it)")
 
-        schemas = merge_schemas(
-            self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA],
-            schema,
-            storage.get("client_state", {}).get(SZ_SCHEMA, {}),
-        )
-        for msg, schema in schemas.items():
+        if cached_schema and (merged := merge_schemas(cached_schema, config_schema)):
             try:
-                self.client = Gateway(
-                    self._ser_name, loop=self.hass.loop, **config, **schema
+                return Gateway(
+                    self._ser_name, loop=self.hass.loop, **client_config, **merged
                 )
             except (LookupError, vol.MultipleInvalid) as exc:
                 # LookupError:     ...in the schema, but also in the block_list
                 # MultipleInvalid: ...extra keys not allowed @ data['???']
-                _LOGGER.warning("Failed to initialise with %s schema: %s", msg, exc)
-            else:
-                _LOGGER.info("Success initialising with %s schema: %s", msg, schema)
-                break
-        else:
-            self.client = Gateway(self._ser_name, loop=self.hass.loop, **config)
-            _LOGGER.warning("Required to initialise with an empty schema: {}")
+                _LOGGER.warning("Failed to initialise with merged schema: %s", exc)
+
+        return Gateway(
+            self._ser_name, loop=self.hass.loop, **client_config, **config_schema
+        )
 
     async def _async_load_storage(self) -> dict:
         """May return an empty dict."""
+
         app_storage = await self._store.async_load()  # return None if no store
         return app_storage or {}
 
@@ -139,17 +154,20 @@ class RamsesBroker:
 
         _LOGGER.info("Restoring the client state cache (packets)")
         app_storage = await self._async_load_storage()
-        if client_state := app_storage.get("client_state"):
+
+        if client_state := app_storage.get(SZ_CLIENT_STATE):
             packets = {
-                k: m
-                for k, m in client_state["packets"].items()
-                if dt.fromisoformat(k) > dt.now() - timedelta(days=1)
-                and (
-                    m[41:45] in ("10E0")
-                    or self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA]
-                    or m[41:45] not in ("0004", "0005", "000C")
-                )  # force-load new schema (dont use cached schema pkts)
+                dtm: pkt
+                for dtm, pkt in client_state[SZ_PACKETS].items()
+                if dt.fromisoformat(dtm) > dt.now() - timedelta(days=1)
             }
+            if not self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA]:
+                packets = {
+                    dtm: pkt
+                    for dtm, pkt in packets.items()
+                    if pkt[41:45] not in ("0005", "000C")
+                }
+
             await self.client._set_state(packets=packets)  # FIXME, issue #79
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
@@ -158,14 +176,14 @@ class RamsesBroker:
         _LOGGER.info("Saving the client state cache (packets, schema)")
 
         (schema, packets) = self.client._get_state()
-        remote_commands = self._known_commands | {
+        remotes = self._known_remotes | {
             k: v._commands for k, v in self._entities.items() if hasattr(v, "_commands")
         }
 
         await self._store.async_save(
             {
-                "client_state": {"schema": schema, "packets": packets},
-                "remotes": remote_commands,
+                SZ_CLIENT_STATE: {SZ_SCHEMA: schema, SZ_PACKETS: packets},
+                SZ_REMOTES: remotes,
             }
         )
 
@@ -247,13 +265,10 @@ class RamsesBroker:
         ]:
             self._rems.extend(new_remotes)
 
+            discovered = {SZ_REMOTES: new_remotes}
             self.hass.async_create_task(
                 async_load_platform(
-                    self.hass,
-                    Platform.REMOTE,
-                    DOMAIN,
-                    {"remotes": new_remotes},  # discovery_info,
-                    self.hass_config,
+                    self.hass, Platform.REMOTE, DOMAIN, discovered, self.hass_config
                 )
             )
 
