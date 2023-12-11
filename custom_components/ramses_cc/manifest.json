@@ -3,11 +3,11 @@
     "name": "RAMSES RF",
     "documentation": "https://github.com/zxdavb/ramses_cc",
     "requirements": [
-      "ramses-rf==0.30.4",
+      "ramses-rf==0.30.5",
       "pyserial-asyncio==0.6"
     ],
     "dependencies": [],
     "issue_tracker": "https://github.com/zxdavb/ramses_cc/issues",
     "codeowners": ["@zxdavb"],
-    "version": "0.30.4"
+    "version": "0.30.5"
   }
