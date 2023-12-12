@@ -74,7 +74,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         self.entity_id = f"{DOMAIN}.{device.id}"
 
         self._attr_is_on = True
-        self._commands: dict[str, dict] = broker._known_commands.get(device.id, {})
+        self._commands: dict[str, dict] = broker._remotes.get(device.id, {})
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
