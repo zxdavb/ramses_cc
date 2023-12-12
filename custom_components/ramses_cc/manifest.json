@@ -9,5 +9,5 @@
     "dependencies": [],
     "issue_tracker": "https://github.com/zxdavb/ramses_cc/issues",
     "codeowners": ["@zxdavb"],
-    "version": "0.30.5"
+    "version": "0.30.5a"
   }
