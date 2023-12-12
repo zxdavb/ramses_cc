@@ -53,7 +53,7 @@ class RamsesBroker:
 
         # self.status = None
         self.client: Gateway = None  # type: ignore[assignment]
-        self._known_remotes: dict[str, str] = None  # type: ignore[assignment]
+        self._remotes: dict[str, str] = None  # type: ignore[assignment]
 
         self._services = {}
         self._entities = {}  # domain entities
@@ -80,7 +80,7 @@ class RamsesBroker:
 
         storage = await self._async_load_storage()
 
-        self._known_remotes = storage.get(SZ_REMOTES, {}) | self.config[SZ_REMOTES]
+        self._remotes = storage.get(SZ_REMOTES, {}) | self.config[SZ_REMOTES]
         client_cache: dict[str, Any] = storage.get(SZ_CLIENT_STATE, {})
 
         restore = self.config[SZ_RESTORE_CACHE]
@@ -176,7 +176,7 @@ class RamsesBroker:
         _LOGGER.info("Saving the client state cache (packets, schema)")
 
         (schema, packets) = self.client._get_state()
-        remotes = self._known_remotes | {
+        remotes = self._remotes | {
             k: v._commands for k, v in self._entities.items() if hasattr(v, "_commands")
         }
 
