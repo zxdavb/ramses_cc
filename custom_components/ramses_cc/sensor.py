@@ -97,6 +97,12 @@ async def async_setup_platform(
     ]  # and (not device._is_faked or device["fakable"])
 
     new_sensors += [
+        entity_factory(broker, device, SZ_OEM_CODE, state_class=None)
+        for device in discovery_info.get("devices", [])
+        if device._SLUG == "OTB"
+    ]
+
+    new_sensors += [
         entity_factory(broker, device, f"{attr}_ot", **v)
         for device in discovery_info.get("devices", [])
         for attr, v in SENSOR_ATTRS_HEAT.items()
@@ -273,7 +279,7 @@ SZ_UNIQUE_ID_ATTR = "unique_id_attr"
 
 SENSOR_ATTRS_HEAT = {
     # Special projects
-    SZ_OEM_CODE: {STATE_CLASS: None},  # 3220/73
+    # SZ_OEM_CODE: {STATE_CLASS: None},  # 3220/73, but not 10E0
     "percent": {  # TODO: 2401
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: RamsesRelayDemand,
