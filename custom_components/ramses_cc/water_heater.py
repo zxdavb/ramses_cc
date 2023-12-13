@@ -131,7 +131,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     @property
     def name(self) -> str | None:
         """Return the name of the zone."""
-        return self.rf_entity.name
+        return self._device.name
 
     @property
     def target_temperature(self) -> float | None:
