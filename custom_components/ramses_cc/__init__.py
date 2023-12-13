@@ -220,7 +220,7 @@ class RamsesEntity(Entity):
 
 
 class RamsesSensorBase(RamsesEntity):
-    """Base for any Ramses sensor entity."""
+    """Base for any Ramses sensor/binary_sensor entity."""
 
     def __init__(
         self,

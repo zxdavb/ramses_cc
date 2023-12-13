@@ -166,7 +166,7 @@ class RamsesController(RamsesEntity, ClimateEntity):
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
     def __init__(self, broker, device) -> None:
-        """Initialize a Ramses controller."""
+        """Initialize a TCS controller."""
         _LOGGER.info("Found controller %r", device)
         super().__init__(broker, device)
 
@@ -309,7 +309,7 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
     def __init__(self, broker, device) -> None:
-        """Initialize a Ramses zone."""
+        """Initialize a TCS zone."""
         _LOGGER.info("Found zone %r", device)
         super().__init__(broker, device)
 
