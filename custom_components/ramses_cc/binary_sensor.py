@@ -30,6 +30,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesSensorBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
+from .coordinator import RamsesBroker
 from .schemas import SVCS_BINARY_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ async def async_setup_platform(
       domains: TCS, DHW and Zones
     """
 
-    def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
+    def entity_factory(broker: RamsesBroker, device, attr, *, entity_class=None, **kwargs):
         return (entity_class or RamsesBinarySensor)(broker, device, attr, **kwargs)
 
     if discovery_info is None:
@@ -101,7 +102,7 @@ class RamsesBinarySensor(RamsesSensorBase, BinarySensorEntity):
 
     def __init__(
         self,
-        broker,  # ramses_cc broker
+        broker: RamsesBroker,  # ramses_cc broker
         device,  # ramses_rf device
         state_attr,  # key of attr_dict +/- _ot suffix
         device_class=None,  # attr_dict value

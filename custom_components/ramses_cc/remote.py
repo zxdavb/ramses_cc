@@ -23,6 +23,7 @@ from homeassistant.helpers.typing import DiscoveryInfoType
 
 from . import RamsesEntity
 from .const import BROKER, DOMAIN
+from .coordinator import RamsesBroker
 from .schemas import SVCS_REMOTE
 
 QOS_HIGH = {"priority": Priority.HIGH, "retries": 3}
@@ -66,15 +67,15 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
     )
 
-    def __init__(self, broker, device) -> None:
-        """Initialize a sensor."""
+    def __init__(self, broker: RamsesBroker, device) -> None:
+        """Initialize a HVAC remote."""
         _LOGGER.info("Found %r", device)
         super().__init__(broker, device)
 
         self.entity_id = f"{DOMAIN}.{device.id}"
 
         self._attr_is_on = True
-        self._commands: dict[str, dict] = broker._known_commands.get(device.id, {})
+        self._commands: dict[str, dict] = broker._remotes.get(device.id, {})
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

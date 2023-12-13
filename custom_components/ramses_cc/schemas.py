@@ -4,9 +4,10 @@ from __future__ import annotations
 from copy import deepcopy
 from datetime import timedelta
 import logging
+from typing import Any, TypeAlias
 
 from ramses_rf.const import SZ_DEVICE_ID
-from ramses_rf.helpers import merge, shrink
+from ramses_rf.helpers import deep_merge, shrink
 from ramses_rf.schemas import (
     SCH_GATEWAY_CONFIG,
     SCH_GLOBAL_SCHEMAS_DICT,
@@ -30,6 +31,8 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 
 from .const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
+
+_SchemaT: TypeAlias = dict[str, Any]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -374,6 +377,22 @@ SCH_DOMAIN_CONFIG = (
     .extend(sch_serial_port_dict_factory())
 )
 
+SCH_MINIMUM_TCS = vol.Schema(
+    {
+        vol.Optional("system"): vol.Schema(
+            {vol.Required("appliance_control"): vol.Match(r"^10:[0-9]{6}$")}
+        ),
+        vol.Optional("zones", default={}): vol.Schema(
+            {
+                vol.Required(str): vol.Schema(
+                    {vol.Required("sensor"): vol.Match(r"^01:[0-9]{6}$")}
+                )
+            }
+        ),
+    },
+    extra=vol.PREVENT_EXTRA,
+)
+
 
 def _is_subset(subset, superset) -> bool:  # TODO: move to ramses_rf?
     """Return True is one dict (or list/set) is a subset of another."""
@@ -417,72 +436,21 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
 
 
 @callback
-def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -> dict:
-    """Return a hierarchy of schema to try (merged/cached, config)."""
-
-    if not merge_cache:  # should not be None
-        _LOGGER.debug("A cached schema was not provided/enabled")
-        # cached_schema = {}  # in case is None
-    else:
-        _LOGGER.debug("Loading a cached schema: %s", cached_schema)
-
-    if not config_schema:  # could be None
-        _LOGGER.debug("A config schema was not provided")
-        config_schema = {}  # in case is None
-    else:  # normalise config_schema
-        _LOGGER.debug("Loading a config schema: %s", config_schema)
-
-    if not merge_cache or not cached_schema:
-        _LOGGER.warning(
-            "Using the config schema (cached schema IS NOT valid / enabled), "
-            "consider using 'restore_cache: restore_schema: true'"
-        )
-        return {"the config": config_schema}  # maybe config = {}
+def merge_schemas(config_schema: _SchemaT, cached_schema: _SchemaT) -> _SchemaT | None:
+    """Return the config schema deep merged into the cached schema."""
 
     if _is_subset(shrink(config_schema), shrink(cached_schema)):
-        _LOGGER.info(
-            "Using the cached schema (cached schema is a superset of the config schema)"
-        )
-        return {
-            "the cached": cached_schema,
-            "the config": config_schema,
-        }  # maybe even cached = config
+        _LOGGER.info("Using the cached schema")
+        return cached_schema
 
-    # maybe the config schema has changed...
-    merged_schema = merge(config_schema, cached_schema)  # config takes precidence
-    _LOGGER.debug("Created a merged schema: %s", merged_schema)
+    merged_schema = deep_merge(config_schema, cached_schema)  # 1st takes precidence
 
     if _is_subset(shrink(config_schema), shrink(merged_schema)):
-        _LOGGER.info(
-            "Using a merged schema (cached schema IS a superset of the config schema)"
-        )
-        return {
-            "a merged (config/cached)": merged_schema,
-            "the config": config_schema,
-        }
+        _LOGGER.info("Using a merged schema")
+        return merged_schema
 
-    _LOGGER.warning(
-        "Using the config schema (merged schema IS NOT a superset of the config schema)"
-        ", this is unexpected, unless you have changed the config schema"
-    )  # something went wrong!
-    return {"the config": config_schema}  # maybe config = {}
-
-
-SCH_MINIMUM_TCS = vol.Schema(
-    {
-        vol.Optional("system"): vol.Schema(
-            {vol.Required("appliance_control"): vol.Match(r"^10:[0-9]{6}$")}
-        ),
-        vol.Optional("zones", default={}): vol.Schema(
-            {
-                vol.Required(str): vol.Schema(
-                    {vol.Required("sensor"): vol.Match(r"^01:[0-9]{6}$")}
-                )
-            }
-        ),
-    },
-    extra=vol.PREVENT_EXTRA,
-)
+    _LOGGER.info("Cached schema is a subset of config schema")
+    return None
 
 
 @callback

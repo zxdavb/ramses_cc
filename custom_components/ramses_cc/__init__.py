@@ -167,7 +167,7 @@ class RamsesEntity(Entity):
 
     _attr_should_poll = False
 
-    def __init__(self, broker, device) -> None:
+    def __init__(self, broker: RamsesBroker, device) -> None:
         """Initialize the entity."""
         self.hass = broker.hass
         self._broker = broker

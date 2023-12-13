@@ -43,6 +43,7 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
+from .coordinator import RamsesBroker
 from .schemas import (
     CONF_MODE,
     CONF_SYSTEM_MODE,
@@ -165,7 +166,7 @@ class RamsesController(RamsesEntity, ClimateEntity):
     _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker, device) -> None:
+    def __init__(self, broker: RamsesBroker, device) -> None:
         """Initialize a TCS controller."""
         _LOGGER.info("Found controller %r", device)
         super().__init__(broker, device)
@@ -308,7 +309,7 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     _attr_target_temperature_step: float = PRECISION_TENTHS
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker, device) -> None:
+    def __init__(self, broker: RamsesBroker, device) -> None:
         """Initialize a TCS zone."""
         _LOGGER.info("Found zone %r", device)
         super().__init__(broker, device)
@@ -502,8 +503,8 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     )
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker, device) -> None:
-        """Initialize a Ramses hvac."""
+    def __init__(self, broker: RamsesBroker, device) -> None:
+        """Initialize a HVAC system."""
         _LOGGER.info("Found HVAC %r", device)
         super().__init__(broker, device)
 

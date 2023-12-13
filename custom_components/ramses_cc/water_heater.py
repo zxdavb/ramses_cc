@@ -24,6 +24,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity
 from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
+from .coordinator import RamsesBroker
 from .schemas import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE, SVCS_WATER_HEATER_EVO_DHW
 
 _LOGGER = logging.getLogger(__name__)
@@ -87,7 +88,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     )
 
     def __init__(self, broker, device) -> None:
-        """Initialize a Ramses water heater."""
+        """Initialize an TCS DHW controller."""
         _LOGGER.info("Found %r", device)
         super().__init__(broker, device)
 
