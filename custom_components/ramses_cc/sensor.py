@@ -61,6 +61,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesDeviceBase
 from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
+from .coordinator import RamsesBroker
 from .schemas import SVCS_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
@@ -129,7 +130,7 @@ class RamsesSensor(RamsesDeviceBase, SensorEntity):
 
     def __init__(
         self,
-        broker,  # ramses_cc broker
+        broker: RamsesBroker,  # ramses_cc broker
         device,  # ramses_rf device
         state_attr,  # key of attr_dict +/- _ot suffix
         device_class=None,  # attr_dict value
@@ -231,7 +232,7 @@ class RamsesFaultLog(RamsesDeviceBase):
     # DEVICE_CLASS = DEVICE_CLASS_PROBLEM
     DEVICE_UNITS = "entries"
 
-    def __init__(self, broker, device) -> None:
+    def __init__(self, broker: RamsesBroker, device) -> None:
         """Initialize the sensor."""
         super().__init__(broker, device, None, None)  # TODO
 

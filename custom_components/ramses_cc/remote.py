@@ -22,6 +22,7 @@ from homeassistant.helpers.typing import DiscoveryInfoType
 
 from . import RamsesEntity
 from .const import BROKER, DOMAIN
+from .coordinator import RamsesBroker
 from .schemas import SVCS_REMOTE
 
 QOS_HIGH = {"priority": Priority.HIGH, "retries": 3}
@@ -67,7 +68,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
     )
     # _attr_state: None = None
 
-    def __init__(self, broker, device, **kwargs) -> None:
+    def __init__(self, broker: RamsesBroker, device, **kwargs) -> None:
         """Initialize a sensor."""
         _LOGGER.info("Found a Remote: %s", device)
         super().__init__(broker, device)
