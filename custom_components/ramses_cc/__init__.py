@@ -4,6 +4,7 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 from __future__ import annotations
 
+from functools import partial
 import logging
 from typing import Any
 
@@ -209,14 +210,15 @@ class RamsesEntity(Entity):
         self._broker._entities[self.unique_id] = self
         async_dispatcher_connect(self.hass, DOMAIN, self.async_handle_dispatch)
 
-    @callback  # TODO: WIP
+    # @callback  # TODO: WIP
     def _call_client_api(self, func, *args, **kwargs) -> None:
         """Wrap client APIs to make them threadsafe."""
-        # self.hass.loop.call_soon_threadsafe(
-        #     func(*args, **kwargs)
-        # )  # HACK: call_soon_threadsafe should not be needed
+        
+        self.hass.loop.call_soon_threadsafe(
+            partial(func, *args, **kwargs)
+        )  # HACK: call_soon_threadsafe should not be needed, but is!
 
-        func(*args, **kwargs)
+        # func(*args, **kwargs)
         self.update_ha_state()
 
     @callback
