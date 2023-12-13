@@ -61,6 +61,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesDeviceBase
 from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
+from .coordinator import RamsesBroker
 from .schemas import SVCS_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
@@ -89,24 +90,30 @@ async def async_setup_platform(
     broker = hass.data[DOMAIN][BROKER]
 
     new_sensors = [
-        entity_factory(broker, device, k, **v)
+        entity_factory(broker, device, attr, **v)
         for device in discovery_info.get("devices", [])
-        for k, v in SENSOR_ATTRS.items()
-        if hasattr(device, k)
+        for attr, v in SENSOR_ATTRS.items()
+        if hasattr(device, attr)
     ]  # and (not device._is_faked or device["fakable"])
 
     new_sensors += [
-        entity_factory(broker, device, f"{k}_ot", **v)
+        entity_factory(broker, device, SZ_OEM_CODE, state_class=None)
         for device in discovery_info.get("devices", [])
-        for k, v in SENSOR_ATTRS_HEAT.items()
-        if device._SLUG == "OTB" and hasattr(device, f"{k}_ot")
+        if device._SLUG == "OTB"
     ]
 
     new_sensors += [
-        entity_factory(broker, domain, k, **v)
+        entity_factory(broker, device, f"{attr}_ot", **v)
+        for device in discovery_info.get("devices", [])
+        for attr, v in SENSOR_ATTRS_HEAT.items()
+        if device._SLUG == "OTB" and hasattr(device, f"{attr}_ot")
+    ]
+
+    new_sensors += [
+        entity_factory(broker, domain, attr, **v)
         for domain in discovery_info.get("domains", [])
-        for k, v in SENSOR_ATTRS_HEAT.items()
-        if k == "heat_demand" and hasattr(domain, k)
+        for attr, v in SENSOR_ATTRS_HEAT.items()
+        if attr == "heat_demand" and hasattr(domain, attr)
     ]
 
     async_add_entities(new_sensors)
@@ -129,7 +136,7 @@ class RamsesSensor(RamsesDeviceBase, SensorEntity):
 
     def __init__(
         self,
-        broker,  # ramses_cc broker
+        broker: RamsesBroker,  # ramses_cc broker
         device,  # ramses_rf device
         state_attr,  # key of attr_dict +/- _ot suffix
         device_class=None,  # attr_dict value
@@ -231,7 +238,7 @@ class RamsesFaultLog(RamsesDeviceBase):
     # DEVICE_CLASS = DEVICE_CLASS_PROBLEM
     DEVICE_UNITS = "entries"
 
-    def __init__(self, broker, device) -> None:
+    def __init__(self, broker: RamsesBroker, device) -> None:
         """Initialize the sensor."""
         super().__init__(broker, device, None, None)  # TODO
 
@@ -272,7 +279,7 @@ SZ_UNIQUE_ID_ATTR = "unique_id_attr"
 
 SENSOR_ATTRS_HEAT = {
     # Special projects
-    SZ_OEM_CODE: {STATE_CLASS: None},  # 3220/73
+    # SZ_OEM_CODE: {STATE_CLASS: None},  # 3220/73, but not 10E0
     "percent": {  # TODO: 2401
         DEVICE_UNITS: PERCENTAGE,
         ENTITY_CLASS: RamsesRelayDemand,

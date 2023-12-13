@@ -4,6 +4,7 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 from __future__ import annotations
 
+from functools import partial
 import logging
 from typing import Any
 
@@ -181,7 +182,7 @@ class RamsesEntity(Entity):
     _attr_unique_id: str | None = None
     # _attr_unit_of_measurement: str | None
 
-    def __init__(self, broker, device) -> None:
+    def __init__(self, broker: RamsesBroker, device) -> None:
         """Initialize the entity."""
         self.hass = broker.hass
         self._broker = broker
@@ -257,7 +258,7 @@ class RamsesZoneBase(RamsesEntity):  # for: climate & water_heater
     _attr_precision: float = PRECISION_TENTHS
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker, device) -> None:
+    def __init__(self, broker: RamsesBroker, device) -> None:
         """Initialize the sensor."""
         super().__init__(broker, device)
 
