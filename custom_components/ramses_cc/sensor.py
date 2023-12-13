@@ -90,24 +90,24 @@ async def async_setup_platform(
     broker = hass.data[DOMAIN][BROKER]
 
     new_sensors = [
-        entity_factory(broker, device, k, **v)
+        entity_factory(broker, device, attr, **v)
         for device in discovery_info.get("devices", [])
-        for k, v in SENSOR_ATTRS.items()
-        if hasattr(device, k)
+        for attr, v in SENSOR_ATTRS.items()
+        if hasattr(device, attr)
     ]  # and (not device._is_faked or device["fakable"])
 
     new_sensors += [
-        entity_factory(broker, device, f"{k}_ot", **v)
+        entity_factory(broker, device, f"{attr}_ot", **v)
         for device in discovery_info.get("devices", [])
-        for k, v in SENSOR_ATTRS_HEAT.items()
-        if device._SLUG == "OTB" and hasattr(device, f"{k}_ot")
+        for attr, v in SENSOR_ATTRS_HEAT.items()
+        if device._SLUG == "OTB" and hasattr(device, f"{attr}_ot")
     ]
 
     new_sensors += [
-        entity_factory(broker, domain, k, **v)
+        entity_factory(broker, domain, attr, **v)
         for domain in discovery_info.get("domains", [])
-        for k, v in SENSOR_ATTRS_HEAT.items()
-        if k == "heat_demand" and hasattr(domain, k)
+        for attr, v in SENSOR_ATTRS_HEAT.items()
+        if attr == "heat_demand" and hasattr(domain, attr)
     ]
 
     async_add_entities(new_sensors)
