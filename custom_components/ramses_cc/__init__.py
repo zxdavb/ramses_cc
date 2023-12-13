@@ -213,12 +213,11 @@ class RamsesEntity(Entity):
     # @callback  # TODO: WIP
     def _call_client_api(self, func, *args, **kwargs) -> None:
         """Wrap client APIs to make them threadsafe."""
-        
+
         self.hass.loop.call_soon_threadsafe(
             partial(func, *args, **kwargs)
         )  # HACK: call_soon_threadsafe should not be needed, but is!
 
-        # func(*args, **kwargs)
         self.update_ha_state()
 
     @callback
