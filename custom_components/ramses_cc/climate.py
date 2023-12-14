@@ -259,28 +259,10 @@ class RamsesController(RamsesEntity, ClimateEntity):
         self.svc_set_system_mode(PRESET_TO_TCS.get(preset_mode, SystemMode.AUTO))
 
     @callback
-    def async_handle_dispatch(self, *args) -> None:
-        """Process a service request (system mode) for a controller."""
-        if not args:
-            self.update_ha_state()
-            return
-
-        payload = args[0]
-        if payload.get(UNIQUE_ID) != self.unique_id:
-            return
-        elif payload[SERVICE] == SVC_RESET_SYSTEM_MODE:
-            self._call_client_api(self._device.reset_mode)
-        elif payload[SERVICE] == SVC_SET_SYSTEM_MODE:
-            kwargs = dict(payload[DATA])
-            kwargs["system_mode"] = kwargs.pop("mode", None)
-            until = kwargs.pop("duration", None) or kwargs.pop("period", None)
-            kwargs["until"] = (dt.now() + until) if until else None
-            self._call_client_api(self._device.set_mode, **kwargs)
-
-    @callback
     def svc_reset_system_mode(self) -> None:
         """Reset the (native) operating mode of the Controller."""
-        self._call_client_api(self._device.reset_mode)
+        self._device.reset_mode()
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_set_system_mode(self, mode, period=None, days=None) -> None:
@@ -291,7 +273,8 @@ class RamsesController(RamsesEntity, ClimateEntity):
             until = dt.now() + days  # TODO: round down
         else:
             until = None
-        self._call_client_api(self._device.set_mode, system_mode=mode, until=until)
+        self._device.set_mode(system_mode=mode, until=until)
+        self.async_write_ha_state_delayed()
 
 
 class RamsesZone(RamsesEntity, ClimateEntity):
@@ -446,22 +429,25 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         self._device.sensor._make_fake()
         self._device.sensor.temperature = temperature
         self._device._get_temp()
-        self.update_ha_state()
+        self.async_write_ha_state()
 
     @callback
     def svc_reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""
-        self._call_client_api(self._device.reset_config)
+        self._device.reset_config()
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_reset_zone_mode(self) -> None:
         """Reset the (native) operating mode of the Zone."""
-        self._call_client_api(self._device.reset_mode)
+        self._device.reset_mode()
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_set_zone_config(self, **kwargs) -> None:
         """Set the configuration of the Zone (min/max temp, etc.)."""
-        self._call_client_api(self._device.set_config, **kwargs)
+        self._device.set_config(**kwargs)
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_set_zone_mode(
@@ -470,15 +456,14 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         """Set the (native) operating mode of the Zone."""
         if until is None and duration is not None:
             until = dt.now() + duration
-        self._call_client_api(
-            self._device.set_mode, mode=mode, setpoint=setpoint, until=until
-        )
+        self._device.set_mode(mode=mode, setpoint=setpoint, until=until)
+        self.async_write_ha_state_delayed()
 
     async def svc_get_zone_schedule(self, **kwargs) -> None:
         """Get the latest weekly schedule of the Zone."""
         # {{ state_attr('climate.ramses_cc_01_145038_04', 'schedule') }}
         await self._device.get_schedule()
-        self.update_ha_state()
+        self.async_write_ha_state()
 
     async def svc_set_zone_schedule(self, schedule: str, **kwargs) -> None:
         """Set the weekly schedule of the Zone."""

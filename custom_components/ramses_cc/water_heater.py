@@ -139,20 +139,6 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         """Return the temperature we try to reach."""
         return self._device.setpoint
 
-    @callback
-    def async_handle_dispatch(self, *args: Any) -> None:
-        """Process a service request (system mode) for a controller."""
-        if not args:
-            self.update_ha_state()
-            return
-
-        payload = args[0]
-        if payload.get(UNIQUE_ID) != self.unique_id:
-            return
-
-        with contextlib.suppress(AttributeError):
-            getattr(self, f"svc_{payload[SERVICE]}")(**dict(payload[DATA]))
-
     def set_operation_mode(self, operation_mode: str) -> None:
         """Set the operating mode of the water heater."""
         active = until = None  # for STATE_AUTO
@@ -180,17 +166,20 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     @callback
     def svc_reset_dhw_mode(self) -> None:
         """Reset the operating mode of the water heater."""
-        self._call_client_api(self._device.reset_mode)
+        self._device.reset_mode()
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_reset_dhw_params(self) -> None:
         """Reset the configuration of the water heater."""
-        self._call_client_api(self._device.reset_config)
+        self._device.reset_config()
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_set_dhw_boost(self) -> None:
         """Enable the water heater for an hour."""
-        self._call_client_api(self._device.set_boost_mode)
+        self._device.set_boost_mode()
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_set_dhw_mode(
@@ -199,27 +188,26 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         """Set the (native) operating mode of the water heater."""
         if until is None and duration is not None:
             until = dt.now() + duration
-        self._call_client_api(
-            self._device.set_mode, mode=mode, active=active, until=until
-        )
+        self._device.set_mode(mode=mode, active=active, until=until)
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_set_dhw_params(
         self, setpoint: float = None, overrun=None, differential=None
     ) -> None:
         """Set the configuration of the water heater."""
-        self._call_client_api(
-            self._device.set_config,
+        self._device.set_config(
             setpoint=setpoint,
             overrun=overrun,
             differential=differential,
         )
+        self.async_write_ha_state_delayed()
 
     async def svc_get_dhw_schedule(self, **kwargs) -> None:
         """Get the latest weekly schedule of the DHW."""
         # {{ state_attr('water_heater.stored_hw', 'schedule') }}
         await self._device.get_schedule()
-        self.update_ha_state()
+        self.async_write_ha_state()
 
     async def svc_set_dhw_schedule(self, schedule: str, **kwargs) -> None:
         """Set the weekly schedule of the DHW."""
