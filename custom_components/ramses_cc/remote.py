@@ -7,6 +7,7 @@ from datetime import datetime as dt, timedelta
 import logging
 from typing import Any
 
+from ramses_rf.device.hvac import HvacRemote
 from ramses_tx import Command, Priority
 
 from homeassistant.components.remote import (
@@ -59,27 +60,21 @@ async def async_setup_platform(
 class RamsesRemote(RamsesEntity, RemoteEntity):
     """Representation of a generic sensor."""
 
-    # entity_description: RemoteEntityDescription
-    # _attr_activity_list: list[str] | None = None
+    _device: HvacRemote
+
     _attr_assumed_state: bool = True
-    # _attr_current_activity: str | None = None
     _attr_supported_features: int = (
         RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
     )
-    # _attr_state: None = None
 
-    def __init__(self, broker: RamsesBroker, device, **kwargs) -> None:
-        """Initialize a sensor."""
-        _LOGGER.info("Found a Remote: %s", device)
+    def __init__(self, broker: RamsesBroker, device) -> None:
+        """Initialize a HVAC remote."""
+        _LOGGER.info("Found %r", device)
         super().__init__(broker, device)
 
         self.entity_id = f"{DOMAIN}.{device.id}"
 
         self._attr_is_on = True
-        self._attr_unique_id = (
-            device.id
-        )  # dont include domain (ramses_cc) / platform (remote)
-
         self._commands: dict[str, dict] = broker._remotes.get(device.id, {})
 
     @property

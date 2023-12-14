@@ -6,6 +6,9 @@ import json
 import logging
 from typing import Any
 
+from ramses_rf.system.heat import Evohome
+from ramses_rf.system.zones import Zone
+
 from homeassistant.components.climate import (
     DOMAIN as PLATFORM,
     FAN_AUTO,
@@ -29,7 +32,7 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import RamsesEntity, RamsesZoneBase
+from . import RamsesEntity
 from .const import (
     ATTR_SETPOINT,
     BROKER,
@@ -149,19 +152,23 @@ async def async_setup_platform(
         async_add_entities(new_entities)
 
 
-class RamsesController(RamsesZoneBase, ClimateEntity):
-    """Base for a Honeywell Controller/Location."""
+class RamsesController(RamsesEntity, ClimateEntity):
+    """Representation of a Ramses controller."""
+
+    _device: Evohome
 
     _attr_icon: str = "mdi:thermostat"
     _attr_hvac_modes: list[str] = list(MODE_TO_TCS)
-    _attr_preset_modes: list[str] = list(PRESET_TO_TCS)
-    _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
     _attr_max_temp: float | None = None
     _attr_min_temp: float | None = None
+    _attr_precision: float = PRECISION_TENTHS
+    _attr_preset_modes: list[str] = list(PRESET_TO_TCS)
+    _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
+    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
     def __init__(self, broker: RamsesBroker, device) -> None:
-        """Initialize a TCS Controller."""
-        _LOGGER.info("Found a Controller: %r", device)
+        """Initialize a TCS controller."""
+        _LOGGER.info("Found controller %r", device)
         super().__init__(broker, device)
 
     @property
@@ -181,13 +188,12 @@ class RamsesController(RamsesZoneBase, ClimateEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
+        return super().extra_state_attributes | {
             "heat_demand": self._device.heat_demand,
             "heat_demands": self._device.heat_demands,
             "relay_demands": self._device.relay_demands,
             "system_mode": self._device.system_mode,
             "tpi_params": self._device.tpi_params,
-            # "faults": self._device.faultlog,
         }
 
     @property
@@ -271,31 +277,40 @@ class RamsesController(RamsesZoneBase, ClimateEntity):
         self.async_write_ha_state_delayed()
 
 
-class RamsesZone(RamsesZoneBase, ClimateEntity):
-    """Base for a Honeywell TCS Zone."""
+class RamsesZone(RamsesEntity, ClimateEntity):
+    """Representation of a Ramses zone."""
+
+    _device: Zone
 
     _attr_icon: str = "mdi:radiator"
     _attr_hvac_modes: list[str] = list(MODE_TO_ZONE)
+    _attr_precision: PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_TO_ZONE)
     _attr_supported_features: int = (
         ClimateEntityFeature.PRESET_MODE | ClimateEntityFeature.TARGET_TEMPERATURE
     )
     _attr_target_temperature_step: float = PRECISION_TENTHS
+    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
     def __init__(self, broker: RamsesBroker, device) -> None:
-        """Initialize a TCS Zone."""
-        _LOGGER.info("Found a Zone: %r", device)
+        """Initialize a TCS zone."""
+        _LOGGER.info("Found zone %r", device)
         super().__init__(broker, device)
+
+    @property
+    def current_temperature(self) -> float | None:
+        """Return the current temperature."""
+        return self._device.temperature
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
+        return super().extra_state_attributes | {
+            "params": self._device.params,
             "zone_idx": self._device.idx,
             "heating_type": self._device.heating_type,
             "mode": self._device.mode,
             "config": self._device.config,
-            **super().extra_state_attributes,
             "schedule": self._device.schedule,
             "schedule_version": self._device.schedule_version,
         }
@@ -350,6 +365,11 @@ class RamsesZone(RamsesZoneBase, ClimateEntity):
             return self._device.config["min_temp"]
         except TypeError:  # 'NoneType' object is not subscriptable
             return None
+
+    @property
+    def name(self) -> str | None:
+        """Return the name of the zone."""
+        return self._device.name
 
     @property
     def preset_mode(self) -> str | None:
@@ -453,14 +473,6 @@ class RamsesZone(RamsesZoneBase, ClimateEntity):
 class RamsesHvac(RamsesEntity, ClimateEntity):
     """Base for a Honeywell HVAC unit (Fan, HRU, MVHR, PIV, etc)."""
 
-    # PRESET_AWAY = away
-    # PRESET_BOOST (timed), 15, 30, 60, other mins
-    # PRESET_COMFORT: auto with lower CO2
-    # PRESET_NONE: off, low/med/high or auto
-
-    # Climate attrs....
-    _attr_precision: float = PRECISION_TENTHS
-    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
     _attr_fan_modes: list[str] | None = [
         FAN_OFF,
         FAN_AUTO,
@@ -469,20 +481,17 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         FAN_HIGH,
     ]
     _attr_hvac_modes: list[HVACMode] | list[str] = [HVACMode.AUTO, HVACMode.OFF]
+    _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] | None = None
     _attr_supported_features: int = (
         ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.PRESET_MODE
     )
+    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
     def __init__(self, broker: RamsesBroker, device) -> None:
         """Initialize a HVAC system."""
-        _LOGGER.info("Found a HVAC system: %r", device)
-
+        _LOGGER.info("Found HVAC %r", device)
         super().__init__(broker, device)
-
-        self._attr_unique_id = (
-            device.id
-        )  # dont include domain (ramses_cc) / platform (climate)
 
     @property
     def current_humidity(self) -> int | None:
@@ -495,13 +504,6 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self._device.indoor_temp
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        return {
-            **super().extra_state_attributes,
-        }
 
     @property
     def fan_mode(self) -> str | None:
