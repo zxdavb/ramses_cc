@@ -8,6 +8,7 @@ from typing import Any
 
 from ramses_rf.system.heat import Evohome
 from ramses_rf.system.zones import Zone
+from ramses_tx.const import SZ_MODE, SZ_SETPOINT, SZ_SYSTEM_MODE
 
 from homeassistant.components.climate import (
     DOMAIN as PLATFORM,
@@ -33,25 +34,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity
-from .const import (
-    ATTR_SETPOINT,
-    BROKER,
-    DATA,
-    DOMAIN,
-    SERVICE,
-    UNIQUE_ID,
-    SystemMode,
-    ZoneMode,
-)
+from .const import BROKER, DOMAIN, SystemMode, ZoneMode
 from .coordinator import RamsesBroker
-from .schemas import (
-    CONF_MODE,
-    CONF_SYSTEM_MODE,
-    SVC_RESET_SYSTEM_MODE,
-    SVC_SET_SYSTEM_MODE,
-    SVCS_CLIMATE_EVO_TCS,
-    SVCS_CLIMATE_EVO_ZONE,
-)
+from .schemas import SVCS_CLIMATE_EVO_TCS, SVCS_CLIMATE_EVO_ZONE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -202,7 +187,7 @@ class RamsesController(RamsesEntity, ClimateEntity):
 
         if self._device.system_mode is None:
             return  # unable to determine
-        if self._device.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+        if self._device.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACAction.OFF
 
         if self._device.heat_demand:
@@ -218,9 +203,9 @@ class RamsesController(RamsesEntity, ClimateEntity):
 
         if self._device.system_mode is None:
             return  # unable to determine
-        if self._device.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+        if self._device.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACMode.OFF
-        if self._device.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY:
+        if self._device.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY:
             return HVACMode.AUTO  # users can't adjust setpoints in away mode
         return HVACMode.HEAT
 
@@ -235,7 +220,7 @@ class RamsesController(RamsesEntity, ClimateEntity):
 
         if self._device.system_mode is None:
             return  # unable to determine
-        return PRESET_TCS_TO_HA[self._device.system_mode[CONF_SYSTEM_MODE]]
+        return PRESET_TCS_TO_HA[self._device.system_mode[SZ_SYSTEM_MODE]]
 
     @property
     def target_temperature(self) -> float | None:
@@ -321,7 +306,7 @@ class RamsesZone(RamsesEntity, ClimateEntity):
 
         if self._device.tcs.system_mode is None:
             return None  # unable to determine
-        if self._device.tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+        if self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACAction.OFF
 
         if self._device.heat_demand:
@@ -336,16 +321,16 @@ class RamsesZone(RamsesEntity, ClimateEntity):
 
         if self._device.tcs.system_mode is None:
             return  # unable to determine
-        if self._device.tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY:
+        if self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY:
             return HVACMode.AUTO
-        if self._device.tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+        if self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACMode.OFF
 
-        if self._device.mode is None or self._device.mode[ATTR_SETPOINT] is None:
+        if self._device.mode is None or self._device.mode[SZ_SETPOINT] is None:
             return  # unable to determine
         if (
             self._device.config
-            and self._device.mode[ATTR_SETPOINT] <= self._device.config["min_temp"]
+            and self._device.mode[SZ_SETPOINT] <= self._device.config["min_temp"]
         ):
             return HVACMode.OFF
         return HVACMode.HEAT
@@ -378,17 +363,17 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         if self._device.tcs.system_mode is None:
             return None  # unable to determine
         # if self._device.tcs.system_mode[CONF_SYSTEM_MODE] in MODE_TCS_TO_HA:
-        if self._device.tcs.system_mode[CONF_SYSTEM_MODE] in (
+        if self._device.tcs.system_mode[SZ_SYSTEM_MODE] in (
             SystemMode.AWAY,
             SystemMode.HEAT_OFF,
         ):
-            return PRESET_TCS_TO_HA[self._device.tcs.system_mode[CONF_SYSTEM_MODE]]
+            return PRESET_TCS_TO_HA[self._device.tcs.system_mode[SZ_SYSTEM_MODE]]
 
         if self._device.mode is None:
             return None  # unable to determine
-        if self._device.mode[CONF_MODE] == ZoneMode.SCHEDULE:
-            return PRESET_TCS_TO_HA[self._device.tcs.system_mode[CONF_SYSTEM_MODE]]
-        return PRESET_ZONE_TO_HA.get(self._device.mode[CONF_MODE])
+        if self._device.mode[SZ_MODE] == ZoneMode.SCHEDULE:
+            return PRESET_TCS_TO_HA[self._device.tcs.system_mode[SZ_SYSTEM_MODE]]
+        return PRESET_ZONE_TO_HA.get(self._device.mode[SZ_MODE])
 
     @property
     def target_temperature(self) -> float | None:

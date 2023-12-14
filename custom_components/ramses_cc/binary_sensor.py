@@ -50,7 +50,9 @@ async def async_setup_platform(
       domains: TCS, DHW and Zones
     """
 
-    def entity_factory(broker: RamsesBroker, device, attr, *, entity_class=None, **kwargs):
+    def entity_factory(
+        broker: RamsesBroker, device, attr, *, entity_class=None, **kwargs
+    ):
         return (entity_class or RamsesBinarySensor)(broker, device, attr, **kwargs)
 
     if discovery_info is None:
@@ -135,7 +137,7 @@ class RamsesBattery(RamsesBinarySensor):
         """Return the integration-specific state attributes."""
         state = self._device.battery_state
         return super().extra_state_attributes() | {
-            ATTR_BATTERY_LEVEL: state and state.get(ATTR_BATTERY_LEVEL),
+            ATTR_BATTERY_LEVEL: state and state.get("battery_level"),
         }
 
 

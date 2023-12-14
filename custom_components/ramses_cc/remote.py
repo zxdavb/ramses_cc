@@ -26,8 +26,6 @@ from .const import BROKER, DOMAIN
 from .coordinator import RamsesBroker
 from .schemas import SVCS_REMOTE
 
-QOS_HIGH = {"priority": Priority.HIGH, "retries": 3}
-
 _LOGGER = logging.getLogger(__name__)
 
 

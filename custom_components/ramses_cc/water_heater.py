@@ -1,7 +1,6 @@
 """Support for RAMSES water_heater entities."""
 from __future__ import annotations
 
-import contextlib
 from datetime import datetime as dt, timedelta
 import json
 import logging
@@ -9,6 +8,7 @@ from typing import Any
 
 from ramses_rf.system.heat import StoredHw
 from ramses_rf.system.zones import DhwZone
+from ramses_tx.const import SZ_MODE, SZ_SYSTEM_MODE
 
 from homeassistant.components.water_heater import (
     DOMAIN as PLATFORM,
@@ -23,9 +23,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity
-from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
+from .const import BROKER, DOMAIN, SystemMode, ZoneMode
 from .coordinator import RamsesBroker
-from .schemas import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE, SVCS_WATER_HEATER_EVO_DHW
+from .schemas import SVCS_WATER_HEATER_EVO_DHW
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ async def async_setup_platform(
 ) -> None:
     """Create DHW controllers for CH/DHW (heat)."""
 
-    def entity_factory(entity_class, broker, device):  # TODO: deprecate
+    def entity_factory(entity_class, broker: RamsesBroker, device):  # TODO: deprecate
         return entity_class(broker, device)
 
     if discovery_info is None:  # or not discovery_info.get("dhw"):  # not needed
@@ -96,15 +96,15 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     def current_operation(self) -> str:
         """Return the current operating mode (Auto, On, or Off)."""
         try:
-            mode = self._device.mode[CONF_MODE]
+            mode = self._device.mode[SZ_MODE]
         except TypeError:
             return
         if mode == ZoneMode.SCHEDULE:
             return STATE_AUTO
         elif mode == ZoneMode.PERMANENT:
-            return STATE_ON if self._device.mode[CONF_ACTIVE] else STATE_OFF
+            return STATE_ON if self._device.mode["active"] else STATE_OFF
         else:  # there are a number of temporary modes
-            return STATE_BOOST if self._device.mode[CONF_ACTIVE] else STATE_OFF
+            return STATE_BOOST if self._device.mode["active"] else STATE_OFF
 
     @property
     def current_temperature(self) -> float | None:
@@ -125,7 +125,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     def is_away_mode_on(self) -> bool | None:
         """Return True if away mode is on."""
         try:
-            return self._device.tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY
+            return self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY
         except TypeError:
             return
 
