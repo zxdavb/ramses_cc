@@ -1,7 +1,7 @@
 """Support for RAMSES climate entities."""
 from __future__ import annotations
 
-from datetime import datetime as dt
+from datetime import datetime
 import json
 import logging
 from typing import Any
@@ -253,9 +253,9 @@ class RamsesController(RamsesEntity, ClimateEntity):
     def svc_set_system_mode(self, mode, period=None, days=None) -> None:
         """Set the (native) operating mode of the Controller."""
         if period is not None:
-            until = dt.now() + period
+            until = datetime.now() + period
         elif days is not None:
-            until = dt.now() + days  # TODO: round down
+            until = datetime.now() + days  # TODO: round down
         else:
             until = None
         self._device.set_mode(system_mode=mode, until=until)
@@ -440,7 +440,7 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     ) -> None:
         """Set the (native) operating mode of the Zone."""
         if until is None and duration is not None:
-            until = dt.now() + duration
+            until = datetime.now() + duration
         self._device.set_mode(mode=mode, setpoint=setpoint, until=until)
         self.async_write_ha_state_delayed()
 
