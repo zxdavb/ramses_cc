@@ -8,7 +8,7 @@ from typing import Any
 
 from ramses_rf.system.heat import StoredHw
 from ramses_rf.system.zones import DhwZone
-from ramses_tx.const import SZ_MODE, SZ_SYSTEM_MODE
+from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
 
 from homeassistant.components.water_heater import (
     DOMAIN as PLATFORM,
@@ -102,9 +102,9 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         if mode == ZoneMode.SCHEDULE:
             return STATE_AUTO
         elif mode == ZoneMode.PERMANENT:
-            return STATE_ON if self._device.mode["active"] else STATE_OFF
+            return STATE_ON if self._device.mode[SZ_ACTIVE] else STATE_OFF
         else:  # there are a number of temporary modes
-            return STATE_BOOST if self._device.mode["active"] else STATE_OFF
+            return STATE_BOOST if self._device.mode[SZ_ACTIVE] else STATE_OFF
 
     @property
     def current_temperature(self) -> float | None:
