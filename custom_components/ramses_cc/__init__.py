@@ -4,7 +4,6 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 from __future__ import annotations
 
-from functools import partial
 import logging
 from typing import Any
 
@@ -27,15 +26,17 @@ from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import BROKER, DOMAIN, SIGNAL_UPDATE
-from .coordinator import RamsesBroker
-from .schemas import (
-    SCH_DOMAIN_CONFIG,
+from .const import (
+    BROKER,
+    CONF_ADVANCED_FEATURES,
+    CONF_MESSAGE_EVENTS,
+    CONF_SEND_PACKET,
+    DOMAIN,
+    SIGNAL_UPDATE,
     SVC_SEND_PACKET,
-    SVCS_DOMAIN,
-    SZ_ADVANCED_FEATURES,
-    SZ_MESSAGE_EVENTS,
 )
+from .coordinator import RamsesBroker
+from .schemas import SCH_DOMAIN_CONFIG, SVCS_DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
     @callback
     def process_msg(msg, *args, **kwargs):  # process_msg(msg, prev_msg=None)
         if (
-            regex := broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS]
+            regex := broker.config[CONF_ADVANCED_FEATURES][CONF_MESSAGE_EVENTS]
         ) and regex.match(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
@@ -150,7 +151,7 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         hass.helpers.event.async_call_later(5, broker.async_update)
 
     domain_service = SVCS_DOMAIN
-    if not broker.config[SZ_ADVANCED_FEATURES].get(SVC_SEND_PACKET):
+    if not broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
         del domain_service[SVC_SEND_PACKET]
 
     services = {k: v for k, v in locals().items() if k.startswith("svc")}
