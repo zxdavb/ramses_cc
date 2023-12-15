@@ -277,12 +277,12 @@ class RamsesController(RamsesZoneBase, ClimateEntity):
         self._call_client_api(self._device.reset_mode)
 
     @callback
-    def svc_set_system_mode(self, mode, period=None, days=None) -> None:
+    def svc_set_system_mode(self, mode, period=None, duration=None) -> None:
         """Set the (native) operating mode of the Controller."""
         if period is not None:
-            until = dt.now() + period
-        elif days is not None:
-            until = dt.now() + days  # TODO: round down
+            until = dt.now() + period  # Period in days TODO: round down
+        elif duration is not None:
+            until = dt.now() + duration  # Duration in hours/minutes for eco_boost
         else:
             until = None
         self._call_client_api(self._device.set_mode, system_mode=mode, until=until)
