@@ -34,61 +34,70 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity
-from .const import BROKER, DOMAIN, SystemMode, ZoneMode
+from .const import (
+    BROKER,
+    DOMAIN,
+    PRESET_CUSTOM,
+    PRESET_PERMANENT,
+    PRESET_TEMPORARY,
+    SystemMode,
+    ZoneMode,
+)
 from .coordinator import RamsesBroker
 from .schemas import SVCS_CLIMATE_EVO_TCS, SVCS_CLIMATE_EVO_ZONE
 
 _LOGGER = logging.getLogger(__name__)
 
 MODE_TCS_TO_HA = {
-    SystemMode.AUTO: HVACMode.HEAT,  # NOTE: don't use _AUTO
+    SystemMode.AUTO: HVACMode.HEAT,  # NOTE: don't use AUTO
     SystemMode.HEAT_OFF: HVACMode.OFF,
+    SystemMode.RESET: HVACMode.HEAT,
 }
-MODE_TCS_TO_HA[SystemMode.RESET] = MODE_TCS_TO_HA[SystemMode.AUTO]
-
 MODE_TO_TCS = {
     HVACMode.HEAT: SystemMode.AUTO,
     HVACMode.OFF: SystemMode.HEAT_OFF,
     HVACMode.AUTO: SystemMode.RESET,  # not all systems support this
 }
 
-PRESET_CUSTOM = "custom"  # NOTE: not an offical PRESET
-
 PRESET_TCS_TO_HA = {
     SystemMode.AUTO: PRESET_NONE,
     SystemMode.AWAY: PRESET_AWAY,
     SystemMode.CUSTOM: PRESET_CUSTOM,
     SystemMode.DAY_OFF: PRESET_HOME,
-    SystemMode.ECO_BOOST: PRESET_ECO,  # or: PRESET_BOOST
+    SystemMode.DAY_OFF_ECO: PRESET_HOME,
+    SystemMode.ECO_BOOST: PRESET_ECO,
     SystemMode.HEAT_OFF: PRESET_NONE,
+    SystemMode.RESET: PRESET_NONE,
 }
-PRESET_TCS_TO_HA[SystemMode.DAY_OFF_ECO] = PRESET_TCS_TO_HA[SystemMode.DAY_OFF]
-PRESET_TCS_TO_HA[SystemMode.RESET] = PRESET_TCS_TO_HA[SystemMode.AUTO]
-
-PRESET_TO_TCS = (
-    SystemMode.AUTO,
-    SystemMode.AWAY,
-    SystemMode.CUSTOM,
-    SystemMode.DAY_OFF,
-    SystemMode.ECO_BOOST,
-)
-PRESET_TO_TCS = {v: k for k, v in PRESET_TCS_TO_HA.items() if k in PRESET_TO_TCS}
+PRESET_TO_TCS = {
+    PRESET_NONE: SystemMode.AUTO,
+    PRESET_AWAY: SystemMode.AWAY,
+    PRESET_CUSTOM: SystemMode.CUSTOM,
+    PRESET_HOME: SystemMode.DAY_OFF,
+    PRESET_ECO: SystemMode.ECO_BOOST,
+}
 
 MODE_ZONE_TO_HA = {
     ZoneMode.ADVANCED: HVACMode.HEAT,
     ZoneMode.SCHEDULE: HVACMode.AUTO,
+    ZoneMode.PERMANENT: HVACMode.HEAT,
+    ZoneMode.TEMPORARY: HVACMode.HEAT,
 }
-MODE_ZONE_TO_HA[ZoneMode.PERMANENT] = MODE_ZONE_TO_HA[ZoneMode.ADVANCED]
-MODE_ZONE_TO_HA[ZoneMode.TEMPORARY] = MODE_ZONE_TO_HA[ZoneMode.ADVANCED]
+MODE_TO_ZONE = {
+    HVACMode.HEAT: ZoneMode.PERMANENT,
+    HVACMode.AUTO: ZoneMode.SCHEDULE,
+}
 
-MODE_TO_ZONE = (ZoneMode.SCHEDULE, ZoneMode.PERMANENT)
-MODE_TO_ZONE = {v: k for k, v in MODE_ZONE_TO_HA.items() if k in MODE_TO_ZONE}
 PRESET_ZONE_TO_HA = {
     ZoneMode.SCHEDULE: PRESET_NONE,
-    ZoneMode.TEMPORARY: "temporary",
-    ZoneMode.PERMANENT: "permanent",
+    ZoneMode.TEMPORARY: PRESET_TEMPORARY,
+    ZoneMode.PERMANENT: PRESET_PERMANENT,
 }
-PRESET_TO_ZONE = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
+PRESET_TO_ZONE = {
+    PRESET_NONE: ZoneMode.SCHEDULE,
+    PRESET_TEMPORARY: ZoneMode.TEMPORARY,
+    PRESET_PERMANENT: ZoneMode.PERMANENT,
+}
 
 
 async def async_setup_platform(

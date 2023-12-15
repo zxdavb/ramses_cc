@@ -55,6 +55,11 @@ ATTR_TIMEOUT = "timeout"
 ATTR_UNTIL = "until"
 ATTR_WINDOW = "window_open"
 
+# Unofficial presets
+PRESET_CUSTOM = "custom"
+PRESET_TEMPORARY = "temporary"
+PRESET_PERMANENT = "permanent"
+
 # Services
 SVC_DELETE_COMMAND = "delete_command"
 SVC_FAKE_DEVICE = "fake_device"
