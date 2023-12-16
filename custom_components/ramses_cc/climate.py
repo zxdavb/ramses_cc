@@ -93,11 +93,7 @@ PRESET_ZONE_TO_HA = {
     ZoneMode.TEMPORARY: PRESET_TEMPORARY,
     ZoneMode.PERMANENT: PRESET_PERMANENT,
 }
-PRESET_TO_ZONE = {
-    PRESET_NONE: ZoneMode.SCHEDULE,
-    PRESET_TEMPORARY: ZoneMode.TEMPORARY,
-    PRESET_PERMANENT: ZoneMode.PERMANENT,
-}
+PRESET_TO_ZONE = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
 
 
 async def async_setup_platform(
