@@ -186,7 +186,7 @@ class RamsesSystem(RamsesBinarySensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         return {
-            "schema": self._device.tcs.schema,
+            "working_schema": self._device.tcs.schema,
         }
 
     @property
@@ -220,8 +220,13 @@ class RamsesGateway(RamsesBinarySensor):
             }
 
         gwy: Gateway = self._device._gwy
+        min_schema = {tcs.id: tcs._schema_min for tcs in gwy.systems}
+        min_schema |= {
+            k: v for k, v in gwy.schema.items() if k.startswith("orphans_") and v
+        }
+
         return {
-            "schema": {gwy.tcs.id: gwy.tcs._schema_min} if gwy.tcs else {},
+            "minimum_schema": min_schema,
             "config": {"enforce_known_list": gwy._enforce_known_list},
             "known_list": [{k: shrink(v)} for k, v in gwy.known_list.items()],
             "block_list": [{k: shrink(v)} for k, v in gwy._exclude.items()],
