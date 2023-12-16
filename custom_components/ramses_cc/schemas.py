@@ -68,6 +68,7 @@ from .const import (
     SVC_PUT_ZONE_TEMP,
     SVC_RESET_DHW_MODE,
     SVC_RESET_DHW_PARAMS,
+    SVC_RESET_SYSTEM_MODE,
     SVC_RESET_ZONE_CONFIG,
     SVC_RESET_ZONE_MODE,
     SVC_SEND_COMMAND,
@@ -76,6 +77,7 @@ from .const import (
     SVC_SET_DHW_MODE,
     SVC_SET_DHW_PARAMS,
     SVC_SET_DHW_SCHED,
+    SVC_SET_SYSTEM_MODE,
     SVC_SET_ZONE_CONFIG,
     SVC_SET_ZONE_MODE,
     SVC_SET_ZONE_SCHED,
@@ -115,9 +117,6 @@ _SCH_ENTITY_ID = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
 
 #
 # Climate platform services for CH/DHW CTLs
-SVC_RESET_SYSTEM_MODE = "reset_system_mode"
-SVC_SET_SYSTEM_MODE = "set_system_mode"
-
 SCH_SYSTEM_MODE = _SCH_ENTITY_ID.extend(
     {
         vol.Required(ATTR_MODE): vol.In(
