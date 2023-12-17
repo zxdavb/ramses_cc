@@ -89,7 +89,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     )
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker, device) -> None:
+    def __init__(self, broker: RamsesBroker, device) -> None:
         """Initialize a TCS DHW controller."""
         _LOGGER.info("Found %r", device)
         super().__init__(broker, device)
