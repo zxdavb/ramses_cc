@@ -205,7 +205,7 @@ class RamsesSensorBase(RamsesEntity):
 
     def __init__(
         self,
-        broker,
+        broker: RamsesBroker,
         device,
         state_attr,
         device_class: SensorDeviceClass | None = None,

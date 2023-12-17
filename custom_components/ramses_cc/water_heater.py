@@ -91,7 +91,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
 
     def __init__(self, broker: RamsesBroker, device) -> None:
         """Initialize a TCS DHW controller."""
-        _LOGGER.info("Found %r", device)
+        _LOGGER.info("Found DHW %r", device)
         super().__init__(broker, device)
 
     @property
