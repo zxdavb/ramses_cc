@@ -121,7 +121,7 @@ SCH_SYSTEM_MODE = _SCH_ENTITY_ID.extend(
     {
         vol.Required(ATTR_MODE): vol.In(
             [e.value for e in SystemMode]
-        ),  # incl. DAY_OFF_ECO
+        ),
     }
 )
 SCH_SYSTEM_MODE_HOURS = _SCH_ENTITY_ID.extend(
@@ -134,8 +134,13 @@ SCH_SYSTEM_MODE_HOURS = _SCH_ENTITY_ID.extend(
 )
 SCH_SYSTEM_MODE_DAYS = _SCH_ENTITY_ID.extend(
     {
-        vol.Required(ATTR_MODE): vol.In(
-            [SystemMode.AWAY, SystemMode.CUSTOM, SystemMode.DAY_OFF]
+        vol.Required(CONF_MODE): vol.In(
+            [
+                SystemMode.AWAY,
+                SystemMode.CUSTOM,
+                SystemMode.DAY_OFF,
+                SystemMode.DAY_OFF_ECO,
+            ]
         ),
         vol.Optional(ATTR_PERIOD, default=timedelta(days=0)): vol.All(
             cv.time_period, vol.Range(min=timedelta(days=0), max=timedelta(days=99))

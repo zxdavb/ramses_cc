@@ -129,37 +129,32 @@ set_system_mode:
             - eco_boost
             - away
             - day_off
+            - day_off_eco
             - heat_off
             - custom
 
     period:
-      name: Days
+      name: Period (days)
       description: >-
-        Optional. A period of time in days; used only with away, day_off, or custom.
+        Optional. A period of time in days; used only with away, day_off, day_off_eco or custom.
         The system will revert to auto at midnight (up to 99 days, today is day 1).
-      default: 1
+      default:
+        days: 28
       example: '{"days": 28}'
       selector:
-        number:
-          min: 1
-          max: 99
-          step: 1
-          unit_of_measurement: days
-          mode: slider
+        duration:
+          enable_day: true
 
     duration:
-      name: Eco/Boost Duration
+      name: Duration (hours/minutes)
       description: >-
         Optional. The duration in hours/minutes; used only with eco_boost (up to 24h).
-      default: 60
-      example: '{"hours": 18}'
+      default:
+        hours: 1
+        minutes: 30
+      example: '{"hours": 1, "minutes": 30}'
       selector:
-        number:
-          min: 5
-          max: 1440
-          step: 5
-          unit_of_measurement: minutes
-          mode: slider
+        duration:
 
 
 #
@@ -289,6 +284,7 @@ set_zone_mode:
             - temporary_override
 
     setpoint:
+      name: Setpoint
       description: >-
         The target temperature in degrees Celsius. Default is 21.0.
       default: 19.5
@@ -302,14 +298,19 @@ set_zone_mode:
           mode: slider
 
     duration:
+      name: Duration
       description: >-
         The duration of the temporary_override. Mutually exclusive with until.
-      example: '{"minutes": 135}'
+      default:
+        hours: 1
+        minutes: 30
+      example: '{"hours": 1, "minutes": 30}'
       required: true
       selector:
         duration:
 
     until:
+      name: Until
       description: >-
         The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
@@ -349,7 +350,7 @@ get_dhw_schedule:
 
   fields:
     entity_id: &entity_id_dhw
-      name: Stored HW
+      name: Stored DHW
       description: The entity_id of the stored DHW.
       example: water_heater.stored_hw
       required: true
@@ -443,23 +444,23 @@ set_dhw_mode:
         boolean:
 
     duration:
-      name: Override duration
+      name: Duration
       description: >-
         The duration of the temporary_override. Mutually exclusive with until.
-      example: '{"minutes": 135}'
+      default:
+        hours: 1
+        minutes: 30
+      example: '{"hours": 1, "minutes": 30}'
       selector:
-        number:
-          min: 15
-          max: 1440
-          step: 15
-          unit_of_measurement: mins
-          mode: slider
+        duration:
 
     until:
-      name: Override end time
+      name: Until
       description: >-
         The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
+      selector:
+        datetime:
 
 
 set_dhw_params:
