@@ -22,7 +22,7 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import RamsesEntity
+from .climate import RamsesZone
 from .const import BROKER, DOMAIN, SystemMode, ZoneMode
 from .coordinator import RamsesBroker
 from .schemas import SVCS_WATER_HEATER_EVO_DHW
@@ -73,7 +73,7 @@ async def async_setup_platform(
             platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
-class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
+class RamsesWaterHeater(RamsesZone, WaterHeaterEntity):
     """Representation of a Rames DHW controller."""
 
     _device: DhwZone
