@@ -17,12 +17,13 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
 )
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .climate import RamsesZone
+from . import RamsesEntity
 from .const import BROKER, DOMAIN, SystemMode, ZoneMode
 from .coordinator import RamsesBroker
 from .schemas import SVCS_WATER_HEATER_EVO_DHW
@@ -73,7 +74,7 @@ async def async_setup_platform(
             platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
-class RamsesWaterHeater(RamsesZone, WaterHeaterEntity):
+class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     """Representation of a Rames DHW controller."""
 
     _device: DhwZone
@@ -86,6 +87,7 @@ class RamsesWaterHeater(RamsesZone, WaterHeaterEntity):
         WaterHeaterEntityFeature.OPERATION_MODE
         | WaterHeaterEntityFeature.TARGET_TEMPERATURE
     )
+    _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
     def __init__(self, broker, device) -> None:
         """Initialize a TCS DHW controller."""
