@@ -136,7 +136,7 @@ class RamsesBattery(RamsesBinarySensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         state = self._device.battery_state
-        return super().extra_state_attributes() | {
+        return super().extra_state_attributes | {
             ATTR_BATTERY_LEVEL: state and state.get("battery_level"),
         }
 
@@ -153,7 +153,7 @@ class RamsesFaultLog(RamsesBinarySensor):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return super().extra_state_attributes() | {
+        return super().extra_state_attributes | {
             "active_fault": self._device.tcs.active_fault,
             "latest_event": self._device.tcs.latest_event,
             "latest_fault": self._device.tcs.latest_fault,
@@ -179,7 +179,7 @@ class RamsesSystem(RamsesBinarySensor):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return super().extra_state_attributes() | {
+        return super().extra_state_attributes | {
             "working_schema": self._device.tcs.schema,
         }
 
