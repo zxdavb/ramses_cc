@@ -25,7 +25,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
+from .const import DOMAIN, SIGNAL_UPDATE, STORAGE_KEY, STORAGE_VERSION
 from .schemas import merge_schemas, normalise_config, schema_is_minimal
 
 _LOGGER = logging.getLogger(__name__)
@@ -309,9 +309,5 @@ class RamsesBroker:
         if new_sensors or new_heat_entities or new_hvac_entities:
             self.hass.helpers.event.async_call_later(5, self.async_save_client_state)
 
-        self.async_dispatcher_send()
-
-    def async_dispatcher_send(self, *args, **kwargs) -> None:
-        """Inform the devices that their state data may have changed."""
-
-        async_dispatcher_send(self.hass, DOMAIN, *args, **kwargs)
+        # Trigger state updates of all entities
+        async_dispatcher_send(self.hass, SIGNAL_UPDATE)

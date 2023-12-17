@@ -26,42 +26,71 @@ from ramses_tx.schemas import (
 )
 import voluptuous as vol
 
-from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID, CONF_SCAN_INTERVAL
+from homeassistant.const import ATTR_ENTITY_ID, CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 
-from .const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
+from .const import (
+    ATTR_ACTIVE,
+    ATTR_CO2_LEVEL,
+    ATTR_COMMAND,
+    ATTR_DELAY_SECS,
+    ATTR_DIFFERENTIAL,
+    ATTR_DURATION,
+    ATTR_INDOOR_HUMIDITY,
+    ATTR_LOCAL_OVERRIDE,
+    ATTR_MAX_TEMP,
+    ATTR_MIN_TEMP,
+    ATTR_MODE,
+    ATTR_MULTIROOM,
+    ATTR_NUM_REPEATS,
+    ATTR_OPENWINDOW,
+    ATTR_OVERRUN,
+    ATTR_PERIOD,
+    ATTR_SCHEDULE,
+    ATTR_SETPOINT,
+    ATTR_TEMPERATURE,
+    ATTR_TIMEOUT,
+    ATTR_UNTIL,
+    CONF_ADVANCED_FEATURES,
+    CONF_DEV_MODE,
+    CONF_MESSAGE_EVENTS,
+    CONF_UNKNOWN_CODES,
+    SVC_DELETE_COMMAND,
+    SVC_FAKE_DEVICE,
+    SVC_FORCE_UPDATE,
+    SVC_GET_DHW_SCHEDULE,
+    SVC_GET_ZONE_SCHEDULE,
+    SVC_LEARN_COMMAND,
+    SVC_PUT_CO2_LEVEL,
+    SVC_PUT_DHW_TEMP,
+    SVC_PUT_INDOOR_HUMIDITY,
+    SVC_PUT_ZONE_TEMP,
+    SVC_RESET_DHW_MODE,
+    SVC_RESET_DHW_PARAMS,
+    SVC_RESET_SYSTEM_MODE,
+    SVC_RESET_ZONE_CONFIG,
+    SVC_RESET_ZONE_MODE,
+    SVC_SEND_COMMAND,
+    SVC_SEND_PACKET,
+    SVC_SET_DHW_BOOST,
+    SVC_SET_DHW_MODE,
+    SVC_SET_DHW_PARAMS,
+    SVC_SET_DHW_SCHEDULE,
+    SVC_SET_SYSTEM_MODE,
+    SVC_SET_ZONE_CONFIG,
+    SVC_SET_ZONE_MODE,
+    SVC_SET_ZONE_SCHEDULE,
+    SystemMode,
+    ZoneMode,
+)
 
 _SchemaT: TypeAlias = dict[str, Any]
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_MODE = "mode"
-CONF_SYSTEM_MODE = "system_mode"
-CONF_DURATION_DAYS = "period"
-CONF_DURATION_HOURS = "hours"
-
-CONF_DURATION = "duration"
-CONF_LOCAL_OVERRIDE = "local_override"
-CONF_MAX_TEMP = "max_temp"
-CONF_MIN_TEMP = "min_temp"
-CONF_MULTIROOM = "multiroom_mode"
-CONF_OPENWINDOW = "openwindow_function"
-CONF_SCHEDULE = "schedule"
-CONF_SETPOINT = "setpoint"
-CONF_TEMPERATURE = "temperature"
-CONF_UNTIL = "until"
-
-CONF_ACTIVE = "active"
-CONF_DIFFERENTIAL = "differential"
-CONF_OVERRUN = "overrun"
-
 #
 # Generic services for Integration/domain
-SVC_FAKE_DEVICE = "fake_device"
-SVC_FORCE_UPDATE = "force_update"
-SVC_SEND_PACKET = "send_packet"
-
 SCH_FAKE_DEVICE = vol.Schema(
     {
         vol.Required(SZ_DEVICE_ID): cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$"),
@@ -84,22 +113,21 @@ SVCS_DOMAIN = {
     SVC_SEND_PACKET: SCH_SEND_PACKET,
 }
 
-_SCH_ENTITY_ID = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
+_SCH_ENTITY_ID = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
 
 #
 # Climate platform services for CH/DHW CTLs
-SVC_RESET_SYSTEM_MODE = "reset_system_mode"
-SVC_SET_SYSTEM_MODE = "set_system_mode"
-
 SCH_SYSTEM_MODE = _SCH_ENTITY_ID.extend(
     {
-        vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),
+        vol.Required(ATTR_MODE): vol.In(
+            [e.value for e in SystemMode]
+        ),
     }
 )
 SCH_SYSTEM_MODE_HOURS = _SCH_ENTITY_ID.extend(
     {
-        vol.Required(CONF_MODE): vol.In([SystemMode.ECO_BOOST]),
-        vol.Optional(CONF_DURATION, default=timedelta(hours=1)): vol.All(
+        vol.Required(ATTR_MODE): vol.In([SystemMode.ECO_BOOST]),
+        vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
             cv.time_period, vol.Range(min=timedelta(hours=1), max=timedelta(hours=24))
         ),
     }
@@ -114,7 +142,7 @@ SCH_SYSTEM_MODE_DAYS = _SCH_ENTITY_ID.extend(
                 SystemMode.DAY_OFF_ECO,
             ]
         ),
-        vol.Optional(CONF_DURATION_DAYS, default=timedelta(days=0)): vol.All(
+        vol.Optional(ATTR_PERIOD, default=timedelta(days=0)): vol.All(
             cv.time_period, vol.Range(min=timedelta(days=0), max=timedelta(days=99))
         ),  # 0 means until the end of the day
     }
@@ -128,39 +156,31 @@ SVCS_CLIMATE_EVO_TCS = {
 
 #
 # Climate platform services for CH/DHW Zones
-SVC_GET_ZONE_SCHED = "get_zone_schedule"
-SVC_PUT_ZONE_TEMP = "put_zone_temp"
-SVC_RESET_ZONE_CONFIG = "reset_zone_config"
-SVC_RESET_ZONE_MODE = "reset_zone_mode"
-SVC_SET_ZONE_CONFIG = "set_zone_config"
-SVC_SET_ZONE_MODE = "set_zone_mode"
-SVC_SET_ZONE_SCHED = "set_zone_schedule"
-
 SCH_SET_ZONE_CONFIG = _SCH_ENTITY_ID.extend(
     {
-        vol.Optional(CONF_MAX_TEMP, default=35): vol.All(
+        vol.Optional(ATTR_MAX_TEMP, default=35): vol.All(
             cv.positive_float,
             vol.Range(min=21, max=35),
         ),
-        vol.Optional(CONF_MIN_TEMP, default=5): vol.All(
+        vol.Optional(ATTR_MIN_TEMP, default=5): vol.All(
             cv.positive_float,
             vol.Range(min=5, max=21),
         ),
-        vol.Optional(CONF_LOCAL_OVERRIDE, default=True): cv.boolean,
-        vol.Optional(CONF_OPENWINDOW, default=True): cv.boolean,
-        vol.Optional(CONF_MULTIROOM, default=True): cv.boolean,
+        vol.Optional(ATTR_LOCAL_OVERRIDE, default=True): cv.boolean,
+        vol.Optional(ATTR_OPENWINDOW, default=True): cv.boolean,
+        vol.Optional(ATTR_MULTIROOM, default=True): cv.boolean,
     }
 )
 
 SCH_SET_ZONE_MODE = _SCH_ENTITY_ID.extend(
     {
-        vol.Optional(CONF_MODE): vol.In([ZoneMode.SCHEDULE]),
+        vol.Optional(ATTR_MODE): vol.In([ZoneMode.SCHEDULE]),
     }
 )
 SCH_SET_ZONE_MODE_SETPOINT = _SCH_ENTITY_ID.extend(
     {
-        vol.Optional(CONF_MODE): vol.In([ZoneMode.PERMANENT, ZoneMode.ADVANCED]),
-        vol.Optional(CONF_SETPOINT, default=21): vol.All(
+        vol.Optional(ATTR_MODE): vol.In([ZoneMode.PERMANENT, ZoneMode.ADVANCED]),
+        vol.Optional(ATTR_SETPOINT, default=21): vol.All(
             cv.positive_float,
             vol.Range(min=5, max=30),
         ),
@@ -168,13 +188,13 @@ SCH_SET_ZONE_MODE_SETPOINT = _SCH_ENTITY_ID.extend(
 )
 SCH_SET_ZONE_MODE_UNTIL = _SCH_ENTITY_ID.extend(
     {
-        vol.Optional(CONF_MODE): vol.In([ZoneMode.TEMPORARY]),
-        vol.Optional(CONF_SETPOINT, default=21): vol.All(
+        vol.Optional(ATTR_MODE): vol.In([ZoneMode.TEMPORARY]),
+        vol.Optional(ATTR_SETPOINT, default=21): vol.All(
             cv.positive_float,
             vol.Range(min=5, max=30),
         ),
-        vol.Exclusive(CONF_UNTIL, CONF_UNTIL): cv.datetime,
-        vol.Exclusive(CONF_DURATION, CONF_UNTIL): vol.All(
+        vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
+        vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
             cv.time_period,
             vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
         ),
@@ -188,44 +208,35 @@ SCH_SET_ZONE_MODE = vol.Any(
 
 SCH_PUT_ZONE_TEMP = _SCH_ENTITY_ID.extend(
     {
-        vol.Required(CONF_TEMPERATURE): vol.All(
+        vol.Required(ATTR_TEMPERATURE): vol.All(
             vol.Coerce(float), vol.Range(min=-20, max=99)
         ),
     }
 )
 
-SCH_SET_ZONE_SCHED = _SCH_ENTITY_ID.extend({vol.Required(CONF_SCHEDULE): cv.string})
+SCH_SET_ZONE_SCHEDULE = _SCH_ENTITY_ID.extend({vol.Required(ATTR_SCHEDULE): cv.string})
 
 
 SVCS_CLIMATE_EVO_ZONE = {
-    SVC_GET_ZONE_SCHED: _SCH_ENTITY_ID,
+    SVC_GET_ZONE_SCHEDULE: _SCH_ENTITY_ID,
     SVC_PUT_ZONE_TEMP: SCH_PUT_ZONE_TEMP,
     SVC_RESET_ZONE_CONFIG: _SCH_ENTITY_ID,
     SVC_RESET_ZONE_MODE: _SCH_ENTITY_ID,
     SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
     SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,
-    SVC_SET_ZONE_SCHED: SCH_SET_ZONE_SCHED,
+    SVC_SET_ZONE_SCHEDULE: SCH_SET_ZONE_SCHEDULE,
 }
 
 #
 # WaterHeater platform services for CH/DHW
-SVC_GET_DHW_SCHED = "get_dhw_schedule"
-SVC_PUT_DHW_TEMP = "put_dhw_temp"
-SVC_RESET_DHW_MODE = "reset_dhw_mode"
-SVC_RESET_DHW_PARAMS = "reset_dhw_params"
-SVC_SET_DHW_BOOST = "set_dhw_boost"
-SVC_SET_DHW_MODE = "set_dhw_mode"
-SVC_SET_DHW_PARAMS = "set_dhw_params"
-SVC_SET_DHW_SCHED = "set_dhw_schedule"
-
 SCH_SET_DHW_MODE = _SCH_ENTITY_ID.extend(
     {
-        vol.Optional(CONF_MODE): vol.In(
+        vol.Optional(ATTR_MODE): vol.In(
             [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
         ),
-        vol.Optional(CONF_ACTIVE): cv.boolean,
-        vol.Exclusive(CONF_UNTIL, CONF_UNTIL): cv.datetime,
-        vol.Exclusive(CONF_DURATION, CONF_UNTIL): vol.All(
+        vol.Optional(ATTR_ACTIVE): cv.boolean,
+        vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
+        vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
             cv.time_period,
             vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
         ),
@@ -234,15 +245,15 @@ SCH_SET_DHW_MODE = _SCH_ENTITY_ID.extend(
 
 SCH_SET_DHW_CONFIG = _SCH_ENTITY_ID.extend(
     {
-        vol.Optional(CONF_SETPOINT, default=50): vol.All(
+        vol.Optional(ATTR_SETPOINT, default=50): vol.All(
             cv.positive_float,
             vol.Range(min=30, max=85),
         ),
-        vol.Optional(CONF_OVERRUN, default=5): vol.All(
+        vol.Optional(ATTR_OVERRUN, default=5): vol.All(
             cv.positive_int,
             vol.Range(max=10),
         ),
-        vol.Optional(CONF_DIFFERENTIAL, default=1): vol.All(
+        vol.Optional(ATTR_DIFFERENTIAL, default=1): vol.All(
             cv.positive_float,
             vol.Range(max=10),
         ),
@@ -251,36 +262,31 @@ SCH_SET_DHW_CONFIG = _SCH_ENTITY_ID.extend(
 
 SCH_PUT_DHW_TEMP = _SCH_ENTITY_ID.extend(
     {
-        vol.Required(CONF_TEMPERATURE): vol.All(
+        vol.Required(ATTR_TEMPERATURE): vol.All(
             vol.Coerce(float), vol.Range(min=-20, max=99)
         ),
     }
 )
 
-SCH_SET_DHW_SCHED = _SCH_ENTITY_ID.extend({vol.Required(CONF_SCHEDULE): cv.string})
+SCH_SET_DHW_SCHEDULE = _SCH_ENTITY_ID.extend({vol.Required(ATTR_SCHEDULE): cv.string})
 
 
 SVCS_WATER_HEATER_EVO_DHW = {
-    SVC_GET_DHW_SCHED: _SCH_ENTITY_ID,
+    SVC_GET_DHW_SCHEDULE: _SCH_ENTITY_ID,
     SVC_RESET_DHW_MODE: _SCH_ENTITY_ID,
     SVC_RESET_DHW_PARAMS: _SCH_ENTITY_ID,
     SVC_SET_DHW_BOOST: _SCH_ENTITY_ID,
     SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,
     SVC_SET_DHW_PARAMS: SCH_SET_DHW_CONFIG,
     SVC_PUT_DHW_TEMP: SCH_PUT_DHW_TEMP,
-    SVC_SET_DHW_SCHED: SCH_SET_DHW_SCHED,
+    SVC_SET_DHW_SCHEDULE: SCH_SET_DHW_SCHEDULE,
 }
 
 #
 # BinarySensor/Sensor platform services for HVAC
-SZ_CO2_LEVEL = "co2_level"
-SZ_INDOOR_HUMIDITY = "indoor_humidity"
-SVC_PUT_CO2_LEVEL = f"put_{SZ_CO2_LEVEL}"
-SVC_PUT_INDOOR_HUMIDITY = f"put_{SZ_INDOOR_HUMIDITY}"
-
 SCH_PUT_CO2_LEVEL = _SCH_ENTITY_ID.extend(
     {
-        vol.Required(SZ_CO2_LEVEL): vol.All(
+        vol.Required(ATTR_CO2_LEVEL): vol.All(
             cv.positive_int,
             vol.Range(min=0, max=16384),
         ),
@@ -289,7 +295,7 @@ SCH_PUT_CO2_LEVEL = _SCH_ENTITY_ID.extend(
 
 SCH_PUT_INDOOR_HUMIDITY = _SCH_ENTITY_ID.extend(
     {
-        vol.Required(SZ_INDOOR_HUMIDITY): vol.All(
+        vol.Required(ATTR_INDOOR_HUMIDITY): vol.All(
             cv.positive_float,
             vol.Range(min=0, max=100),
         ),
@@ -305,27 +311,19 @@ SVCS_SENSOR = {
 
 #
 # Remote platform services for HVAC
-SZ_COMMAND = "command"
-SZ_TIMEOUT = "timeout"
-SZ_NUM_REPEATS = "num_repeats"
-SZ_DELAY_SECS = "delay_secs"
-SVC_DELETE_COMMAND = "delete_command"
-SVC_LEARN_COMMAND = "learn_command"
-SVC_SEND_COMMAND = "send_command"
-
-SCH_VERB_COMMAND_BASE = _SCH_ENTITY_ID.extend({vol.Required(SZ_COMMAND): cv.string})
+SCH_VERB_COMMAND_BASE = _SCH_ENTITY_ID.extend({vol.Required(ATTR_COMMAND): cv.string})
 SCH_DELETE_COMMAND = SCH_VERB_COMMAND_BASE
 SCH_LEARN_COMMAND = SCH_VERB_COMMAND_BASE.extend(
     {
-        vol.Required(SZ_TIMEOUT, default=60): vol.All(
+        vol.Required(ATTR_TIMEOUT, default=60): vol.All(
             cv.positive_int, vol.Range(min=30, max=300)
         )
     }
 )
 SCH_SEND_COMMAND = SCH_VERB_COMMAND_BASE.extend(
     {
-        vol.Required(SZ_NUM_REPEATS, default=3): cv.positive_int,
-        vol.Required(SZ_DELAY_SECS, default=0.2): cv.positive_float,
+        vol.Required(ATTR_NUM_REPEATS, default=3): cv.positive_int,
+        vol.Required(ATTR_DELAY_SECS, default=0.2): cv.positive_float,
     }
 )
 
@@ -340,18 +338,13 @@ SVCS_REMOTE = {
 SCAN_INTERVAL_DEFAULT = timedelta(seconds=60)
 SCAN_INTERVAL_MINIMUM = timedelta(seconds=3)
 
-SZ_ADVANCED_FEATURES = "advanced_features"
-SZ_MESSAGE_EVENTS = "message_events"
-SZ_DEV_MODE = "dev_mode"
-SZ_UNKNOWN_CODES = "unknown_codes"
-
 
 SCH_ADVANCED_FEATURES = vol.Schema(
     {
         vol.Optional(SVC_SEND_PACKET, default=False): cv.boolean,
-        vol.Optional(SZ_MESSAGE_EVENTS, default=None): vol.Any(None, cv.is_regex),
-        vol.Optional(SZ_DEV_MODE): cv.boolean,
-        vol.Optional(SZ_UNKNOWN_CODES): cv.boolean,
+        vol.Optional(CONF_MESSAGE_EVENTS, default=None): vol.Any(None, cv.is_regex),
+        vol.Optional(CONF_DEV_MODE): cv.boolean,
+        vol.Optional(CONF_UNKNOWN_CODES): cv.boolean,
     }
 )
 
@@ -371,7 +364,7 @@ SCH_DOMAIN_CONFIG = (
             vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT): vol.All(
                 cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)
             ),
-            vol.Optional(SZ_ADVANCED_FEATURES, default={}): SCH_ADVANCED_FEATURES,
+            vol.Optional(CONF_ADVANCED_FEATURES, default={}): SCH_ADVANCED_FEATURES,
         },
         extra=vol.PREVENT_EXTRA,  # will be system, orphan schemas for ramses_rf
     )
@@ -430,7 +423,7 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
         if v.get("commands")
     }
 
-    broker_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
+    broker_keys = (CONF_SCAN_INTERVAL, CONF_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
     return (
         port_name,
         {k: v for k, v in config.items() if k not in broker_keys}
