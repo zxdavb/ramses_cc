@@ -93,7 +93,7 @@ SVC_SET_SYSTEM_MODE = "set_system_mode"
 
 SCH_SYSTEM_MODE = _SCH_ENTITY_ID.extend(
     {
-        vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),  # incl. DAY_OFF_ECO
+        vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),
     }
 )
 SCH_SYSTEM_MODE_HOURS = _SCH_ENTITY_ID.extend(
@@ -107,7 +107,12 @@ SCH_SYSTEM_MODE_HOURS = _SCH_ENTITY_ID.extend(
 SCH_SYSTEM_MODE_DAYS = _SCH_ENTITY_ID.extend(
     {
         vol.Required(CONF_MODE): vol.In(
-            [SystemMode.AWAY, SystemMode.CUSTOM, SystemMode.DAY_OFF]
+            [
+                SystemMode.AWAY,
+                SystemMode.CUSTOM,
+                SystemMode.DAY_OFF,
+                SystemMode.DAY_OFF_ECO,
+            ]
         ),
         vol.Optional(CONF_DURATION_DAYS, default=timedelta(days=0)): vol.All(
             cv.time_period, vol.Range(min=timedelta(days=0), max=timedelta(days=99))
