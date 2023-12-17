@@ -28,7 +28,7 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import RamsesDeviceBase
+from . import RamsesSensorBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
 from .coordinator import RamsesBroker
 from .schemas import SVCS_BINARY_SENSOR
@@ -50,7 +50,9 @@ async def async_setup_platform(
       domains: TCS, DHW and Zones
     """
 
-    def entity_factory(broker: RamsesBroker, device, attr, *, entity_class=None, **kwargs):
+    def entity_factory(
+        broker: RamsesBroker, device, attr, *, entity_class=None, **kwargs
+    ):
         return (entity_class or RamsesBinarySensor)(broker, device, attr, **kwargs)
 
     if discovery_info is None:
@@ -97,7 +99,7 @@ async def async_setup_platform(
             platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
-class RamsesBinarySensor(RamsesDeviceBase, BinarySensorEntity):
+class RamsesBinarySensor(RamsesSensorBase, BinarySensorEntity):
     """Representation of a generic binary sensor."""
 
     def __init__(
@@ -109,15 +111,8 @@ class RamsesBinarySensor(RamsesDeviceBase, BinarySensorEntity):
         **kwargs,  # leftover attr_dict values
     ) -> None:
         """Initialize a binary sensor."""
-
-        _LOGGER.info("Found a Binary Sensor for %s: %s", device.id, state_attr)
-
-        super().__init__(
-            broker,
-            device,
-            state_attr,
-            device_class=device_class,
-        )
+        _LOGGER.info("Found %r: %s", device, state_attr)
+        super().__init__(broker, device, state_attr, device_class=device_class)
 
     @property
     def is_on(self) -> bool:
@@ -141,9 +136,8 @@ class RamsesBattery(RamsesBinarySensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         state = self._device.battery_state
-        return {
-            **super().extra_state_attributes,
-            ATTR_BATTERY_LEVEL: state and state.get(ATTR_BATTERY_LEVEL),
+        return super().extra_state_attributes() | {
+            ATTR_BATTERY_LEVEL: state and state.get("battery_level"),
         }
 
 
@@ -159,7 +153,7 @@ class RamsesFaultLog(RamsesBinarySensor):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
+        return super().extra_state_attributes() | {
             "active_fault": self._device.tcs.active_fault,
             "latest_event": self._device.tcs.latest_event,
             "latest_fault": self._device.tcs.latest_fault,
@@ -185,7 +179,7 @@ class RamsesSystem(RamsesBinarySensor):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
+        return super().extra_state_attributes() | {
             "working_schema": self._device.tcs.schema,
         }
 

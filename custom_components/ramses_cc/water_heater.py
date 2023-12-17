@@ -1,13 +1,14 @@
 """Support for RAMSES water_heater entities."""
 from __future__ import annotations
 
-import contextlib
 from datetime import datetime as dt, timedelta
 import json
 import logging
 from typing import Any
 
 from ramses_rf.system.heat import StoredHw
+from ramses_rf.system.zones import DhwZone
+from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
 
 from homeassistant.components.water_heater import (
     DOMAIN as PLATFORM,
@@ -21,10 +22,10 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import RamsesZoneBase
-from .const import BROKER, DATA, DOMAIN, SERVICE, UNIQUE_ID, SystemMode, ZoneMode
+from . import RamsesEntity
+from .const import BROKER, DOMAIN, SystemMode, ZoneMode
 from .coordinator import RamsesBroker
-from .schemas import CONF_ACTIVE, CONF_MODE, CONF_SYSTEM_MODE, SVCS_WATER_HEATER_EVO_DHW
+from .schemas import SVCS_WATER_HEATER_EVO_DHW
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ async def async_setup_platform(
 ) -> None:
     """Create DHW controllers for CH/DHW (heat)."""
 
-    def entity_factory(entity_class, broker, device):  # TODO: deprecate
+    def entity_factory(entity_class, broker: RamsesBroker, device):  # TODO: deprecate
         return entity_class(broker, device)
 
     if discovery_info is None:  # or not discovery_info.get("dhw"):  # not needed
@@ -72,8 +73,10 @@ async def async_setup_platform(
             platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
-class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
-    """Base for a DHW controller (aka boiler)."""
+class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
+    """Representation of a Rames DHW controller."""
+
+    _device: DhwZone
 
     _attr_icon: str = "mdi:thermometer-lines"
     _attr_max_temp: float = StoredHw.MAX_SETPOINT
@@ -84,26 +87,24 @@ class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
         | WaterHeaterEntityFeature.TARGET_TEMPERATURE
     )
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
-        """Initialize an TCS DHW controller."""
-        _LOGGER.info("Found a DHW controller: %s", device)
+    def __init__(self, broker, device) -> None:
+        """Initialize a TCS DHW controller."""
+        _LOGGER.info("Found %r", device)
         super().__init__(broker, device)
-
-        self._attr_unique_id = device.id
 
     @property
     def current_operation(self) -> str:
         """Return the current operating mode (Auto, On, or Off)."""
         try:
-            mode = self._device.mode[CONF_MODE]
+            mode = self._device.mode[SZ_MODE]
         except TypeError:
             return
         if mode == ZoneMode.SCHEDULE:
             return STATE_AUTO
         elif mode == ZoneMode.PERMANENT:
-            return STATE_ON if self._device.mode[CONF_ACTIVE] else STATE_OFF
+            return STATE_ON if self._device.mode[SZ_ACTIVE] else STATE_OFF
         else:  # there are a number of temporary modes
-            return STATE_BOOST if self._device.mode[CONF_ACTIVE] else STATE_OFF
+            return STATE_BOOST if self._device.mode[SZ_ACTIVE] else STATE_OFF
 
     @property
     def current_temperature(self) -> float | None:
@@ -113,9 +114,9 @@ class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
+        return super().extra_state_attributes | {
+            "params": self._device.params,
             "mode": self._device.mode,
-            **super().extra_state_attributes,
             "schedule": self._device.schedule,
             "schedule_version": self._device.schedule_version,
         }
@@ -124,28 +125,19 @@ class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
     def is_away_mode_on(self) -> bool | None:
         """Return True if away mode is on."""
         try:
-            return self._device.tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY
+            return self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY
         except TypeError:
             return
+
+    @property
+    def name(self) -> str | None:
+        """Return the name of the zone."""
+        return self._device.name
 
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self._device.setpoint
-
-    @callback
-    def async_handle_dispatch(self, *args: Any) -> None:
-        """Process a service request (system mode) for a controller."""
-        if not args:
-            self.update_ha_state()
-            return
-
-        payload = args[0]
-        if payload.get(UNIQUE_ID) != self.unique_id:
-            return
-
-        with contextlib.suppress(AttributeError):
-            getattr(self, f"svc_{payload[SERVICE]}")(**dict(payload[DATA]))
 
     def set_operation_mode(self, operation_mode: str) -> None:
         """Set the operating mode of the water heater."""
@@ -174,17 +166,20 @@ class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
     @callback
     def svc_reset_dhw_mode(self) -> None:
         """Reset the operating mode of the water heater."""
-        self._call_client_api(self._device.reset_mode)
+        self._device.reset_mode()
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_reset_dhw_params(self) -> None:
         """Reset the configuration of the water heater."""
-        self._call_client_api(self._device.reset_config)
+        self._device.reset_config()
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_set_dhw_boost(self) -> None:
         """Enable the water heater for an hour."""
-        self._call_client_api(self._device.set_boost_mode)
+        self._device.set_boost_mode()
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_set_dhw_mode(
@@ -193,27 +188,26 @@ class RamsesWaterHeater(RamsesZoneBase, WaterHeaterEntity):
         """Set the (native) operating mode of the water heater."""
         if until is None and duration is not None:
             until = dt.now() + duration
-        self._call_client_api(
-            self._device.set_mode, mode=mode, active=active, until=until
-        )
+        self._device.set_mode(mode=mode, active=active, until=until)
+        self.async_write_ha_state_delayed()
 
     @callback
     def svc_set_dhw_params(
         self, setpoint: float = None, overrun=None, differential=None
     ) -> None:
         """Set the configuration of the water heater."""
-        self._call_client_api(
-            self._device.set_config,
+        self._device.set_config(
             setpoint=setpoint,
             overrun=overrun,
             differential=differential,
         )
+        self.async_write_ha_state_delayed()
 
     async def svc_get_dhw_schedule(self, **kwargs) -> None:
         """Get the latest weekly schedule of the DHW."""
         # {{ state_attr('water_heater.stored_hw', 'schedule') }}
         await self._device.get_schedule()
-        self.update_ha_state()
+        self.async_write_ha_state()
 
     async def svc_set_dhw_schedule(self, schedule: str, **kwargs) -> None:
         """Set the weekly schedule of the DHW."""
