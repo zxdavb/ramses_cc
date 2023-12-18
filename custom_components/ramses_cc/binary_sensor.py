@@ -47,15 +47,15 @@ async def async_setup_platform(
       domains: TCS, DHW and Zones
     """
 
+    if discovery_info is None:
+        return
+
     broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
     def entity_factory(
         broker: RamsesBroker, device, attr, *, entity_class=None, **kwargs
     ):
         return (entity_class or RamsesBinarySensor)(broker, device, attr, **kwargs)
-
-    if discovery_info is None:
-        return
 
     new_sensors = [
         entity_factory(broker, dev, k, **v)

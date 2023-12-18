@@ -227,6 +227,9 @@ async def async_setup_platform(
 ) -> None:
     """Create climate entities for CH/DHW (heat) & HVAC."""
 
+    if discovery_info is None:
+        return
+
     broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
     if not broker._services.get(PLATFORM):
@@ -261,9 +264,6 @@ async def async_setup_platform(
         platform.async_register_entity_service(
             SVC_SET_ZONE_SCHEDULE, SVC_SET_ZONE_SCHEDULE_SCHEMA, "svc_set_zone_schedule"
         )
-
-    if discovery_info is None:
-        return
 
     new_entities = []
 

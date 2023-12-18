@@ -70,6 +70,9 @@ async def async_setup_platform(
 ) -> None:
     """Create remotes for HVAC."""
 
+    if discovery_info is None:
+        return
+
     broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
     if not broker._services.get(PLATFORM):
@@ -86,9 +89,6 @@ async def async_setup_platform(
         platform.async_register_entity_service(
             SVC_DELETE_COMMAND, SVC_DELETE_COMMAND_SCHEMA, "async_delete_command"
         )
-
-    if discovery_info is None:
-        return
 
     async_add_entities(
         [RamsesRemote(broker, device) for device in discovery_info["remotes"]]

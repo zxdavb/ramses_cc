@@ -117,6 +117,9 @@ async def async_setup_platform(
 ) -> None:
     """Create DHW controllers for CH/DHW (heat)."""
 
+    if discovery_info is None:
+        return
+
     broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
     if not broker._services.get(PLATFORM):
@@ -151,9 +154,6 @@ async def async_setup_platform(
 
     def entity_factory(entity_class, broker, device):  # TODO: deprecate
         return entity_class(broker, device)
-
-    if discovery_info is None:  # or not discovery_info.get("dhw"):  # not needed
-        return
 
     async_add_entities(
         [
