@@ -176,7 +176,7 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         )
         hass.services.async_register(DOMAIN, SVC_FORCE_UPDATE, async_force_update)
 
-        if broker.config[CONF_ADVANCED_FEATURES].get([CONF_SEND_PACKET]):
+        if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
             hass.services.async_register(
                 DOMAIN,
                 SVC_SEND_PACKET,
