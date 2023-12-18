@@ -9,6 +9,7 @@ from typing import Any
 from ramses_rf.system.heat import StoredHw
 from ramses_rf.system.zones import DhwZone
 from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
+import voluptuous as vol
 
 from homeassistant.components.water_heater import (
     DOMAIN as PLATFORM,
@@ -19,14 +20,35 @@ from homeassistant.components.water_heater import (
 )
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_platform
+from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity
-from .const import BROKER, DOMAIN, SystemMode, ZoneMode
+from .const import (
+    ATTR_ACTIVE,
+    ATTR_DIFFERENTIAL,
+    ATTR_DURATION,
+    ATTR_MODE,
+    ATTR_OVERRUN,
+    ATTR_SCHEDULE,
+    ATTR_SETPOINT,
+    ATTR_TEMPERATURE,
+    ATTR_UNTIL,
+    BROKER,
+    DOMAIN,
+    SVC_GET_DHW_SCHEDULE,
+    SVC_PUT_DHW_TEMP,
+    SVC_RESET_DHW_MODE,
+    SVC_RESET_DHW_PARAMS,
+    SVC_SET_DHW_BOOST,
+    SVC_SET_DHW_MODE,
+    SVC_SET_DHW_PARAMS,
+    SVC_SET_DHW_SCHEDULE,
+    SystemMode,
+    ZoneMode,
+)
 from .coordinator import RamsesBroker
-from .schemas import SVCS_WATER_HEATER_EVO_DHW
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +63,51 @@ MODE_HA_TO_RAMSES = {
     STATE_ON: ZoneMode.PERMANENT,
 }
 
+SVC_PUT_DHW_TEMP_SCHEMA = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_TEMPERATURE): vol.All(
+            vol.Coerce(float), vol.Range(min=-20, max=99)
+        ),
+    }
+)
+
+SVC_SET_DHW_MODE_SCHEMA = cv.make_entity_service_schema(
+    {
+        vol.Optional(ATTR_MODE): vol.In(
+            [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
+        ),
+        vol.Optional(ATTR_ACTIVE): cv.boolean,
+        vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
+        vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
+            cv.time_period,
+            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
+        ),
+    }
+)
+
+SVC_SET_DHW_PARAMS_SCHEMA = cv.make_entity_service_schema(
+    {
+        vol.Optional(ATTR_SETPOINT, default=50): vol.All(
+            cv.positive_float,
+            vol.Range(min=30, max=85),
+        ),
+        vol.Optional(ATTR_OVERRUN, default=5): vol.All(
+            cv.positive_int,
+            vol.Range(max=10),
+        ),
+        vol.Optional(ATTR_DIFFERENTIAL, default=1): vol.All(
+            cv.positive_float,
+            vol.Range(max=10),
+        ),
+    }
+)
+
+SVC_SET_DHW_SCHEDULE_SCHEMA = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_SCHEDULE): cv.string,
+    }
+)
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -50,13 +117,43 @@ async def async_setup_platform(
 ) -> None:
     """Create DHW controllers for CH/DHW (heat)."""
 
-    def entity_factory(entity_class, broker: RamsesBroker, device):  # TODO: deprecate
+    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
+
+    if not broker._services.get(PLATFORM):
+        broker._services[PLATFORM] = True
+
+        platform = entity_platform.async_get_current_platform()
+
+        platform.async_register_entity_service(
+            SVC_PUT_DHW_TEMP, SVC_PUT_DHW_TEMP_SCHEMA, "svc_put_dhw_temp"
+        )
+        platform.async_register_entity_service(
+            SVC_SET_DHW_BOOST, {}, "svc_set_dhw_boost"
+        )
+        platform.async_register_entity_service(
+            SVC_SET_DHW_MODE, SVC_SET_DHW_MODE_SCHEMA, "svc_set_dhw_mode"
+        )
+        platform.async_register_entity_service(
+            SVC_RESET_DHW_MODE, {}, "svc_reset_dhw_mode"
+        )
+        platform.async_register_entity_service(
+            SVC_SET_DHW_PARAMS, SVC_SET_DHW_PARAMS_SCHEMA, "svc_set_dhw_params"
+        )
+        platform.async_register_entity_service(
+            SVC_RESET_DHW_PARAMS, {}, "svc_reset_dhw_params"
+        )
+        platform.async_register_entity_service(
+            SVC_GET_DHW_SCHEDULE, {}, "svc_get_dhw_schedule"
+        )
+        platform.async_register_entity_service(
+            SVC_SET_DHW_SCHEDULE, SVC_SET_DHW_SCHEDULE_SCHEMA, "svc_set_dhw_schedule"
+        )
+
+    def entity_factory(entity_class, broker, device):  # TODO: deprecate
         return entity_class(broker, device)
 
     if discovery_info is None:  # or not discovery_info.get("dhw"):  # not needed
         return
-
-    broker = hass.data[DOMAIN][BROKER]
 
     async_add_entities(
         [
@@ -64,14 +161,6 @@ async def async_setup_platform(
             for dhw in discovery_info["dhw"]
         ]
     )
-
-    if not broker._services.get(PLATFORM):
-        broker._services[PLATFORM] = True
-
-        platform = entity_platform.async_get_current_platform()
-
-        for name, schema in SVCS_WATER_HEATER_EVO_DHW.items():
-            platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
 class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
