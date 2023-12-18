@@ -9,6 +9,7 @@ from typing import Any
 
 from ramses_rf.device.hvac import HvacRemote
 from ramses_tx import Command, Priority
+import voluptuous as vol
 
 from homeassistant.components.remote import (
     DOMAIN as PLATFORM,
@@ -17,16 +18,48 @@ from homeassistant.components.remote import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers import entity_platform
+from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
 
 from . import RamsesEntity
-from .const import BROKER, DOMAIN
+from .const import (
+    ATTR_COMMAND,
+    ATTR_DELAY_SECS,
+    ATTR_NUM_REPEATS,
+    ATTR_TIMEOUT,
+    BROKER,
+    DOMAIN,
+    SVC_DELETE_COMMAND,
+    SVC_LEARN_COMMAND,
+    SVC_SEND_COMMAND,
+)
 from .coordinator import RamsesBroker
-from .schemas import SVCS_REMOTE
 
 _LOGGER = logging.getLogger(__name__)
+
+SVC_LEARN_COMMAND_SCHEMA = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_COMMAND): cv.string,
+        vol.Required(ATTR_TIMEOUT, default=60): vol.All(
+            cv.positive_int, vol.Range(min=30, max=300)
+        ),
+    }
+)
+
+SVC_SEND_COMMAND_SCHEMA = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_COMMAND): cv.string,
+        vol.Required(ATTR_NUM_REPEATS, default=3): cv.positive_int,
+        vol.Required(ATTR_DELAY_SECS, default=0.2): cv.positive_float,
+    },
+)
+
+SVC_DELETE_COMMAND_SCHEMA = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_COMMAND): cv.string,
+    },
+)
 
 
 async def async_setup_platform(
@@ -37,22 +70,29 @@ async def async_setup_platform(
 ) -> None:
     """Create remotes for HVAC."""
 
-    if discovery_info is None:  # or not discovery_info.get("remotes")  # not needed
+    if discovery_info is None:
         return
 
-    broker = hass.data[DOMAIN][BROKER]
+    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
-    platform = entity_platform.async_get_current_platform()
+    if not broker._services.get(PLATFORM):
+        broker._services[PLATFORM] = True
 
-    for name, schema in SVCS_REMOTE.items():
-        platform.async_register_entity_service(name, schema, f"svc_{name}")
+        platform = entity_platform.async_get_current_platform()
+
+        platform.async_register_entity_service(
+            SVC_LEARN_COMMAND, SVC_LEARN_COMMAND_SCHEMA, "async_learn_command"
+        )
+        platform.async_register_entity_service(
+            SVC_SEND_COMMAND, SVC_SEND_COMMAND_SCHEMA, "async_send_command"
+        )
+        platform.async_register_entity_service(
+            SVC_DELETE_COMMAND, SVC_DELETE_COMMAND_SCHEMA, "async_delete_command"
+        )
 
     async_add_entities(
         [RamsesRemote(broker, device) for device in discovery_info["remotes"]]
     )
-
-    if not broker._services.get(PLATFORM):
-        broker._services[PLATFORM] = True
 
 
 class RamsesRemote(RamsesEntity, RemoteEntity):
@@ -198,25 +238,3 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
             self._broker.client.send_cmd(cmd)
 
         await self._broker.async_update()
-
-    async def svc_delete_command(self, *args, **kwargs) -> None:
-        """Delete a RAMSES remote command from the database.
-
-        This is a RAMSES-specific convenience wrapper for async_delete_command().
-        """
-        await self.async_delete_command(*args, **kwargs)
-
-    async def svc_learn_command(self, *args, **kwargs) -> None:
-        """Learn a command from a RAMSES remote and add to the database.
-
-        This is a RAMSES-specific convenience wrapper for async_learn_command().
-        """
-        kwargs["command"] = [kwargs.pop("command")]
-        await self.async_learn_command(*args, **kwargs)
-
-    async def svc_send_command(self, *args, **kwargs) -> None:
-        """Send a command as if from a RAMSES remote.
-
-        This is a RAMSES-specific convenience wrapper for async_send_command().
-        """
-        await self.async_send_command(*args, **kwargs)  # TODO: make call_soon

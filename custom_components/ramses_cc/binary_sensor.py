@@ -19,19 +19,16 @@ from ramses_rf.device.heat import (
 from ramses_tx.const import SZ_BYPASS_POSITION, SZ_IS_EVOFW3
 
 from homeassistant.components.binary_sensor import (
-    DOMAIN as PLATFORM,
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesSensorBase
 from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
 from .coordinator import RamsesBroker
-from .schemas import SVCS_BINARY_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,15 +47,15 @@ async def async_setup_platform(
       domains: TCS, DHW and Zones
     """
 
+    if discovery_info is None:
+        return
+
+    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
+
     def entity_factory(
         broker: RamsesBroker, device, attr, *, entity_class=None, **kwargs
     ):
         return (entity_class or RamsesBinarySensor)(broker, device, attr, **kwargs)
-
-    if discovery_info is None:
-        return
-
-    broker = hass.data[DOMAIN][BROKER]
 
     new_sensors = [
         entity_factory(broker, dev, k, **v)
@@ -89,14 +86,6 @@ async def async_setup_platform(
     ]  # 01:xxxxxx - active_fault, schema
 
     async_add_entities(new_sensors)
-
-    if not broker._services.get(PLATFORM) and new_sensors:
-        broker._services[PLATFORM] = True
-
-        platform = entity_platform.async_get_current_platform()
-
-        for name, schema in SVCS_BINARY_SENSOR.items():
-            platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
 class RamsesBinarySensor(RamsesSensorBase, BinarySensorEntity):

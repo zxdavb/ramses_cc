@@ -19,6 +19,7 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import async_call_later
@@ -27,16 +28,19 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
+    ATTR_DEVICE_ID,
     BROKER,
     CONF_ADVANCED_FEATURES,
     CONF_MESSAGE_EVENTS,
     CONF_SEND_PACKET,
     DOMAIN,
     SIGNAL_UPDATE,
+    SVC_FAKE_DEVICE,
+    SVC_FORCE_UPDATE,
     SVC_SEND_PACKET,
 )
 from .coordinator import RamsesBroker
-from .schemas import SCH_DOMAIN_CONFIG, SVCS_DOMAIN
+from .schemas import SCH_DOMAIN_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,6 +54,23 @@ PLATFORMS = [
     Platform.REMOTE,
     Platform.WATER_HEATER,
 ]
+
+SVC_FAKE_DEVICE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_DEVICE_ID): cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$"),
+        vol.Optional("create_device", default=False): vol.Any(None, cv.boolean),
+        vol.Optional("start_binding", default=False): vol.Any(None, cv.boolean),
+    }
+)
+
+SVC_SEND_PACKET_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_DEVICE_ID): cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$"),
+        vol.Required("verb"): vol.In((" I", "I", "RQ", "RP", " W", "W")),
+        vol.Required("code"): cv.matches_regex(r"^[0-9A-F]{4}$"),
+        vol.Required("payload"): cv.matches_regex(r"^[0-9A-F]{1,48}$"),
+    }
+)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -126,7 +147,7 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_fake_device(call: ServiceCall) -> None:
+    async def async_fake_device(call: ServiceCall) -> None:
         try:
             broker.client.fake_device(**call.data)
         except LookupError as exc:
@@ -135,11 +156,11 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         hass.helpers.event.async_call_later(5, broker.async_update)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_force_update(_: ServiceCall) -> None:
+    async def async_force_update(_: ServiceCall) -> None:
         await broker.async_update()
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_send_packet(call: ServiceCall) -> None:
+    async def async_send_packet(call: ServiceCall) -> None:
         kwargs = dict(call.data.items())  # is ReadOnlyDict
         if (
             call.data["device_id"] == "18:000730"
@@ -150,15 +171,17 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         broker.client.send_cmd(broker.client.create_cmd(**kwargs))
         hass.helpers.event.async_call_later(5, broker.async_update)
 
-    domain_service = SVCS_DOMAIN
-    if not broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
-        del domain_service[SVC_SEND_PACKET]
+        hass.services.async_register(
+            DOMAIN, SVC_FAKE_DEVICE, async_fake_device, schema=SVC_FAKE_DEVICE_SCHEMA
+        )
+        hass.services.async_register(DOMAIN, SVC_FORCE_UPDATE, async_force_update)
 
-    services = {k: v for k, v in locals().items() if k.startswith("svc")}
-    for name, schema in SVCS_DOMAIN.items():
-        if f"svc_{name}" in services:
+        if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
             hass.services.async_register(
-                DOMAIN, name, services[f"svc_{name}"], schema=schema
+                DOMAIN,
+                SVC_SEND_PACKET,
+                async_send_packet,
+                schema=SVC_SEND_PACKET_SCHEMA,
             )
 
 

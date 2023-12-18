@@ -40,6 +40,7 @@ from ramses_rf.device.heat import (
     SZ_OUTSIDE_TEMP,
     SZ_REL_MODULATION_LEVEL,
 )
+import voluptuous as vol
 
 from homeassistant.components.sensor import (
     DOMAIN as PLATFORM,
@@ -55,16 +56,42 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_platform
+from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesSensorBase
-from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
+from .const import (
+    ATTR_CO2_LEVEL,
+    ATTR_INDOOR_HUMIDITY,
+    ATTR_SETPOINT,
+    BROKER,
+    DOMAIN,
+    SVC_PUT_CO2_LEVEL,
+    SVC_PUT_INDOOR_HUMIDITY,
+    UnitOfVolumeFlowRate,
+)
 from .coordinator import RamsesBroker
-from .schemas import SVCS_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
+
+SVC_PUT_CO2_LEVEL_SCHEMA = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_CO2_LEVEL): vol.All(
+            cv.positive_int,
+            vol.Range(min=0, max=16384),
+        ),
+    }
+)
+
+SVC_PUT_INDOOR_HUMIDITY_SCHEMA = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_INDOOR_HUMIDITY): vol.All(
+            cv.positive_float,
+            vol.Range(min=0, max=100),
+        ),
+    }
+)
 
 
 async def async_setup_platform(
@@ -81,13 +108,27 @@ async def async_setup_platform(
       domains: TCS, DHW and Zones
     """
 
-    def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
-        return (entity_class or RamsesSensor)(broker, device, attr, **kwargs)
-
     if discovery_info is None:
         return
 
-    broker = hass.data[DOMAIN][BROKER]
+    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
+
+    if not broker._services.get(PLATFORM):
+        broker._services[PLATFORM] = True
+
+        platform = entity_platform.async_get_current_platform()
+
+        platform.async_register_entity_service(
+            SVC_PUT_CO2_LEVEL, SVC_PUT_CO2_LEVEL_SCHEMA, "async_put_co2_level"
+        )
+        platform.async_register_entity_service(
+            SVC_PUT_INDOOR_HUMIDITY,
+            SVC_PUT_INDOOR_HUMIDITY_SCHEMA,
+            "async_put_indoor_humidity",
+        )
+
+    def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
+        return (entity_class or RamsesSensor)(broker, device, attr, **kwargs)
 
     new_sensors = [
         entity_factory(broker, device, attr, **v)
@@ -117,14 +158,6 @@ async def async_setup_platform(
     ]
 
     async_add_entities(new_sensors)
-
-    if not broker._services.get(PLATFORM) and new_sensors:
-        broker._services[PLATFORM] = True
-
-        platform = entity_platform.async_get_current_platform()
-
-        for name, schema in SVCS_SENSOR.items():
-            platform.async_register_entity_service(name, schema, f"svc_{name}")
 
 
 class RamsesSensor(RamsesSensorBase, SensorEntity):
@@ -164,7 +197,7 @@ class RamsesCo2Sensor(RamsesSensor):
     """Representation of a generic sensor."""
 
     @callback
-    def svc_put_co2_level(self, co2_level: int = None, **kwargs) -> None:
+    def async_put_co2_level(self, co2_level: int = None, **kwargs) -> None:
         """Set the state of the Sensor."""
         self._device.co2_level = co2_level
 
@@ -173,7 +206,9 @@ class RamsesIndoorHumidity(RamsesSensor):
     """Representation of a generic sensor."""
 
     @callback
-    def svc_put_indoor_humidity(self, indoor_humidity: float = None, **kwargs) -> None:
+    def async_put_indoor_humidity(
+        self, indoor_humidity: float = None, **kwargs
+    ) -> None:
         """Set the state of the Sensor."""
         self._device.indoor_humidity = indoor_humidity / 100
 

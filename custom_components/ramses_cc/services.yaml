@@ -117,7 +117,7 @@ set_system_mode:
 
     mode:
       name: System Mode
-      description: "One of: auto, eco_boost, away, day_off, heat_off, or custom."
+      description: "One of: auto, eco_boost, away, day_off, day_off_eco, heat_off, or custom."
       default: auto
       example: away
       required: true
