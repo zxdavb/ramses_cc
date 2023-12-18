@@ -147,7 +147,7 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_fake_device(call: ServiceCall) -> None:
+    async def async_fake_device(call: ServiceCall) -> None:
         try:
             broker.client.fake_device(**call.data)
         except LookupError as exc:
@@ -156,11 +156,11 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         hass.helpers.event.async_call_later(5, broker.async_update)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_force_update(_: ServiceCall) -> None:
+    async def async_force_update(_: ServiceCall) -> None:
         await broker.async_update()
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_send_packet(call: ServiceCall) -> None:
+    async def async_send_packet(call: ServiceCall) -> None:
         kwargs = dict(call.data.items())  # is ReadOnlyDict
         if (
             call.data["device_id"] == "18:000730"
@@ -172,13 +172,16 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         hass.helpers.event.async_call_later(5, broker.async_update)
 
         hass.services.async_register(
-            DOMAIN, SVC_FAKE_DEVICE, svc_fake_device, schema=SVC_FAKE_DEVICE_SCHEMA
+            DOMAIN, SVC_FAKE_DEVICE, async_fake_device, schema=SVC_FAKE_DEVICE_SCHEMA
         )
-        hass.services.async_register(DOMAIN, SVC_FORCE_UPDATE, svc_force_update)
+        hass.services.async_register(DOMAIN, SVC_FORCE_UPDATE, async_force_update)
 
         if broker.config[CONF_ADVANCED_FEATURES].get([CONF_SEND_PACKET]):
             hass.services.async_register(
-                DOMAIN, SVC_SEND_PACKET, svc_send_packet, schema=SVC_SEND_PACKET_SCHEMA
+                DOMAIN,
+                SVC_SEND_PACKET,
+                async_send_packet,
+                schema=SVC_SEND_PACKET_SCHEMA,
             )
 
 

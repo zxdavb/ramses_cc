@@ -128,28 +128,28 @@ async def async_setup_platform(
         platform = entity_platform.async_get_current_platform()
 
         platform.async_register_entity_service(
-            SVC_PUT_DHW_TEMP, SVC_PUT_DHW_TEMP_SCHEMA, "svc_put_dhw_temp"
+            SVC_PUT_DHW_TEMP, SVC_PUT_DHW_TEMP_SCHEMA, "async_put_dhw_temp"
         )
         platform.async_register_entity_service(
-            SVC_SET_DHW_BOOST, {}, "svc_set_dhw_boost"
+            SVC_SET_DHW_BOOST, {}, "async_set_dhw_boost"
         )
         platform.async_register_entity_service(
-            SVC_SET_DHW_MODE, SVC_SET_DHW_MODE_SCHEMA, "svc_set_dhw_mode"
+            SVC_SET_DHW_MODE, SVC_SET_DHW_MODE_SCHEMA, "async_set_dhw_mode"
         )
         platform.async_register_entity_service(
-            SVC_RESET_DHW_MODE, {}, "svc_reset_dhw_mode"
+            SVC_RESET_DHW_MODE, {}, "async_reset_dhw_mode"
         )
         platform.async_register_entity_service(
-            SVC_SET_DHW_PARAMS, SVC_SET_DHW_PARAMS_SCHEMA, "svc_set_dhw_params"
+            SVC_SET_DHW_PARAMS, SVC_SET_DHW_PARAMS_SCHEMA, "async_set_dhw_params"
         )
         platform.async_register_entity_service(
-            SVC_RESET_DHW_PARAMS, {}, "svc_reset_dhw_params"
+            SVC_RESET_DHW_PARAMS, {}, "async_reset_dhw_params"
         )
         platform.async_register_entity_service(
-            SVC_GET_DHW_SCHEDULE, {}, "svc_get_dhw_schedule"
+            SVC_GET_DHW_SCHEDULE, {}, "async_get_dhw_schedule"
         )
         platform.async_register_entity_service(
-            SVC_SET_DHW_SCHEDULE, SVC_SET_DHW_SCHEDULE_SCHEMA, "svc_set_dhw_schedule"
+            SVC_SET_DHW_SCHEDULE, SVC_SET_DHW_SCHEDULE_SCHEMA, "async_set_dhw_schedule"
         )
 
     def entity_factory(entity_class, broker, device):  # TODO: deprecate
@@ -241,39 +241,39 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         elif operation_mode == STATE_ON:
             active = True
 
-        self.svc_set_dhw_mode(
+        self.async_set_dhw_mode(
             mode=MODE_HA_TO_RAMSES[operation_mode], active=active, until=until
         )
 
     def set_temperature(self, temperature: float = None, **kwargs) -> None:
         """Set the target temperature of the water heater."""
-        self.svc_set_dhw_params(setpoint=temperature)
+        self.async_set_dhw_params(setpoint=temperature)
 
     @callback
-    def svc_put_dhw_temp(self) -> None:
+    def async_put_dhw_temp(self) -> None:
         """Fake the measured temperature of the DHW's sensor."""
         raise NotImplementedError
 
     @callback
-    def svc_reset_dhw_mode(self) -> None:
+    def async_reset_dhw_mode(self) -> None:
         """Reset the operating mode of the water heater."""
         self._device.reset_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def svc_reset_dhw_params(self) -> None:
+    def async_reset_dhw_params(self) -> None:
         """Reset the configuration of the water heater."""
         self._device.reset_config()
         self.async_write_ha_state_delayed()
 
     @callback
-    def svc_set_dhw_boost(self) -> None:
+    def async_set_dhw_boost(self) -> None:
         """Enable the water heater for an hour."""
         self._device.set_boost_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def svc_set_dhw_mode(
+    def async_set_dhw_mode(
         self, mode=None, active: bool = None, duration=None, until=None
     ) -> None:
         """Set the (native) operating mode of the water heater."""
@@ -283,7 +283,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         self.async_write_ha_state_delayed()
 
     @callback
-    def svc_set_dhw_params(
+    def async_set_dhw_params(
         self, setpoint: float = None, overrun=None, differential=None
     ) -> None:
         """Set the configuration of the water heater."""
@@ -294,12 +294,12 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         )
         self.async_write_ha_state_delayed()
 
-    async def svc_get_dhw_schedule(self, **kwargs) -> None:
+    async def async_get_dhw_schedule(self, **kwargs) -> None:
         """Get the latest weekly schedule of the DHW."""
         # {{ state_attr('water_heater.stored_hw', 'schedule') }}
         await self._device.get_schedule()
         self.async_write_ha_state()
 
-    async def svc_set_dhw_schedule(self, schedule: str, **kwargs) -> None:
+    async def async_set_dhw_schedule(self, schedule: str, **kwargs) -> None:
         """Set the weekly schedule of the DHW."""
         await self._device.set_schedule(json.loads(schedule))

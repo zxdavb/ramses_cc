@@ -119,12 +119,12 @@ async def async_setup_platform(
         platform = entity_platform.async_get_current_platform()
 
         platform.async_register_entity_service(
-            SVC_PUT_CO2_LEVEL, SVC_PUT_CO2_LEVEL_SCHEMA, "svc_put_co2_level"
+            SVC_PUT_CO2_LEVEL, SVC_PUT_CO2_LEVEL_SCHEMA, "async_put_co2_level"
         )
         platform.async_register_entity_service(
             SVC_PUT_INDOOR_HUMIDITY,
             SVC_PUT_INDOOR_HUMIDITY_SCHEMA,
-            "svc_put_indoor_humidity",
+            "async_put_indoor_humidity",
         )
 
     def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
@@ -197,7 +197,7 @@ class RamsesCo2Sensor(RamsesSensor):
     """Representation of a generic sensor."""
 
     @callback
-    def svc_put_co2_level(self, co2_level: int = None, **kwargs) -> None:
+    def async_put_co2_level(self, co2_level: int = None, **kwargs) -> None:
         """Set the state of the Sensor."""
         self._device.co2_level = co2_level
 
@@ -206,7 +206,9 @@ class RamsesIndoorHumidity(RamsesSensor):
     """Representation of a generic sensor."""
 
     @callback
-    def svc_put_indoor_humidity(self, indoor_humidity: float = None, **kwargs) -> None:
+    def async_put_indoor_humidity(
+        self, indoor_humidity: float = None, **kwargs
+    ) -> None:
         """Set the state of the Sensor."""
         self._device.indoor_humidity = indoor_humidity / 100
 

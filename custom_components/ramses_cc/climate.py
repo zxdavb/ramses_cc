@@ -238,31 +238,33 @@ async def async_setup_platform(
         platform = entity_platform.async_get_current_platform()
 
         platform.async_register_entity_service(
-            SVC_RESET_SYSTEM_MODE, {}, "svc_reset_system_mode"
+            SVC_RESET_SYSTEM_MODE, {}, "async_reset_system_mode"
         )
         platform.async_register_entity_service(
-            SVC_SET_SYSTEM_MODE, SVC_SET_SYSTEM_MODE_SCHEMA, "svc_set_system_mode"
+            SVC_SET_SYSTEM_MODE, SVC_SET_SYSTEM_MODE_SCHEMA, "async_set_system_mode"
         )
         platform.async_register_entity_service(
             SVC_PUT_ZONE_TEMP, SVC_PUT_ZONE_TEMP_SCHEMA, "put_zone_temp"
         )
         platform.async_register_entity_service(
-            SVC_SET_ZONE_CONFIG, SVC_SET_ZONE_CONFIG_SCHEMA, "svc_set_zone_config"
+            SVC_SET_ZONE_CONFIG, SVC_SET_ZONE_CONFIG_SCHEMA, "async_set_zone_config"
         )
         platform.async_register_entity_service(
-            SVC_RESET_ZONE_CONFIG, {}, "svc_reset_zone_config"
+            SVC_RESET_ZONE_CONFIG, {}, "async_reset_zone_config"
         )
         platform.async_register_entity_service(
-            SVC_SET_ZONE_MODE, SVC_SET_ZONE_MODE_SCHEMA, "svc_set_zone_mode"
+            SVC_SET_ZONE_MODE, SVC_SET_ZONE_MODE_SCHEMA, "async_set_zone_mode"
         )
         platform.async_register_entity_service(
-            SVC_RESET_ZONE_MODE, {}, "svc_reset_zone_mode"
+            SVC_RESET_ZONE_MODE, {}, "async_reset_zone_mode"
         )
         platform.async_register_entity_service(
-            SVC_GET_ZONE_SCHEDULE, {}, "svc_get_zone_schedule"
+            SVC_GET_ZONE_SCHEDULE, {}, "async_get_zone_schedule"
         )
         platform.async_register_entity_service(
-            SVC_SET_ZONE_SCHEDULE, SVC_SET_ZONE_SCHEDULE_SCHEMA, "svc_set_zone_schedule"
+            SVC_SET_ZONE_SCHEDULE,
+            SVC_SET_ZONE_SCHEDULE_SCHEMA,
+            "async_set_zone_schedule",
         )
 
     new_entities = []
@@ -381,21 +383,21 @@ class RamsesController(RamsesEntity, ClimateEntity):
     @callback
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set an operating mode for a Controller."""
-        self.svc_set_system_mode(MODE_HA_TO_TCS.get(hvac_mode))
+        self.async_set_system_mode(MODE_HA_TO_TCS.get(hvac_mode))
 
     @callback
     def set_preset_mode(self, preset_mode: str | None) -> None:
         """Set the preset mode; if None, then revert to 'Auto' mode."""
-        self.svc_set_system_mode(PRESET_HA_TO_TCS.get(preset_mode, SystemMode.AUTO))
+        self.async_set_system_mode(PRESET_HA_TO_TCS.get(preset_mode, SystemMode.AUTO))
 
     @callback
-    def svc_reset_system_mode(self) -> None:
+    def async_reset_system_mode(self) -> None:
         """Reset the (native) operating mode of the Controller."""
         self._device.reset_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def svc_set_system_mode(self, mode, period=None, duration=None) -> None:
+    def async_set_system_mode(self, mode, period=None, duration=None) -> None:
         """Set the (native) operating mode of the Controller."""
         if period is not None:
             until = datetime.now() + period  # Period in days TODO: round down
@@ -529,16 +531,16 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set a Zone to one of its native operating modes."""
         if hvac_mode == HVACMode.AUTO:  # FollowSchedule
-            self.svc_reset_zone_mode()
+            self.async_reset_zone_mode()
         elif hvac_mode == HVACMode.HEAT:  # TemporaryOverride
-            self.svc_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)  # TODO:
+            self.async_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)  # TODO:
         else:  # HVACMode.OFF, PermentOverride, temp = min
-            self.svc_set_zone_mode(self._device.set_frost_mode)  # TODO:
+            self.async_set_zone_mode(self._device.set_frost_mode)  # TODO:
 
     @callback
     def set_preset_mode(self, preset_mode: str | None) -> None:
         """Set the preset mode; if None, then revert to following the schedule."""
-        self.svc_set_zone_mode(
+        self.async_set_zone_mode(
             mode=PRESET_HA_TO_ZONE.get(preset_mode),
             setpoint=self.target_temperature if preset_mode == "permanent" else None,
         )
@@ -546,10 +548,10 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     @callback
     def set_temperature(self, temperature: float = None, **kwargs) -> None:
         """Set a new target temperature."""
-        self.svc_set_zone_mode(setpoint=temperature)
+        self.async_set_zone_mode(setpoint=temperature)
 
     @callback
-    def svc_put_zone_temp(
+    def async_put_zone_temp(
         self, temperature: float, **kwargs
     ) -> None:  # set_current_temp
         """Fake the measured temperature of the Zone sensor.
@@ -562,25 +564,25 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         self.async_write_ha_state()
 
     @callback
-    def svc_reset_zone_config(self) -> None:
+    def async_reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""
         self._device.reset_config()
         self.async_write_ha_state_delayed()
 
     @callback
-    def svc_reset_zone_mode(self) -> None:
+    def async_reset_zone_mode(self) -> None:
         """Reset the (native) operating mode of the Zone."""
         self._device.reset_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def svc_set_zone_config(self, **kwargs) -> None:
+    def async_set_zone_config(self, **kwargs) -> None:
         """Set the configuration of the Zone (min/max temp, etc.)."""
         self._device.set_config(**kwargs)
         self.async_write_ha_state_delayed()
 
     @callback
-    def svc_set_zone_mode(
+    def async_set_zone_mode(
         self, mode=None, setpoint=None, duration=None, until=None
     ) -> None:
         """Set the (native) operating mode of the Zone."""
@@ -589,13 +591,13 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         self._device.set_mode(mode=mode, setpoint=setpoint, until=until)
         self.async_write_ha_state_delayed()
 
-    async def svc_get_zone_schedule(self, **kwargs) -> None:
+    async def async_get_zone_schedule(self, **kwargs) -> None:
         """Get the latest weekly schedule of the Zone."""
         # {{ state_attr('climate.ramses_cc_01_145038_04', 'schedule') }}
         await self._device.get_schedule()
         self.async_write_ha_state()
 
-    async def svc_set_zone_schedule(self, schedule: str, **kwargs) -> None:
+    async def async_set_zone_schedule(self, schedule: str, **kwargs) -> None:
         """Set the weekly schedule of the Zone."""
         await self._device.set_schedule(json.loads(schedule))
 
