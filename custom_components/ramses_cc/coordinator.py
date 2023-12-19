@@ -129,7 +129,7 @@ class RamsesBroker:
         if not schema_is_minimal(config_schema):  # move this logic into ramses_rf?
             _LOGGER.warning("The config schema is not minimal (consider minimising it)")
 
-        if cached_schema and (merged := merge_schemas(cached_schema, config_schema)):
+        if cached_schema and (merged := merge_schemas(config_schema, cached_schema)):
             try:
                 return Gateway(
                     self._ser_name, loop=self.hass.loop, **client_config, **merged
