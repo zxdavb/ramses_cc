@@ -448,7 +448,7 @@ def merge_schemas(config_schema: _SchemaT, cached_schema: _SchemaT) -> _SchemaT 
         _LOGGER.info("Using the cached schema")
         return cached_schema
 
-    merged_schema = deep_merge(config_schema, cached_schema)  # 1st takes precidence
+    merged_schema = deep_merge(config_schema, cached_schema)  # 1st takes precedence
 
     if _is_subset(shrink(config_schema), shrink(merged_schema)):
         _LOGGER.info("Using a merged schema")
