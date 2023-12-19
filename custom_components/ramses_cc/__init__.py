@@ -12,12 +12,7 @@ from ramses_tx.exceptions import TransportSerialError
 import voluptuous as vol
 
 from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import (
-    ATTR_ID,
-    CONF_SCAN_INTERVAL,
-    EVENT_HOMEASSISTANT_START,
-    Platform,
-)
+from homeassistant.const import ATTR_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -25,8 +20,8 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .broker import RamsesBroker
 from .const import (
     ATTR_DEVICE_ID,
     BROKER,
@@ -39,7 +34,6 @@ from .const import (
     SVC_FORCE_UPDATE,
     SVC_SEND_PACKET,
 )
-from .coordinator import RamsesBroker
 from .schemas import SCH_DOMAIN_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,8 +70,6 @@ SVC_SEND_PACKET_SCHEMA = vol.Schema(
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
 
-    _LOGGER.debug("\r\n\nConfig = %s\r\n", config[DOMAIN])
-
     broker = RamsesBroker(hass, config)
     try:
         await broker.start()
@@ -86,23 +78,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         return False
 
     hass.data.setdefault(DOMAIN, {})[BROKER] = broker
-
-    coordinator: DataUpdateCoordinator = DataUpdateCoordinator(
-        hass,
-        _LOGGER,
-        name=DOMAIN,
-        update_interval=config[DOMAIN][CONF_SCAN_INTERVAL],
-    )
-    coordinator.update_method = broker.async_update
-
-    if _LOGGER.isEnabledFor(logging.DEBUG):  # TODO: remove
-        app_storage = await broker._async_load_storage()
-        _LOGGER.debug("\r\n\nStore = %s\r\n", app_storage)
-
-    # NOTE: .async_listen_once(EVENT_HOMEASSISTANT_START, awaitable_coro)
-    # NOTE: will be passed event, as: async def awaitable_coro(_event: Event):
-    await coordinator.async_config_entry_first_refresh()  # will save access tokens too
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, broker.async_update)
 
     register_domain_services(hass, broker)
     register_domain_events(hass, broker)

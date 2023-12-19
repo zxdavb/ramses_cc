@@ -61,6 +61,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesSensorBase
+from .broker import RamsesBroker
 from .const import (
     ATTR_CO2_LEVEL,
     ATTR_INDOOR_HUMIDITY,
@@ -71,7 +72,6 @@ from .const import (
     SVC_PUT_INDOOR_HUMIDITY,
     UnitOfVolumeFlowRate,
 )
-from .coordinator import RamsesBroker
 
 _LOGGER = logging.getLogger(__name__)
 

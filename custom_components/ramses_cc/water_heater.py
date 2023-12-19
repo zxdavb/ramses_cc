@@ -25,6 +25,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity
+from .broker import RamsesBroker
 from .const import (
     ATTR_ACTIVE,
     ATTR_DIFFERENTIAL,
@@ -48,7 +49,6 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
-from .coordinator import RamsesBroker
 
 _LOGGER = logging.getLogger(__name__)
 

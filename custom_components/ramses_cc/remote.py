@@ -23,6 +23,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
 
 from . import RamsesEntity
+from .broker import RamsesBroker
 from .const import (
     ATTR_COMMAND,
     ATTR_DELAY_SECS,
@@ -34,7 +35,6 @@ from .const import (
     SVC_LEARN_COMMAND,
     SVC_SEND_COMMAND,
 )
-from .coordinator import RamsesBroker
 
 _LOGGER = logging.getLogger(__name__)
 

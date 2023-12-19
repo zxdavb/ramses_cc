@@ -1,4 +1,4 @@
-"""Coordinator for RAMSES integration."""
+"""Broker for RAMSES integration."""
 from __future__ import annotations
 
 from datetime import datetime as dt, timedelta
@@ -22,6 +22,7 @@ from homeassistant.const import CONF_SCAN_INTERVAL, Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
@@ -47,11 +48,11 @@ class RamsesBroker:
         self._store: Store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
 
         self.hass_config = hass_config
+        _LOGGER.debug("Config = %s", hass_config)
         self._ser_name, self._client_config, self.config = normalise_config(
             hass_config[DOMAIN]
         )
 
-        # self.status = None
         self.client: Gateway = None  # type: ignore[assignment]
         self._remotes: dict[str, str] = None  # type: ignore[assignment]
 
@@ -67,8 +68,6 @@ class RamsesBroker:
         self._rems = []
         self._zons = []
 
-        self.loop_task = None
-        self._last_update = dt.min
         self._sem = Semaphore(value=1)
 
         self.learn_device_id = None  # TODO: remove me
@@ -79,42 +78,38 @@ class RamsesBroker:
         CONFIG_KEYS = (SZ_CONFIG, SZ_PACKET_LOG, SZ_PORT_CONFIG)
 
         storage = await self._async_load_storage()
+        _LOGGER.debug("Storage = %s", storage)
 
         self._remotes = storage.get(SZ_REMOTES, {}) | self.config[SZ_REMOTES]
-        client_cache: dict[str, Any] = storage.get(SZ_CLIENT_STATE, {})
+        client_state: dict[str, Any] = storage.get(SZ_CLIENT_STATE, {})
 
-        restore = self.config[SZ_RESTORE_CACHE]
+        restore_state = self.config[SZ_RESTORE_CACHE][SZ_RESTORE_STATE]
+        restore_schema = self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA]
 
         self.client = self._create_client(
             {k: v for k, v in self._client_config.items() if k in CONFIG_KEYS},
             {k: v for k, v in self._client_config.items() if k not in CONFIG_KEYS},
-            client_cache.get(SZ_SCHEMA, {}) if restore[SZ_RESTORE_SCHEMA] else {},
+            client_state.get(SZ_SCHEMA, {}) if restore_schema else {},
         )
 
-        if restore[SZ_RESTORE_STATE]:
-            cached_packets = {
-                dtm: pkt
-                for dtm, pkt in client_cache.get(SZ_PACKETS, {}).items()
-                if dt.fromisoformat(dtm) > dt.now() - timedelta(days=1)
-                and pkt[41:45] not in ("313F",)
-            }
-        else:
-            cached_packets = {}
-
-        if not restore[SZ_RESTORE_SCHEMA]:
-            cached_packets = {
-                dtm: pkt
-                for dtm, pkt in cached_packets.items()
-                if pkt[41:45] not in ("0005", "000C")
-            }
+        cached_packets = (
+            self._filter_cached_packets(
+                client_state.get(SZ_PACKETS, {}), restore_schema
+            )
+            if restore_state
+            else {}
+        )
 
         await self.client.start(cached_packets=cached_packets)
 
-        self.hass.helpers.event.async_track_time_interval(
-            self.async_save_client_state, SAVE_STATE_INTERVAL
+        # Perform initial update, then poll at intervals
+        await self.async_update()
+        async_track_time_interval(
+            self.hass, self.async_update, self.hass_config[DOMAIN][CONF_SCAN_INTERVAL]
         )
-        self.hass.helpers.event.async_track_time_interval(
-            self.async_update, self.hass_config[DOMAIN][CONF_SCAN_INTERVAL]
+
+        async_track_time_interval(
+            self.hass, self.async_save_client_state, SAVE_STATE_INTERVAL
         )
 
     def _create_client(
@@ -129,7 +124,7 @@ class RamsesBroker:
         if not schema_is_minimal(config_schema):  # move this logic into ramses_rf?
             _LOGGER.warning("The config schema is not minimal (consider minimising it)")
 
-        if cached_schema and (merged := merge_schemas(cached_schema, config_schema)):
+        if cached_schema and (merged := merge_schemas(config_schema, cached_schema)):
             try:
                 return Gateway(
                     self._ser_name, loop=self.hass.loop, **client_config, **merged
@@ -143,32 +138,27 @@ class RamsesBroker:
             self._ser_name, loop=self.hass.loop, **client_config, **config_schema
         )
 
+    def _filter_cached_packets(
+        self, cached_packets: dict, restore_schema: bool
+    ) -> dict:
+        """Filter cached packets for replay on startup."""
+
+        msg_code_filter = ["313F"]
+        if not restore_schema:
+            msg_code_filter.extend(["0005", "000C"])
+
+        return {
+            dtm: pkt
+            for dtm, pkt in cached_packets.items()
+            if dt.fromisoformat(dtm) > dt.now() - timedelta(days=1)
+            and pkt[41:45] not in msg_code_filter
+        }
+
     async def _async_load_storage(self) -> dict:
         """May return an empty dict."""
 
         app_storage = await self._store.async_load()  # return None if no store
         return app_storage or {}
-
-    async def _async_load_client_state(self) -> None:
-        """Restore the client state from the application store."""
-
-        _LOGGER.info("Restoring the client state cache (packets)")
-        app_storage = await self._async_load_storage()
-
-        if client_state := app_storage.get(SZ_CLIENT_STATE):
-            packets = {
-                dtm: pkt
-                for dtm, pkt in client_state[SZ_PACKETS].items()
-                if dt.fromisoformat(dtm) > dt.now() - timedelta(days=1)
-            }
-            if not self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA]:
-                packets = {
-                    dtm: pkt
-                    for dtm, pkt in packets.items()
-                    if pkt[41:45] not in ("0005", "000C")
-                }
-
-            await self.client._set_state(packets=packets)  # FIXME, issue #79
 
     async def async_save_client_state(self, *args, **kwargs) -> None:
         """Save the client state to the application store."""
@@ -300,14 +290,12 @@ class RamsesBroker:
     async def async_update(self, *args, **kwargs) -> None:
         """Retrieve the latest state data from the client library."""
 
-        self._last_update = dt.now()
-
         new_sensors = self._find_new_sensors()
         new_heat_entities = self._find_new_heat_entities()
         new_hvac_entities = self._find_new_hvac_entities()
 
         if new_sensors or new_heat_entities or new_hvac_entities:
-            self.hass.helpers.event.async_call_later(5, self.async_save_client_state)
+            async_call_later(self.hass, 5, self.async_save_client_state)
 
         # Trigger state updates of all entities
         async_dispatcher_send(self.hass, SIGNAL_UPDATE)
