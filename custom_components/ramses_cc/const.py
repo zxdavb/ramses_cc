@@ -15,8 +15,10 @@ SIGNAL_UPDATE = f"{DOMAIN}_update"
 
 # Config
 CONF_ADVANCED_FEATURES = "advanced_features"
+CONF_COMMANDS = "commands"
 CONF_DEV_MODE = "dev_mode"
 CONF_MESSAGE_EVENTS = "message_events"
+CONF_RAMSES_RF = "ramses_rf"
 CONF_SEND_PACKET = "send_packet"
 CONF_UNKNOWN_CODES = "unknown_codes"
 
