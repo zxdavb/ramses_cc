@@ -12,8 +12,16 @@ from ramses_rf.schemas import (
     SCH_GATEWAY_CONFIG,
     SCH_GLOBAL_SCHEMAS_DICT,
     SCH_RESTORE_CACHE_DICT,
+    SZ_APPLIANCE_CONTROL,
+    SZ_BLOCK_LIST,
     SZ_CONFIG,
+    SZ_KNOWN_LIST,
+    SZ_ORPHANS_HEAT,
+    SZ_ORPHANS_HVAC,
     SZ_RESTORE_CACHE,
+    SZ_SENSOR,
+    SZ_SYSTEM,
+    SZ_ZONES,
 )
 from ramses_tx.schemas import (
     SCH_ENGINE_DICT,
@@ -41,6 +49,7 @@ CONF_SYSTEM_MODE = "system_mode"
 CONF_DURATION_DAYS = "period"
 CONF_DURATION_HOURS = "hours"
 
+CONF_COMMANDS = "commands"
 CONF_DURATION = "duration"
 CONF_LOCAL_OVERRIDE = "local_override"
 CONF_MAX_TEMP = "max_temp"
@@ -356,7 +365,7 @@ SCH_ADVANCED_FEATURES = vol.Schema(
 )
 
 SCH_GLOBAL_TRAITS_DICT, SCH_TRAITS = sch_global_traits_dict_factory(
-    hvac_traits={vol.Optional("commands"): dict}
+    hvac_traits={vol.Optional(CONF_COMMANDS): dict}
 )
 
 SCH_GATEWAY_CONFIG = SCH_GATEWAY_CONFIG.extend(
@@ -384,13 +393,13 @@ SCH_DOMAIN_CONFIG = (
 
 SCH_MINIMUM_TCS = vol.Schema(
     {
-        vol.Optional("system"): vol.Schema(
-            {vol.Required("appliance_control"): vol.Match(r"^10:[0-9]{6}$")}
+        vol.Optional(SZ_SYSTEM): vol.Schema(
+            {vol.Required(SZ_APPLIANCE_CONTROL): vol.Match(r"^10:[0-9]{6}$")}
         ),
-        vol.Optional("zones", default={}): vol.Schema(
+        vol.Optional(SZ_ZONES, default={}): vol.Schema(
             {
                 vol.Required(str): vol.Schema(
-                    {vol.Required("sensor"): vol.Match(r"^01:[0-9]{6}$")}
+                    {vol.Required(SZ_SENSOR): vol.Match(r"^01:[0-9]{6}$")}
                 )
             }
         ),
@@ -425,9 +434,9 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
     port_name, port_config = extract_serial_port(config.pop(SZ_SERIAL_PORT))
 
     remote_commands = {
-        k: v.pop("commands")
-        for k, v in config["known_list"].items()
-        if v.get("commands")
+        k: v.pop(CONF_COMMANDS)
+        for k, v in config[SZ_KNOWN_LIST].items()
+        if v.get(CONF_COMMANDS)
     }
 
     broker_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
@@ -466,7 +475,7 @@ def schema_is_minimal(schema: dict) -> bool:
     sch: dict
 
     for key, sch in schema.items():
-        if key in ("block_list", "known_list", "orphans_heat", "orphans_hvac"):
+        if key in (SZ_BLOCK_LIST, SZ_KNOWN_LIST, SZ_ORPHANS_HEAT, SZ_ORPHANS_HVAC):
             continue
 
         try:
@@ -474,7 +483,7 @@ def schema_is_minimal(schema: dict) -> bool:
         except vol.Invalid:
             return False
 
-        if "zones" in sch and list(sch["zones"].values())[0]["sensor"] != key:
+        if SZ_ZONES in sch and list(sch[SZ_ZONES].values())[0][SZ_SENSOR] != key:
             return False
 
         return True
