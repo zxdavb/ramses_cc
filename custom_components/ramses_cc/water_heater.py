@@ -7,7 +7,6 @@ import json
 import logging
 from typing import Any
 
-from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.system.heat import StoredHw
 from ramses_rf.system.zones import DhwZone
 from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
@@ -21,10 +20,9 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntityEntityDescription,
     WaterHeaterEntityFeature,
 )
-from homeassistant.const import Platform, UnitOfTemperature
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, entity_platform
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
