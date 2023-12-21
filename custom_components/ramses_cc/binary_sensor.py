@@ -48,7 +48,7 @@ from .const import (
     ATTR_BATTERY_LEVEL,
     ATTR_LATEST_EVENT,
     ATTR_LATEST_FAULT,
-    ATTR_SCHEMA,
+    ATTR_WORKING_SCHEMA,
     BROKER,
     DOMAIN,
 )
@@ -96,13 +96,13 @@ async def async_setup_platform(
             device_class=BinarySensorDeviceClass.PROBLEM,
         ),
         RamsesBinarySensorEntityDescription(
-            key=SZ_SCHEMA,
-            name="Schema",
+            key="system",
+            name="System",
             rf_class=System,
             entity_class=RamsesSystemBinarySensor,
             device_class=BinarySensorDeviceClass.PROBLEM,
             extra_attributes={
-                ATTR_SCHEMA: SZ_SCHEMA,
+                ATTR_WORKING_SCHEMA: SZ_SCHEMA,
             },
         ),
         RamsesBinarySensorEntityDescription(
