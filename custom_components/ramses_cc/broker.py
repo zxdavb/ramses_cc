@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime as dt, timedelta
-from functools import reduce
 import logging
-import operator
 from threading import Semaphore
 from typing import Any
 
