@@ -235,10 +235,11 @@ class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
         entity_description: RamsesEntityDescription,
     ) -> None:
         """Initialize the sensor."""
+        _LOGGER.info("Found %r: %s", device, entity_description.key)
         super().__init__(broker, device, entity_description)
 
         self.entity_id = ENTITY_ID_FORMAT.format(
-            f"{device.id}_{entity_description.attr}"
+            f"{device.id}_{entity_description.key}"
         )
         self._attr_unique_id = f"{device.id}-{entity_description.key}"
 
