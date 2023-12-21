@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 from datetime import datetime as dt, timedelta
+from functools import reduce
 import logging
+import operator
 from threading import Semaphore
 from typing import Any
 
 from ramses_rf import Gateway
+from ramses_rf.device.base import Device
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
+from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.schemas import (
     SZ_CONFIG,
     SZ_RESTORE_CACHE,
@@ -15,6 +19,8 @@ from ramses_rf.schemas import (
     SZ_RESTORE_STATE,
     SZ_SCHEMA,
 )
+from ramses_rf.system.heat import Evohome, MultiZone, System
+from ramses_rf.system.zones import DhwZone, Zone
 from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 import voluptuous as vol
 
@@ -60,13 +66,9 @@ class RamsesBroker:
         self._entities = {}  # domain entities
 
         # Discovered client objects...
-        self._hgi = None  # HGI, is distinct from devices
-        self._ctls = []
-        self._dhws = []
-        self._devs = []
-        self._fans = []
-        self._rems = []
-        self._zons = []
+        self._devices: set[Device] = set()
+        self._systems: set[System] = set()
+        self._zones: set[Zone] = set()
 
         self._sem = Semaphore(value=1)
 
@@ -177,124 +179,57 @@ class RamsesBroker:
             }
         )
 
-    @callback
-    def _find_new_heat_entities(self) -> bool:
-        """Create Heat entities: Climate, WaterHeater, BinarySensor & Sensor."""
-
-        if self.client.tcs is None:  # may only be HVAC
-            return False
-
-        if new_ctls := [s for s in self.client.systems if s not in self._ctls]:
-            self._ctls.extend(new_ctls)
-        if new_zons := [z for s in self._ctls for z in s.zones if z not in self._zons]:
-            self._zons.extend(new_zons)
-        if new_dhws := [s.dhw for s in self._ctls if s.dhw and s.dhw not in self._dhws]:
-            self._dhws.extend(new_dhws)
-
-        if new_ctls or new_zons:
-            self.hass.async_create_task(
-                async_load_platform(
-                    self.hass,
-                    Platform.CLIMATE,
-                    DOMAIN,
-                    {"ctls": new_ctls, "zons": new_zons},  # discovery_info,
-                    self.hass_config,
-                )
-            )
-        if new_dhws:
-            self.hass.async_create_task(
-                async_load_platform(
-                    self.hass,
-                    Platform.WATER_HEATER,
-                    DOMAIN,
-                    {"dhw": new_dhws},  # discovery_info,
-                    self.hass_config,
-                )
-            )
-        if new_doms := new_ctls + new_zons + new_dhws:
-            # for domain in ("F9", "FA", "FC"):
-            #     if f"{self.client.tcs}_{domain}" not in...
-            for platform in (Platform.BINARY_SENSOR, Platform.SENSOR):
-                self.hass.async_create_task(
-                    async_load_platform(
-                        self.hass,
-                        platform,
-                        DOMAIN,
-                        {"domains": new_doms},  # discovery_info,
-                        self.hass_config,
-                    )
-                )
-
-        return bool(new_ctls + new_zons + new_dhws)
-
-    @callback
-    def _find_new_hvac_entities(self) -> bool:
-        """Create HVAC entities: Climate, Remote."""
-
-        if new_fans := [
-            f
-            for f in self.client.devices
-            if isinstance(f, HvacVentilator) and f not in self._fans
-        ]:
-            self._fans.extend(new_fans)
-
-            self.hass.async_create_task(
-                async_load_platform(
-                    self.hass,
-                    Platform.CLIMATE,
-                    DOMAIN,
-                    {"fans": new_fans},  # discovery_info,
-                    self.hass_config,
-                )
-            )
-
-        if new_remotes := [
-            f
-            for f in self.client.devices
-            if isinstance(f, HvacRemoteBase) and f not in self._rems
-        ]:
-            self._rems.extend(new_remotes)
-
-            discovered = {SZ_REMOTES: new_remotes}
-            self.hass.async_create_task(
-                async_load_platform(
-                    self.hass, Platform.REMOTE, DOMAIN, discovered, self.hass_config
-                )
-            )
-
-        return bool(new_fans or new_remotes)
-
-    @callback
-    def _find_new_sensors(self) -> bool:
-        """Create HVAC entities: BinarySensor & Sensor."""
-
-        discovery_info = {}
-
-        if not self._hgi and self.client.hgi:  # TODO: check HGI is added as a device
-            self._hgi = discovery_info["gateway"] = self.client.hgi
-
-        if new_devices := [d for d in self.client.devices if d not in self._devs]:
-            self._devs.extend(new_devices)
-            discovery_info["devices"] = new_devices
-
-        if discovery_info:
-            for platform in (Platform.BINARY_SENSOR, Platform.SENSOR):
-                self.hass.async_create_task(
-                    async_load_platform(
-                        self.hass, platform, DOMAIN, discovery_info, self.hass_config
-                    )
-                )
-
-        return bool(discovery_info)
-
-    async def async_update(self, *args, **kwargs) -> None:
+    async def async_update(self, _: dt | None = None) -> None:
         """Retrieve the latest state data from the client library."""
 
-        new_sensors = self._find_new_sensors()
-        new_heat_entities = self._find_new_heat_entities()
-        new_hvac_entities = self._find_new_hvac_entities()
+        @callback
+        def async_add_devices(platform: str, devices: list[RamsesRFEntity]) -> None:
+            if not devices:
+                return
+            self.hass.async_create_task(
+                async_load_platform(
+                    self.hass, platform, DOMAIN, {"devices": devices}, self.hass_config
+                )
+            )
 
-        if new_sensors or new_heat_entities or new_hvac_entities:
+        @callback
+        def new_entities(
+            known: set[RamsesRFEntity], current: list[RamsesRFEntity]
+        ) -> list[RamsesRFEntity]:
+            new = current - known
+            known |= new
+            return new
+
+        new_devices = new_entities(self._devices, set(self.client.devices))
+        new_systems = new_entities(self._systems, set(self.client.systems))
+        new_zones = new_entities(
+            self._zones,
+            set().union(
+                *[s.zones for s in self.client.systems if isinstance(s, MultiZone)]
+            ),
+        )
+
+        new_sensor_devices = new_devices | new_systems | new_zones
+        async_add_devices(Platform.BINARY_SENSOR, new_sensor_devices)
+        async_add_devices(Platform.SENSOR, new_sensor_devices)
+
+        async_add_devices(
+            Platform.CLIMATE, [d for d in new_devices if isinstance(d, HvacVentilator)]
+        )
+        async_add_devices(
+            Platform.REMOTE, [d for d in new_devices if isinstance(d, HvacRemoteBase)]
+        )
+        async_add_devices(
+            Platform.CLIMATE, [s for s in new_systems if isinstance(s, Evohome)]
+        )
+
+        for zone in new_zones:
+            if isinstance(zone, DhwZone):
+                async_add_devices(Platform.WATER_HEATER, [zone])
+            elif isinstance(zone.tcs, Evohome):
+                async_add_devices(Platform.CLIMATE, [zone])
+
+        if new_devices or new_systems or new_zones:
             async_call_later(self.hass, 5, self.async_save_client_state)
 
         # Trigger state updates of all entities

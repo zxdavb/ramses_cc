@@ -1,11 +1,15 @@
 """Support for RAMSES climate entities."""
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 import json
 import logging
+from types import UnionType
 from typing import Any
 
+from ramses_rf.device.hvac import HvacVentilator
+from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.system.heat import Evohome
 from ramses_rf.system.zones import Zone
 from ramses_tx.const import SZ_MODE, SZ_SETPOINT, SZ_SYSTEM_MODE
@@ -24,6 +28,7 @@ from homeassistant.components.climate import (
     PRESET_HOME,
     PRESET_NONE,
     ClimateEntity,
+    ClimateEntityDescription,
     ClimateEntityFeature,
     HVACAction,
     HVACMode,
@@ -34,7 +39,7 @@ from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import RamsesEntity
+from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import (
     ATTR_DURATION,
@@ -66,6 +71,15 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
+
+
+@dataclass(kw_only=True)
+class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescription):
+    """Class describing Ramses binary sensor entities."""
+
+    entity_class: ClimateEntity | None = None
+    rf_class: type | UnionType | None = RamsesRFEntity
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -267,21 +281,25 @@ async def async_setup_platform(
             "async_set_zone_schedule",
         )
 
-    new_entities = []
+    climate_types: tuple[RamsesClimateEntityDescription, ...] = (
+        RamsesClimateEntityDescription(
+            key="controller", rf_class=Evohome, entity_class=RamsesController
+        ),
+        RamsesClimateEntityDescription(
+            key="zone", rf_class=Zone, entity_class=RamsesZone
+        ),
+        RamsesClimateEntityDescription(
+            key="hvac", rf_class=HvacVentilator, entity_class=RamsesHvac
+        ),
+    )
 
-    if discovery_info.get("fans"):
-        for fan in discovery_info["fans"]:
-            new_entities.append(RamsesHvac(broker, fan))
-
-    if discovery_info.get("ctls") or discovery_info.get("zons"):
-        for tcs in discovery_info.get("ctls", []):
-            new_entities.append(RamsesController(broker, tcs))
-
-        for zone in discovery_info.get("zons", []):
-            new_entities.append(RamsesZone(broker, zone))
-
-    if new_entities:
-        async_add_entities(new_entities)
+    entities = [
+        (description.entity_class)(broker, device, description)
+        for device in discovery_info["devices"]
+        for description in climate_types
+        if isinstance(device, description.rf_class)
+    ]
+    async_add_entities(entities)
 
 
 class RamsesController(RamsesEntity, ClimateEntity):
@@ -298,10 +316,15 @@ class RamsesController(RamsesEntity, ClimateEntity):
     _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: Evohome,
+        entity_description: RamsesClimateEntityDescription,
+    ) -> None:
         """Initialize a TCS controller."""
         _LOGGER.info("Found controller %r", device)
-        super().__init__(broker, device)
+        super().__init__(broker, device, entity_description)
 
     @property
     def current_temperature(self) -> float | None:
@@ -424,10 +447,15 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     _attr_target_temperature_step: float = PRECISION_TENTHS
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: Zone,
+        entity_description: RamsesClimateEntityDescription,
+    ) -> None:
         """Initialize a TCS zone."""
         _LOGGER.info("Found zone %r", device)
-        super().__init__(broker, device)
+        super().__init__(broker, device, entity_description)
 
     @property
     def current_temperature(self) -> float | None:
@@ -605,6 +633,8 @@ class RamsesZone(RamsesEntity, ClimateEntity):
 class RamsesHvac(RamsesEntity, ClimateEntity):
     """Base for a Honeywell HVAC unit (Fan, HRU, MVHR, PIV, etc)."""
 
+    _device: HvacVentilator
+
     _attr_fan_modes: list[str] | None = [
         FAN_OFF,
         FAN_AUTO,
@@ -620,10 +650,15 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     )
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: HvacVentilator,
+        entity_description: RamsesClimateEntityDescription,
+    ) -> None:
         """Initialize a HVAC system."""
         _LOGGER.info("Found HVAC %r", device)
-        super().__init__(broker, device)
+        super().__init__(broker, device, entity_description)
 
     @property
     def current_humidity(self) -> int | None:
