@@ -439,13 +439,15 @@ class RamsesSensor(RamsesEntity, SensorEntity):
     async def async_put_co2_level(self, co2_level: int = None) -> None:
         """Set the CO2 level."""
         if not isinstance(self._device, CarbonDioxide):
-            raise TypeError("Cannot set CO2 level on {self._device.__class__}")
+            raise TypeError(
+                f"Cannot set CO2 level on {self._device.__class__.__name__}"
+            )
         self._device.co2_level = co2_level
 
     async def async_put_indoor_humidity(self, indoor_humidity: float = None) -> None:
         """Set the indoor humidity level."""
         if not isinstance(self._device, IndoorHumidity):
             raise TypeError(
-                f"Cannot set indoor humidity level on {self._device.__class__}"
+                f"Cannot set indoor humidity level on {self._device.__class__.__name__}"
             )
         self._device.indoor_humidity = indoor_humidity / 100
