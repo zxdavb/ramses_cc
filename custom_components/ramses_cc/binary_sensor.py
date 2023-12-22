@@ -95,7 +95,6 @@ async def async_setup_platform(
             name="Gateway status",
             rf_class=HgiGateway,
             entity_class=RamsesGatewayBinarySensor,
-            device_class=BinarySensorDeviceClass.PROBLEM,
         ),
         RamsesBinarySensorEntityDescription(
             key="status",
@@ -103,7 +102,6 @@ async def async_setup_platform(
             name="System status",
             rf_class=System,
             entity_class=RamsesSystemBinarySensor,
-            device_class=BinarySensorDeviceClass.PROBLEM,
             extra_attributes={
                 ATTR_WORKING_SCHEMA: SZ_SCHEMA,
             },
@@ -295,8 +293,8 @@ class RamsesLogbookBinarySensor(RamsesBinarySensor):
     @property
     def available(self) -> bool:
         """Return True if the device has been seen recently."""
-        if msg := self._device._msgs.get("0418"):
-            return dt.now() - msg.dtm < timedelta(seconds=1200)
+        msg = self._device._msgs.get("0418")
+        return msg and dt.now() - msg.dtm < timedelta(seconds=1200)
 
 
 class RamsesSystemBinarySensor(RamsesBinarySensor):
@@ -306,16 +304,11 @@ class RamsesSystemBinarySensor(RamsesBinarySensor):
 
     @property
     def available(self) -> bool:
-        """Return True if the device has been seen recently."""
-        if msg := self._device._msgs.get("1F09"):
-            return dt.now() - msg.dtm < timedelta(
-                seconds=msg.payload["remaining_seconds"] * 3
-            )
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return True if the controller has been seen recently."""
-        return self.available
+        """Return True if the last system sync message is recent."""
+        msg = self._device._msgs.get("1F09")
+        return msg and dt.now() - msg.dtm < timedelta(
+            seconds=msg.payload["remaining_seconds"] * 3
+        )
 
 
 class RamsesGatewayBinarySensor(RamsesBinarySensor):
@@ -344,7 +337,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
         }
 
     @property
-    def is_on(self) -> bool | None:
+    def available(self) -> bool:
         """Return True if the gateway has been seen recently."""
-        if msg := self._device._gwy._protocol._this_msg:  # TODO
-            return dt.now() - msg.dtm > timedelta(seconds=300)
+        msg = self._device._gwy._protocol._this_msg  # TODO
+        return msg and dt.now() - msg.dtm > timedelta(seconds=300)
