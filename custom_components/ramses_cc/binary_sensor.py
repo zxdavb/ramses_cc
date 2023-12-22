@@ -190,26 +190,32 @@ async def async_setup_platform(
         # Special projects
         RamsesBinarySensorEntityDescription(
             key="bit_2_4",
+            name="Bit 2/4",
             entity_registry_enabled_default=False,
         ),
         RamsesBinarySensorEntityDescription(
             key="bit_2_5",
+            name="Bit 2/5",
             entity_registry_enabled_default=False,
         ),
         RamsesBinarySensorEntityDescription(
             key="bit_2_6",
+            name="Bit 2/6",
             entity_registry_enabled_default=False,
         ),
         RamsesBinarySensorEntityDescription(
             key="bit_2_7",
+            name="Bit 2/7",
             entity_registry_enabled_default=False,
         ),
         RamsesBinarySensorEntityDescription(
             key="bit_3_7",
+            name="Bit 3/7",
             entity_registry_enabled_default=False,
         ),
         RamsesBinarySensorEntityDescription(
             key="bit_6_6",
+            name="Bit 6/6",
             entity_registry_enabled_default=False,
         ),
     )
