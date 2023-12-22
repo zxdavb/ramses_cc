@@ -3,17 +3,20 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import logging
 from typing import Any
 
 from ramses_rf.device.hvac import HvacRemote
+from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_tx import Command, Priority
 import voluptuous as vol
 
 from homeassistant.components.remote import (
     DOMAIN as PLATFORM,
     RemoteEntity,
+    RemoteEntityDescription,
     RemoteEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -22,7 +25,7 @@ from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
 
-from . import RamsesEntity
+from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import (
     ATTR_COMMAND,
@@ -35,6 +38,12 @@ from .const import (
     SVC_LEARN_COMMAND,
     SVC_SEND_COMMAND,
 )
+
+
+@dataclass(kw_only=True)
+class RamsesRemoteEntityDescription(RamsesEntityDescription, RemoteEntityDescription):
+    """Class describing Ramses remote entities."""
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,7 +86,6 @@ async def async_setup_platform(
 
     if not broker._services.get(PLATFORM):
         broker._services[PLATFORM] = True
-
         platform = entity_platform.async_get_current_platform()
 
         platform.async_register_entity_service(
@@ -90,9 +98,11 @@ async def async_setup_platform(
             SVC_DELETE_COMMAND, SVC_DELETE_COMMAND_SCHEMA, "async_delete_command"
         )
 
-    async_add_entities(
-        [RamsesRemote(broker, device) for device in discovery_info["remotes"]]
-    )
+    entities = [
+        RamsesRemote(broker, device, RemoteEntityDescription(key="remote"))
+        for device in discovery_info["devices"]
+    ]
+    async_add_entities(entities)
 
 
 class RamsesRemote(RamsesEntity, RemoteEntity):
@@ -105,10 +115,15 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
     )
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: RamsesRFEntity,
+        entity_description: RamsesRemoteEntityDescription,
+    ) -> None:
         """Initialize a HVAC remote."""
         _LOGGER.info("Found %r", device)
-        super().__init__(broker, device)
+        super().__init__(broker, device, entity_description)
 
         self.entity_id = f"{DOMAIN}.{device.id}"
 

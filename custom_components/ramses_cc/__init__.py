@@ -4,6 +4,7 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import logging
 from typing import Any
 
@@ -11,12 +12,11 @@ from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_tx.exceptions import TransportSerialError
 import voluptuous as vol
 
-from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import ATTR_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType
@@ -35,6 +35,15 @@ from .const import (
     SVC_SEND_PACKET,
 )
 from .schemas import SCH_DOMAIN_CONFIG
+
+
+@dataclass(kw_only=True)
+class RamsesEntityDescription(EntityDescription):
+    """Class describing Ramses entities."""
+
+    has_entity_name: bool = True
+    extra_attributes: list[str] = field(default_factory=list)
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -168,20 +177,35 @@ class RamsesEntity(Entity):
 
     _attr_should_poll = False
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
+    entity_description: RamsesEntityDescription
+
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: RamsesRFEntity,
+        entity_description: RamsesEntityDescription,
+    ) -> None:
         """Initialize the entity."""
         self.hass = broker.hass
         self._broker = broker
         self._device = device
+        self.entity_description = entity_description
 
         self._attr_unique_id = device.id
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
+        attrs = {
             ATTR_ID: self._device.id,
         }
+        if self.entity_description.extra_attributes:
+            attrs |= {
+                k: getattr(self._device, v)
+                for k, v in self.entity_description.extra_attributes.items()
+                if hasattr(self._device, v)
+            }
+        return attrs
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
@@ -196,36 +220,3 @@ class RamsesEntity(Entity):
     def async_write_ha_state_delayed(self, delay=3) -> None:
         """Write the state to the state machine after a short delay to allow system to quiesce."""
         async_call_later(self.hass, delay, self.async_write_ha_state)
-
-
-class RamsesSensorBase(RamsesEntity):
-    """Base for any Ramses sensor/binary_sensor entity."""
-
-    def __init__(
-        self,
-        broker: RamsesBroker,
-        device,
-        state_attr,
-        device_class: SensorDeviceClass | None = None,
-        unique_id_attr: str | None = None,
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__(broker, device)
-
-        self.entity_id = f"{DOMAIN}.{device.id}-{state_attr}"
-
-        self._attr_device_class = device_class
-        self._attr_unique_id = f"{device.id}-{unique_id_attr or state_attr}"
-        self._state_attr = state_attr
-
-    @property
-    def available(self) -> bool:
-        """Return True if the sensor is available."""
-        return getattr(self._device, self._state_attr) is not None
-
-    @property
-    def name(self) -> str:
-        """Return the name of the binary_sensor/sensor."""
-        if not hasattr(self._device, "name") or not self._device.name:
-            return f"{self._device.id} {self._state_attr}"
-        return f"{self._device.name} {self._state_attr}"

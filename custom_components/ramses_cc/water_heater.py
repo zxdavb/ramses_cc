@@ -1,6 +1,7 @@
 """Support for RAMSES water_heater entities."""
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import json
 import logging
@@ -16,6 +17,7 @@ from homeassistant.components.water_heater import (
     STATE_OFF,
     STATE_ON,
     WaterHeaterEntity,
+    WaterHeaterEntityEntityDescription,
     WaterHeaterEntityFeature,
 )
 from homeassistant.const import UnitOfTemperature
@@ -24,7 +26,7 @@ from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import RamsesEntity
+from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import (
     ATTR_ACTIVE,
@@ -49,6 +51,14 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
+
+
+@dataclass(kw_only=True)
+class RamsesWaterHeaterEntityDescription(
+    RamsesEntityDescription, WaterHeaterEntityEntityDescription
+):
+    """Class describing Ramses water heater entities."""
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -152,15 +162,13 @@ async def async_setup_platform(
             SVC_SET_DHW_SCHEDULE, SVC_SET_DHW_SCHEDULE_SCHEMA, "async_set_dhw_schedule"
         )
 
-    def entity_factory(entity_class, broker, device):  # TODO: deprecate
-        return entity_class(broker, device)
-
-    async_add_entities(
-        [
-            entity_factory(RamsesWaterHeater, broker, dhw)
-            for dhw in discovery_info["dhw"]
-        ]
-    )
+    entites = [
+        RamsesWaterHeater(
+            broker, device, RamsesWaterHeaterEntityDescription(key="dhwzone")
+        )
+        for device in discovery_info["devices"]
+    ]
+    async_add_entities(entites)
 
 
 class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
@@ -178,10 +186,15 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     )
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: DhwZone,
+        entity_description: RamsesWaterHeaterEntityDescription,
+    ) -> None:
         """Initialize a TCS DHW controller."""
         _LOGGER.info("Found DHW %r", device)
-        super().__init__(broker, device)
+        super().__init__(broker, device, entity_description)
 
     @property
     def current_operation(self) -> str:
