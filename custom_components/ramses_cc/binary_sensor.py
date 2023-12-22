@@ -339,7 +339,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
         }
 
     @property
-    def available(self) -> bool:
-        """Return True if the gateway has been seen recently."""
-        msg = self._device._gwy._protocol._this_msg  # TODO
-        return msg and dt.now() - msg.dtm > timedelta(seconds=300)
+    def is_on(self) -> bool:
+        """Return True if the gateway has received messages recently."""
+        msg = self._device._gwy._this_msg  # TODO
+        return msg and dt.now() - msg.dtm < timedelta(seconds=300)
