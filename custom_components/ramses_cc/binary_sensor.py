@@ -27,7 +27,7 @@ from ramses_rf.device.heat import (
     TrvActuator,
 )
 from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_rf.schemas import SZ_SCHEMA
+from ramses_rf.schemas import SZ_BLOCK_LIST, SZ_CONFIG, SZ_KNOWN_LIST, SZ_SCHEMA
 from ramses_rf.system.heat import Logbook, System
 from ramses_tx.const import SZ_BYPASS_POSITION, SZ_IS_EVOFW3
 
@@ -331,11 +331,11 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
 
         gwy: Gateway = self._device._gwy
         return super().extra_state_attributes | {
-            "schema": {gwy.tcs.id: gwy.tcs._schema_min} if gwy.tcs else {},
-            "config": {"enforce_known_list": gwy._enforce_known_list},
-            "known_list": [{k: shrink(v)} for k, v in gwy.known_list.items()],
-            "block_list": [{k: shrink(v)} for k, v in gwy._exclude.items()],
-            "is_evofw3": gwy._transport.get_extra_info(SZ_IS_EVOFW3),  # TODO: FIXME
+            SZ_SCHEMA: {gwy.tcs.id: gwy.tcs._schema_min} if gwy.tcs else {},
+            SZ_CONFIG: {"enforce_known_list": gwy._enforce_known_list},
+            SZ_KNOWN_LIST: [{k: shrink(v)} for k, v in gwy.known_list.items()],
+            SZ_BLOCK_LIST: [{k: shrink(v)} for k, v in gwy._exclude.items()],
+            SZ_IS_EVOFW3: gwy._transport.get_extra_info(SZ_IS_EVOFW3),  # TODO: FIXME
         }
 
     @property
