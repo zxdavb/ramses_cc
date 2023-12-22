@@ -88,149 +88,10 @@ async def async_setup_platform(
 
     broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
-    sensor_types: tuple[RamsesBinarySensorEntityDescription, ...] = (
-        RamsesBinarySensorEntityDescription(
-            key="status",
-            attr="id",
-            name="Gateway status",
-            rf_class=HgiGateway,
-            entity_class=RamsesGatewayBinarySensor,
-        ),
-        RamsesBinarySensorEntityDescription(
-            key="status",
-            attr="id",
-            name="System status",
-            rf_class=System,
-            entity_class=RamsesSystemBinarySensor,
-            extra_attributes={
-                ATTR_WORKING_SCHEMA: SZ_SCHEMA,
-            },
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=TrvActuator.WINDOW_OPEN,
-            name="Window open",
-            device_class=BinarySensorDeviceClass.WINDOW,
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=Actuator.ACTUATOR_STATE,
-            name="Actuator state",
-            icon="mdi:electric-switch",
-            icon_off="mdi:electric-switch-closed",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=BatteryState.BATTERY_LOW,
-            device_class=BinarySensorDeviceClass.BATTERY,
-            extra_attributes={
-                ATTR_BATTERY_LEVEL: BatteryState.BATTERY_STATE,
-            },
-        ),
-        RamsesBinarySensorEntityDescription(
-            key="active_fault",
-            name="Active fault",
-            rf_class=Logbook,
-            entity_class=RamsesLogbookBinarySensor,
-            device_class=BinarySensorDeviceClass.PROBLEM,
-            extra_attributes={
-                ATTR_ACTIVE_FAULT: "active_fault",
-                ATTR_LATEST_EVENT: "latest_event",
-                ATTR_LATEST_FAULT: "latest_fault",
-            },
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_CH_ACTIVE,
-            name="CH active",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_CH_ENABLED,
-            name="CH enabled",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_COOLING_ACTIVE,
-            name="Cooling active",
-            icon="mdi:snowflake",
-            icon_off="mdi:snowflake-off",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_COOLING_ENABLED,
-            name="Cooling enabled",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_DHW_ACTIVE,
-            name="DHW active",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_DHW_ENABLED,
-            name="DHW enabled",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_FLAME_ACTIVE,
-            name="Flame active",
-            icon="mdi:circle-outline",
-            icon_off="mdi:fire-circle",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_DHW_BLOCKING,
-            name="DHW blocking",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_OTC_ACTIVE,
-            name="Outside temperature control active",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_SUMMER_MODE,
-            name="Summer mode",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_FAULT_PRESENT,
-            name="Fault present",
-        ),
-        RamsesBinarySensorEntityDescription(
-            key=SZ_BYPASS_POSITION,
-            name="Bypass position",
-        ),
-        # Special projects
-        RamsesBinarySensorEntityDescription(
-            key="bit_2_4",
-            name="Bit 2/4",
-            rf_class=OtbGateway,
-            entity_registry_enabled_default=False,
-        ),
-        RamsesBinarySensorEntityDescription(
-            key="bit_2_5",
-            name="Bit 2/5",
-            rf_class=OtbGateway,
-            entity_registry_enabled_default=False,
-        ),
-        RamsesBinarySensorEntityDescription(
-            key="bit_2_6",
-            name="Bit 2/6",
-            rf_class=OtbGateway,
-            entity_registry_enabled_default=False,
-        ),
-        RamsesBinarySensorEntityDescription(
-            key="bit_2_7",
-            name="Bit 2/7",
-            rf_class=OtbGateway,
-            entity_registry_enabled_default=False,
-        ),
-        RamsesBinarySensorEntityDescription(
-            key="bit_3_7",
-            name="Bit 3/7",
-            rf_class=OtbGateway,
-            entity_registry_enabled_default=False,
-        ),
-        RamsesBinarySensorEntityDescription(
-            key="bit_6_6",
-            name="Bit 6/6",
-            rf_class=OtbGateway,
-            entity_registry_enabled_default=False,
-        ),
-    )
-
     entities = [
         (description.entity_class or RamsesBinarySensor)(broker, device, description)
         for device in discovery_info["devices"]
-        for description in sensor_types
+        for description in SENSOR_TYPES
         if isinstance(device, description.rf_class) and hasattr(device, description.key)
     ]
     async_add_entities(entities)
@@ -343,3 +204,143 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
         """Return True if the gateway has received messages recently."""
         msg = self._device._gwy._this_msg  # TODO
         return msg and dt.now() - msg.dtm < timedelta(seconds=300)
+
+
+SENSOR_TYPES: tuple[RamsesBinarySensorEntityDescription, ...] = (
+    RamsesBinarySensorEntityDescription(
+        key="status",
+        attr="id",
+        name="Gateway status",
+        rf_class=HgiGateway,
+        entity_class=RamsesGatewayBinarySensor,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="status",
+        attr="id",
+        name="System status",
+        rf_class=System,
+        entity_class=RamsesSystemBinarySensor,
+        extra_attributes={
+            ATTR_WORKING_SCHEMA: SZ_SCHEMA,
+        },
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=TrvActuator.WINDOW_OPEN,
+        name="Window open",
+        device_class=BinarySensorDeviceClass.WINDOW,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=Actuator.ACTUATOR_STATE,
+        name="Actuator state",
+        icon="mdi:electric-switch",
+        icon_off="mdi:electric-switch-closed",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=BatteryState.BATTERY_LOW,
+        device_class=BinarySensorDeviceClass.BATTERY,
+        extra_attributes={
+            ATTR_BATTERY_LEVEL: BatteryState.BATTERY_STATE,
+        },
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="active_fault",
+        name="Active fault",
+        rf_class=Logbook,
+        entity_class=RamsesLogbookBinarySensor,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        extra_attributes={
+            ATTR_ACTIVE_FAULT: "active_fault",
+            ATTR_LATEST_EVENT: "latest_event",
+            ATTR_LATEST_FAULT: "latest_fault",
+        },
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_CH_ACTIVE,
+        name="CH active",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_CH_ENABLED,
+        name="CH enabled",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_COOLING_ACTIVE,
+        name="Cooling active",
+        icon="mdi:snowflake",
+        icon_off="mdi:snowflake-off",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_COOLING_ENABLED,
+        name="Cooling enabled",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_DHW_ACTIVE,
+        name="DHW active",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_DHW_ENABLED,
+        name="DHW enabled",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_FLAME_ACTIVE,
+        name="Flame active",
+        icon="mdi:circle-outline",
+        icon_off="mdi:fire-circle",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_DHW_BLOCKING,
+        name="DHW blocking",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_OTC_ACTIVE,
+        name="Outside temperature control active",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_SUMMER_MODE,
+        name="Summer mode",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_FAULT_PRESENT,
+        name="Fault present",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_BYPASS_POSITION,
+        name="Bypass position",
+    ),
+    # Special projects
+    RamsesBinarySensorEntityDescription(
+        key="bit_2_4",
+        name="Bit 2/4",
+        rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="bit_2_5",
+        name="Bit 2/5",
+        rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="bit_2_6",
+        name="Bit 2/6",
+        rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="bit_2_7",
+        name="Bit 2/7",
+        rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="bit_3_7",
+        name="Bit 3/7",
+        rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="bit_6_6",
+        name="Bit 6/6",
+        rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+)
