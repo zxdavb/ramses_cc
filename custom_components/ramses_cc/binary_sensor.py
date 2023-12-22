@@ -89,15 +89,17 @@ async def async_setup_platform(
 
     sensor_types: tuple[RamsesBinarySensorEntityDescription, ...] = (
         RamsesBinarySensorEntityDescription(
-            key="gateway",
-            name="Gateway",
-            rf_class=Gateway,
+            key="status",
+            attr="id",
+            name="Gateway status",
+            rf_class=HgiGateway,
             entity_class=RamsesGatewayBinarySensor,
             device_class=BinarySensorDeviceClass.PROBLEM,
         ),
         RamsesBinarySensorEntityDescription(
-            key="system",
-            name="System",
+            key="status",
+            attr="id",
+            name="System status",
             rf_class=System,
             entity_class=RamsesSystemBinarySensor,
             device_class=BinarySensorDeviceClass.PROBLEM,
@@ -313,11 +315,6 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
     """Representation of a gateway (a HGI80)."""
 
     _device: HgiGateway
-
-    @property
-    def available(self) -> bool:
-        """Return True if the device is available."""
-        return bool(self._device._gwy.hgi)  # TODO: look at most recent packet
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
