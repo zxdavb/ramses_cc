@@ -290,6 +290,8 @@ class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
 class RamsesLogbookBinarySensor(RamsesBinarySensor):
     """Representation of a fault log."""
 
+    _device: Logbook
+
     @property
     def available(self) -> bool:
         """Return True if the device has been seen recently."""
