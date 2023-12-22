@@ -23,6 +23,7 @@ from ramses_rf.device.heat import (
     SZ_OTC_ACTIVE,
     SZ_SUMMER_MODE,
     Actuator,
+    OtbGateway,
     TrvActuator,
 )
 from ramses_rf.entity_base import Entity as RamsesRFEntity
@@ -193,31 +194,37 @@ async def async_setup_platform(
         RamsesBinarySensorEntityDescription(
             key="bit_2_4",
             name="Bit 2/4",
+            rf_class=OtbGateway,
             entity_registry_enabled_default=False,
         ),
         RamsesBinarySensorEntityDescription(
             key="bit_2_5",
             name="Bit 2/5",
+            rf_class=OtbGateway,
             entity_registry_enabled_default=False,
         ),
         RamsesBinarySensorEntityDescription(
             key="bit_2_6",
             name="Bit 2/6",
+            rf_class=OtbGateway,
             entity_registry_enabled_default=False,
         ),
         RamsesBinarySensorEntityDescription(
             key="bit_2_7",
             name="Bit 2/7",
+            rf_class=OtbGateway,
             entity_registry_enabled_default=False,
         ),
         RamsesBinarySensorEntityDescription(
             key="bit_3_7",
             name="Bit 3/7",
+            rf_class=OtbGateway,
             entity_registry_enabled_default=False,
         ),
         RamsesBinarySensorEntityDescription(
             key="bit_6_6",
             name="Bit 6/6",
+            rf_class=OtbGateway,
             entity_registry_enabled_default=False,
         ),
     )

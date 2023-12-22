@@ -41,6 +41,7 @@ from ramses_rf.device.heat import (
     SZ_OEM_CODE,
     SZ_OUTSIDE_TEMP,
     SZ_REL_MODULATION_LEVEL,
+    OtbGateway,
 )
 from ramses_rf.device.hvac import CarbonDioxide, IndoorHumidity
 from ramses_rf.entity_base import Entity as RamsesRFEntity
@@ -357,12 +358,14 @@ async def async_setup_platform(
         RamsesSensorEntityDescription(
             key=SZ_OEM_CODE,
             name="OEM code",
+            rf_class=OtbGateway,
             state_class=None,
             entity_registry_enabled_default=False,
         ),
         RamsesSensorEntityDescription(
             key="percent",
             name="Percent",
+            rf_class=OtbGateway,
             icon="mdi:power-plug",
             icon_off="mdi:power-plug-off",
             native_unit_of_measurement=PERCENTAGE,
@@ -371,6 +374,7 @@ async def async_setup_platform(
         RamsesSensorEntityDescription(
             key="value",
             name="Value",
+            rf_class=OtbGateway,
             native_unit_of_measurement="units",
             entity_registry_enabled_default=False,
         ),
