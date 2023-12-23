@@ -281,22 +281,10 @@ async def async_setup_platform(
             "async_set_zone_schedule",
         )
 
-    climate_types: tuple[RamsesClimateEntityDescription, ...] = (
-        RamsesClimateEntityDescription(
-            key="controller", rf_class=Evohome, entity_class=RamsesController
-        ),
-        RamsesClimateEntityDescription(
-            key="zone", rf_class=Zone, entity_class=RamsesZone
-        ),
-        RamsesClimateEntityDescription(
-            key="hvac", rf_class=HvacVentilator, entity_class=RamsesHvac
-        ),
-    )
-
     entities = [
         (description.entity_class)(broker, device, description)
         for device in discovery_info["devices"]
-        for description in climate_types
+        for description in CLIMATE_TYPES
         if isinstance(device, description.rf_class)
     ]
     async_add_entities(entities)
@@ -703,3 +691,14 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     def preset_mode(self) -> str | None:
         """Return the current preset mode, e.g., home, away, temp."""
         return PRESET_NONE
+
+
+CLIMATE_TYPES: tuple[RamsesClimateEntityDescription, ...] = (
+    RamsesClimateEntityDescription(
+        key="controller", rf_class=Evohome, entity_class=RamsesController
+    ),
+    RamsesClimateEntityDescription(key="zone", rf_class=Zone, entity_class=RamsesZone),
+    RamsesClimateEntityDescription(
+        key="hvac", rf_class=HvacVentilator, entity_class=RamsesHvac
+    ),
+)
