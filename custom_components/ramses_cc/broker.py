@@ -23,7 +23,7 @@ from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 import voluptuous as vol
 
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
@@ -180,7 +180,6 @@ class RamsesBroker:
     async def async_update(self, _: dt | None = None) -> None:
         """Retrieve the latest state data from the client library."""
 
-        @callback
         def async_add_devices(platform: str, devices: list[RamsesRFEntity]) -> None:
             if not devices:
                 return
@@ -190,7 +189,6 @@ class RamsesBroker:
                 )
             )
 
-        @callback
         def new_entities(
             known: set[RamsesRFEntity], current: list[RamsesRFEntity]
         ) -> list[RamsesRFEntity]:
