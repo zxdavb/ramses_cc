@@ -91,7 +91,7 @@ async def async_setup_platform(
     entities = [
         (description.entity_class or RamsesBinarySensor)(broker, device, description)
         for device in discovery_info["devices"]
-        for description in SENSOR_TYPES
+        for description in BINARY_SENSOR_TYPES
         if isinstance(device, description.rf_class) and hasattr(device, description.key)
     ]
     async_add_entities(entities)
@@ -206,7 +206,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
         return msg and dt.now() - msg.dtm < timedelta(seconds=300)
 
 
-SENSOR_TYPES: tuple[RamsesBinarySensorEntityDescription, ...] = (
+BINARY_SENSOR_TYPES: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key="status",
         attr="id",
