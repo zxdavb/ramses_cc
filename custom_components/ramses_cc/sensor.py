@@ -457,4 +457,3 @@ SENSOR_TYPES: tuple[RamsesSensorEntityDescription, ...] = (
         entity_registry_enabled_default=False,
     ),
 )
-
