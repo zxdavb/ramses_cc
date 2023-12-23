@@ -284,7 +284,7 @@ async def async_setup_platform(
     entities = [
         (description.entity_class)(broker, device, description)
         for device in discovery_info["devices"]
-        for description in CLIMATE_TYPES
+        for description in CLIMATE_DESCRIPTIONS
         if isinstance(device, description.rf_class)
     ]
     async_add_entities(entities)
@@ -693,7 +693,7 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         return PRESET_NONE
 
 
-CLIMATE_TYPES: tuple[RamsesClimateEntityDescription, ...] = (
+CLIMATE_DESCRIPTIONS: tuple[RamsesClimateEntityDescription, ...] = (
     RamsesClimateEntityDescription(
         key="controller", rf_class=Evohome, entity_class=RamsesController
     ),

@@ -151,7 +151,7 @@ async def async_setup_platform(
     entities = [
         (description.entity_class or RamsesSensor)(broker, device, description)
         for device in discovery_info["devices"]
-        for description in SENSOR_TYPES
+        for description in SENSOR_DESCRIPTIONS
         if isinstance(device, description.rf_class)
         and hasattr(device, description.attr)
     ]
@@ -226,7 +226,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         self._device.indoor_humidity = indoor_humidity / 100
 
 
-SENSOR_TYPES: tuple[RamsesSensorEntityDescription, ...] = (
+SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     RamsesSensorEntityDescription(
         key=SZ_TEMPERATURE,
         device_class=SensorDeviceClass.TEMPERATURE,
