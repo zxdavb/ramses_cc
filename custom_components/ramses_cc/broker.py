@@ -92,8 +92,7 @@ class RamsesBroker:
             client_state.get(SZ_SCHEMA, {}) if restore_schema else {},
         )
 
-        @callback
-        def cached_packets() -> dict:
+        def cached_packets() -> dict[str, str]:  # dtm_str, packet_as_str
             if not restore_state:
                 return {}
 
