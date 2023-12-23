@@ -4,7 +4,7 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import logging
 from typing import Any
 
@@ -42,7 +42,7 @@ class RamsesEntityDescription(EntityDescription):
     """Class describing Ramses entities."""
 
     has_entity_name: bool = True
-    extra_attributes: list[str] = field(default_factory=list)
+    extra_attributes: dict[str, str] | None = None
 
 
 _LOGGER = logging.getLogger(__name__)
