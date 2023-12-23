@@ -8,9 +8,8 @@ DOMAIN = "ramses_cc"
 STORAGE_VERSION = 1
 STORAGE_KEY = DOMAIN
 
-BROKER = "broker"
-
 # Dispatcher signals
+SIGNAL_NEW_DEVICES = f"{DOMAIN}_new_devices_" + "{}"
 SIGNAL_UPDATE = f"{DOMAIN}_update"
 
 # Config

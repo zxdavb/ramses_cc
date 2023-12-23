@@ -9,12 +9,10 @@ import logging
 from typing import Any
 
 from ramses_rf.device.hvac import HvacRemote
-from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_tx import Command, Priority
 import voluptuous as vol
 
 from homeassistant.components.remote import (
-    DOMAIN as PLATFORM,
     RemoteEntity,
     RemoteEntityDescription,
     RemoteEntityFeature,
@@ -23,7 +21,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
@@ -32,7 +29,6 @@ from .const import (
     ATTR_DELAY_SECS,
     ATTR_NUM_REPEATS,
     ATTR_TIMEOUT,
-    BROKER,
     DOMAIN,
     SVC_DELETE_COMMAND,
     SVC_LEARN_COMMAND,
@@ -71,38 +67,32 @@ SVC_DELETE_COMMAND_SCHEMA = cv.make_entity_service_schema(
 )
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    _: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType = None,
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Create remotes for HVAC."""
+    """Set up the remote platform."""
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    platform = entity_platform.async_get_current_platform()
 
-    if discovery_info is None:
-        return
+    platform.async_register_entity_service(
+        SVC_LEARN_COMMAND, SVC_LEARN_COMMAND_SCHEMA, "async_learn_command"
+    )
+    platform.async_register_entity_service(
+        SVC_SEND_COMMAND, SVC_SEND_COMMAND_SCHEMA, "async_send_command"
+    )
+    platform.async_register_entity_service(
+        SVC_DELETE_COMMAND, SVC_DELETE_COMMAND_SCHEMA, "async_delete_command"
+    )
 
-    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
+    @callback
+    def add_devices(devices: list[HvacRemote]) -> None:
+        entities = [
+            RamsesRemote(broker, device, RemoteEntityDescription(key="remote"))
+            for device in devices
+        ]
+        async_add_entities(entities)
 
-    if not broker._services.get(PLATFORM):
-        broker._services[PLATFORM] = True
-        platform = entity_platform.async_get_current_platform()
-
-        platform.async_register_entity_service(
-            SVC_LEARN_COMMAND, SVC_LEARN_COMMAND_SCHEMA, "async_learn_command"
-        )
-        platform.async_register_entity_service(
-            SVC_SEND_COMMAND, SVC_SEND_COMMAND_SCHEMA, "async_send_command"
-        )
-        platform.async_register_entity_service(
-            SVC_DELETE_COMMAND, SVC_DELETE_COMMAND_SCHEMA, "async_delete_command"
-        )
-
-    entities = [
-        RamsesRemote(broker, device, RemoteEntityDescription(key="remote"))
-        for device in discovery_info["devices"]
-    ]
-    async_add_entities(entities)
+    broker.async_register_platform(platform, add_devices)
 
 
 class RamsesRemote(RamsesEntity, RemoteEntity):
@@ -118,7 +108,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
     def __init__(
         self,
         broker: RamsesBroker,
-        device: RamsesRFEntity,
+        device: HvacRemote,
         entity_description: RamsesRemoteEntityDescription,
     ) -> None:
         """Initialize a HVAC remote."""

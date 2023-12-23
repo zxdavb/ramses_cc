@@ -1,7 +1,6 @@
 """Schemas for RAMSES integration."""
 from __future__ import annotations
 
-from copy import deepcopy
 from datetime import timedelta
 import logging
 from typing import Any, TypeAlias
@@ -129,7 +128,7 @@ def _is_subset(subset, superset) -> bool:  # TODO: move to ramses_rf?
 def normalise_config(config: dict) -> tuple[str, dict, dict]:
     """Return a port/client_config/broker_config for the library."""
 
-    config = deepcopy(config)
+    config = dict(config)
 
     config[SZ_CONFIG] = config.pop(CONF_RAMSES_RF)
 

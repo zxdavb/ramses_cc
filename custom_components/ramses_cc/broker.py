@@ -1,6 +1,8 @@
 """Broker for RAMSES integration."""
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Callable
 from datetime import datetime as dt, timedelta
 import logging
 from threading import Semaphore
@@ -22,15 +24,18 @@ from ramses_rf.system.zones import DhwZone, Zone
 from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 import voluptuous as vol
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.discovery import async_load_platform
-from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_connect,
+    async_dispatcher_send,
+)
+from homeassistant.helpers.entity_platform import EntityPlatform
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
-from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN, SIGNAL_UPDATE, STORAGE_KEY, STORAGE_VERSION
+from .const import SIGNAL_NEW_DEVICES, SIGNAL_UPDATE, STORAGE_KEY, STORAGE_VERSION
 from .schemas import merge_schemas, normalise_config, schema_is_minimal
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,22 +50,22 @@ SAVE_STATE_INTERVAL = timedelta(seconds=300)  # TODO: 5 minutes
 class RamsesBroker:
     """Container for client and data."""
 
-    def __init__(self, hass: HomeAssistant, hass_config: ConfigType) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the client and its data structure(s)."""
 
         self.hass = hass
+        self.entry = entry
         self._store: Store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
 
-        self.hass_config = hass_config
-        _LOGGER.debug("Config = %s", hass_config)
-        self._ser_name, self._client_config, self.config = normalise_config(
-            hass_config[DOMAIN]
-        )
+        _LOGGER.debug("Config = %s", entry.data)
+        self._ser_name, self._client_config, self.config = normalise_config(entry.data)
 
         self.client: Gateway = None  # type: ignore[assignment]
         self._remotes: dict[str, str] = None  # type: ignore[assignment]
 
-        self._services = {}
+        self._platform_setup_tasks = {}
+        self.entry.async_on_unload(self._async_unload_platforms)
+
         self._entities = {}  # domain entities
 
         # Discovered client objects...
@@ -72,8 +77,8 @@ class RamsesBroker:
 
         self.learn_device_id = None  # TODO: remove me
 
-    async def start(self) -> None:
-        """Invoke the client/co-ordinator (according to the config/cache)."""
+    async def async_setup(self) -> None:
+        """Set up the client, loading and checking state and config."""
 
         CONFIG_KEYS = (SZ_CONFIG, SZ_PACKET_LOG, SZ_PORT_CONFIG)
 
@@ -103,21 +108,30 @@ class RamsesBroker:
             return {
                 dtm: pkt
                 for dtm, pkt in client_state.get(SZ_PACKETS, {}).items()
-                if dt.fromisoformat(dtm) > dt.now() - timedelta(days=1)
+                if dt.fromisoformat(dtm) > dt.now() - timedelta(days=100)
                 and pkt[41:45] not in msg_code_filter
             }
 
         await self.client.start(cached_packets=cached_packets())
+        self.entry.async_on_unload(self.client.stop)
 
-        # Perform initial update, then poll at intervals
+    async def async_start(self) -> None:
+        """Perform initial update, then poll and save state at intervals."""
         await self.async_update()
-        async_track_time_interval(
-            self.hass, self.async_update, self.hass_config[DOMAIN][CONF_SCAN_INTERVAL]
+        self.entry.async_on_unload(
+            async_track_time_interval(
+                self.hass,
+                self.async_update,
+                timedelta(seconds=self.config[CONF_SCAN_INTERVAL]),
+            )
         )
 
-        async_track_time_interval(
-            self.hass, self.async_save_client_state, SAVE_STATE_INTERVAL
+        self.entry.async_on_unload(
+            async_track_time_interval(
+                self.hass, self.async_save_client_state, SAVE_STATE_INTERVAL
+            )
         )
+        self.entry.async_on_unload(self.async_save_client_state)
 
     def _create_client(
         self,
@@ -162,16 +176,54 @@ class RamsesBroker:
             }
         )
 
+    def async_register_platform(
+        self,
+        platform: EntityPlatform,
+        add_new_devices: Callable[[RamsesRFEntity], None],
+    ) -> None:
+        """Register a platform for device addition."""
+        self.entry.async_on_unload(
+            async_dispatcher_connect(
+                self.hass, SIGNAL_NEW_DEVICES.format(platform.domain), add_new_devices
+            )
+        )
+
+    async def _async_setup_platform(self, platform: str) -> None:
+        """Set up a platform."""
+        if platform not in self._platform_setup_tasks:
+            self._platform_setup_tasks[platform] = self.hass.async_create_task(
+                self.hass.config_entries.async_forward_entry_setup(self.entry, platform)
+            )
+        await self._platform_setup_tasks[platform]
+
+    async def _async_unload_platforms(self) -> None:
+        """Unload platforms."""
+        tasks = []
+
+        for platform, task in self._platform_setup_tasks.items():
+            if task.done():
+                tasks.append(
+                    self.hass.config_entries.async_forward_entry_unload(
+                        self.entry, platform
+                    )
+                )
+            else:
+                task.cancel()
+                tasks.append(task)
+
+        return all(await asyncio.gather(*tasks))
+
     async def async_update(self, _: dt | None = None) -> None:
         """Retrieve the latest state data from the client library."""
 
-        def async_add_devices(platform: str, devices: list[RamsesRFEntity]) -> None:
+        async def async_add_devices(
+            platform: str, devices: list[RamsesRFEntity]
+        ) -> None:
             if not devices:
                 return
-            self.hass.async_create_task(
-                async_load_platform(
-                    self.hass, platform, DOMAIN, {"devices": devices}, self.hass_config
-                )
+            await self._async_setup_platform(platform)
+            async_dispatcher_send(
+                self.hass, SIGNAL_NEW_DEVICES.format(platform), devices
             )
 
         def new_entities(
@@ -191,24 +243,24 @@ class RamsesBroker:
         )
 
         new_sensor_devices = new_devices | new_systems | new_zones
-        async_add_devices(Platform.BINARY_SENSOR, new_sensor_devices)
-        async_add_devices(Platform.SENSOR, new_sensor_devices)
+        await async_add_devices(Platform.BINARY_SENSOR, new_sensor_devices)
+        await async_add_devices(Platform.SENSOR, new_sensor_devices)
 
-        async_add_devices(
+        await async_add_devices(
             Platform.CLIMATE, [d for d in new_devices if isinstance(d, HvacVentilator)]
         )
-        async_add_devices(
+        await async_add_devices(
             Platform.REMOTE, [d for d in new_devices if isinstance(d, HvacRemoteBase)]
         )
-        async_add_devices(
+        await async_add_devices(
             Platform.CLIMATE, [s for s in new_systems if isinstance(s, Evohome)]
         )
 
         for zone in new_zones:
             if isinstance(zone, DhwZone):
-                async_add_devices(Platform.WATER_HEATER, [zone])
+                await async_add_devices(Platform.WATER_HEATER, [zone])
             elif isinstance(zone.tcs, Evohome):
-                async_add_devices(Platform.CLIMATE, [zone])
+                await async_add_devices(Platform.CLIMATE, [zone])
 
         if new_devices or new_systems or new_zones:
             async_call_later(self.hass, 5, self.async_save_client_state)

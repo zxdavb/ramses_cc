@@ -50,12 +50,12 @@ import voluptuous as vol
 
 from homeassistant.components.binary_sensor import ENTITY_ID_FORMAT
 from homeassistant.components.sensor import (
-    DOMAIN as PLATFORM,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
@@ -64,10 +64,9 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfTime,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
@@ -75,7 +74,6 @@ from .const import (
     ATTR_CO2_LEVEL,
     ATTR_INDOOR_HUMIDITY,
     ATTR_SETPOINT,
-    BROKER,
     DOMAIN,
     SVC_PUT_CO2_LEVEL,
     SVC_PUT_INDOOR_HUMIDITY,
@@ -121,41 +119,34 @@ SVC_PUT_INDOOR_HUMIDITY_SCHEMA = cv.make_entity_service_schema(
 )
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    _: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType = None,
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Create sensors for CH/DHW (heat) & HVAC."""
+    """Set up the sensor platform."""
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    platform = entity_platform.async_get_current_platform()
 
-    if discovery_info is None:
-        return
+    platform.async_register_entity_service(
+        SVC_PUT_CO2_LEVEL, SVC_PUT_CO2_LEVEL_SCHEMA, "async_put_co2_level"
+    )
+    platform.async_register_entity_service(
+        SVC_PUT_INDOOR_HUMIDITY,
+        SVC_PUT_INDOOR_HUMIDITY_SCHEMA,
+        "async_put_indoor_humidity",
+    )
 
-    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
+    @callback
+    def add_devices(devices: list[RamsesRFEntity]) -> None:
+        entities = [
+            (description.entity_class or RamsesSensor)(broker, device, description)
+            for device in devices
+            for description in SENSOR_DESCRIPTIONS
+            if isinstance(device, description.rf_class)
+            and hasattr(device, description.attr)
+        ]
+        async_add_entities(entities)
 
-    if not broker._services.get(PLATFORM):
-        broker._services[PLATFORM] = True
-
-        platform = entity_platform.async_get_current_platform()
-
-        platform.async_register_entity_service(
-            SVC_PUT_CO2_LEVEL, SVC_PUT_CO2_LEVEL_SCHEMA, "async_put_co2_level"
-        )
-        platform.async_register_entity_service(
-            SVC_PUT_INDOOR_HUMIDITY,
-            SVC_PUT_INDOOR_HUMIDITY_SCHEMA,
-            "async_put_indoor_humidity",
-        )
-
-    entities = [
-        (description.entity_class or RamsesSensor)(broker, device, description)
-        for device in discovery_info["devices"]
-        for description in SENSOR_DESCRIPTIONS
-        if isinstance(device, description.rf_class)
-        and hasattr(device, description.attr)
-    ]
-    async_add_entities(entities)
+    broker.async_register_platform(platform, add_devices)
 
 
 class RamsesSensor(RamsesEntity, SensorEntity):
@@ -197,17 +188,6 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         if self.entity_description.icon_off and not self.native_value:
             return self.entity_description.icon_off
         return super().icon
-
-    # TODO: Remove this when we have config entries and devices.
-    @property
-    def name(self) -> str:
-        """Return name temporarily prefixed with device name/id."""
-        prefix = (
-            self._device.name
-            if hasattr(self._device, "name") and self._device.name
-            else self._device.id
-        )
-        return f"{prefix} {super().name}"
 
     async def async_put_co2_level(self, co2_level: int = None) -> None:
         """Set the CO2 level."""

@@ -16,7 +16,6 @@ from ramses_tx.const import SZ_MODE, SZ_SETPOINT, SZ_SYSTEM_MODE
 import voluptuous as vol
 
 from homeassistant.components.climate import (
-    DOMAIN as PLATFORM,
     FAN_AUTO,
     FAN_HIGH,
     FAN_LOW,
@@ -33,11 +32,11 @@ from homeassistant.components.climate import (
     HVACAction,
     HVACMode,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
@@ -54,7 +53,6 @@ from .const import (
     ATTR_SETPOINT,
     ATTR_TEMPERATURE,
     ATTR_UNTIL,
-    BROKER,
     DOMAIN,
     PRESET_CUSTOM,
     PRESET_PERMANENT,
@@ -233,61 +231,54 @@ SVC_SET_ZONE_SCHEDULE_SCHEMA = cv.make_entity_service_schema(
 )
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    _: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType = None,
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Create climate entities for CH/DHW (heat) & HVAC."""
+    """Set up the climate platform."""
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    platform = entity_platform.async_get_current_platform()
 
-    if discovery_info is None:
-        return
+    platform.async_register_entity_service(
+        SVC_RESET_SYSTEM_MODE, {}, "async_reset_system_mode"
+    )
+    platform.async_register_entity_service(
+        SVC_SET_SYSTEM_MODE, SVC_SET_SYSTEM_MODE_SCHEMA, "async_set_system_mode"
+    )
+    platform.async_register_entity_service(
+        SVC_PUT_ZONE_TEMP, SVC_PUT_ZONE_TEMP_SCHEMA, "put_zone_temp"
+    )
+    platform.async_register_entity_service(
+        SVC_SET_ZONE_CONFIG, SVC_SET_ZONE_CONFIG_SCHEMA, "async_set_zone_config"
+    )
+    platform.async_register_entity_service(
+        SVC_RESET_ZONE_CONFIG, {}, "async_reset_zone_config"
+    )
+    platform.async_register_entity_service(
+        SVC_SET_ZONE_MODE, SVC_SET_ZONE_MODE_SCHEMA, "async_set_zone_mode"
+    )
+    platform.async_register_entity_service(
+        SVC_RESET_ZONE_MODE, {}, "async_reset_zone_mode"
+    )
+    platform.async_register_entity_service(
+        SVC_GET_ZONE_SCHEDULE, {}, "async_get_zone_schedule"
+    )
+    platform.async_register_entity_service(
+        SVC_SET_ZONE_SCHEDULE,
+        SVC_SET_ZONE_SCHEDULE_SCHEMA,
+        "async_set_zone_schedule",
+    )
 
-    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
+    @callback
+    def add_devices(devices: list[Evohome | Zone | HvacVentilator]) -> None:
+        entities = [
+            (description.entity_class)(broker, device, description)
+            for device in devices
+            for description in CLIMATE_DESCRIPTIONS
+            if isinstance(device, description.rf_class)
+        ]
+        async_add_entities(entities)
 
-    if not broker._services.get(PLATFORM):
-        broker._services[PLATFORM] = True
-
-        platform = entity_platform.async_get_current_platform()
-
-        platform.async_register_entity_service(
-            SVC_RESET_SYSTEM_MODE, {}, "async_reset_system_mode"
-        )
-        platform.async_register_entity_service(
-            SVC_SET_SYSTEM_MODE, SVC_SET_SYSTEM_MODE_SCHEMA, "async_set_system_mode"
-        )
-        platform.async_register_entity_service(
-            SVC_PUT_ZONE_TEMP, SVC_PUT_ZONE_TEMP_SCHEMA, "put_zone_temp"
-        )
-        platform.async_register_entity_service(
-            SVC_SET_ZONE_CONFIG, SVC_SET_ZONE_CONFIG_SCHEMA, "async_set_zone_config"
-        )
-        platform.async_register_entity_service(
-            SVC_RESET_ZONE_CONFIG, {}, "async_reset_zone_config"
-        )
-        platform.async_register_entity_service(
-            SVC_SET_ZONE_MODE, SVC_SET_ZONE_MODE_SCHEMA, "async_set_zone_mode"
-        )
-        platform.async_register_entity_service(
-            SVC_RESET_ZONE_MODE, {}, "async_reset_zone_mode"
-        )
-        platform.async_register_entity_service(
-            SVC_GET_ZONE_SCHEDULE, {}, "async_get_zone_schedule"
-        )
-        platform.async_register_entity_service(
-            SVC_SET_ZONE_SCHEDULE,
-            SVC_SET_ZONE_SCHEDULE_SCHEMA,
-            "async_set_zone_schedule",
-        )
-
-    entities = [
-        (description.entity_class)(broker, device, description)
-        for device in discovery_info["devices"]
-        for description in CLIMATE_DESCRIPTIONS
-        if isinstance(device, description.rf_class)
-    ]
-    async_add_entities(entities)
+    broker.async_register_platform(platform, add_devices)
 
 
 class RamsesController(RamsesEntity, ClimateEntity):

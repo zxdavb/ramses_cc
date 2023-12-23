@@ -8,13 +8,19 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
-from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_rf.device.base import DeviceInfo as RamseRFDeviceInfo
+from ramses_rf.entity_base import Child, Entity as RamsesRFEntity
+from ramses_rf.system.zones import Zone
 from ramses_tx.exceptions import TransportSerialError
 import voluptuous as vol
 
+from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.event import async_call_later
@@ -24,7 +30,6 @@ from homeassistant.helpers.typing import ConfigType
 from .broker import RamsesBroker
 from .const import (
     ATTR_DEVICE_ID,
-    BROKER,
     CONF_ADVANCED_FEATURES,
     CONF_MESSAGE_EVENTS,
     CONF_SEND_PACKET,
@@ -77,26 +82,46 @@ SVC_SEND_PACKET_SCHEMA = vol.Schema(
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the Ramses integration."""
+    hass.data[DOMAIN] = {}
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_IMPORT},
+            data=config[DOMAIN],
+        )
+    )
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
-
-    broker = RamsesBroker(hass, config)
+    broker = RamsesBroker(hass, entry)
     try:
-        await broker.start()
+        await broker.async_setup()
     except TransportSerialError as exc:
-        _LOGGER.error("There is a problem with the serial port: %s", exc)
-        return False
+        raise ConfigEntryNotReady(
+            f"There is a problem with the serial port: {exc}"
+        ) from exc
 
-    hass.data.setdefault(DOMAIN, {})[BROKER] = broker
+    # Setup is complete and config is valid, so start polling
+    hass.data[DOMAIN][entry.entry_id] = broker
+    await broker.async_start()
 
-    register_domain_services(hass, broker)
-    register_domain_events(hass, broker)
+    async_register_domain_services(hass, broker)
+    async_register_domain_events(hass, broker)
 
     return True
 
 
-# TODO: add async_ to routines where required to do so
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    hass.data[DOMAIN].pop(entry.entry_id)
+    return True
+
+
 @callback  # TODO: the following is a mess - to add register/deregister of clients
-def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
+def async_register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
     """Set up the handlers for the system-wide events."""
 
     @callback
@@ -126,8 +151,8 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
     broker.client.add_msg_handler(process_msg)
 
 
-@callback  # TODO: add async_ to routines where required to do so
-def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
+@callback
+def async_register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)
@@ -192,6 +217,35 @@ class RamsesEntity(Entity):
         self.entity_description = entity_description
 
         self._attr_unique_id = device.id
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this device."""
+        name = self._device.id
+        if hasattr(self._device, "name") and self._device.name:
+            name = self._device.name
+        elif hasattr(self._device, "_SLUG") and self._device._SLUG:
+            name = f"{self._device._SLUG} {self._device.id}"
+
+        manufacturer = None
+        model = None
+        if isinstance(self._device, RamseRFDeviceInfo) and self._device.device_info:
+            manufacturer = self._device.device_info.get("manufacturer_sub_id")
+            model = self._device.device_info.get("description")
+
+        via_device = None
+        if isinstance(self._device, Zone) and self._device.tcs:
+            via_device = (DOMAIN, self._device.tcs.id)
+        elif isinstance(self._device, Child) and self._device._parent:
+            via_device = (DOMAIN, self._device._parent.id)
+
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device.id)},
+            name=name,
+            manufacturer=manufacturer,
+            model=model,
+            via_device=via_device,
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
