@@ -23,7 +23,7 @@ from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 import voluptuous as vol
 
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
@@ -77,7 +77,7 @@ class RamsesBroker:
 
         CONFIG_KEYS = (SZ_CONFIG, SZ_PACKET_LOG, SZ_PORT_CONFIG)
 
-        storage = await self._async_load_storage()
+        storage = await self._store.async_load() or {}
         _LOGGER.debug("Storage = %s", storage)
 
         self._remotes = storage.get(SZ_REMOTES, {}) | self.config[SZ_REMOTES]
@@ -92,15 +92,22 @@ class RamsesBroker:
             client_state.get(SZ_SCHEMA, {}) if restore_schema else {},
         )
 
-        cached_packets = (
-            self._filter_cached_packets(
-                client_state.get(SZ_PACKETS, {}), restore_schema
-            )
-            if restore_state
-            else {}
-        )
+        def cached_packets() -> dict[str, str]:  # dtm_str, packet_as_str
+            if not restore_state:
+                return {}
 
-        await self.client.start(cached_packets=cached_packets)
+            msg_code_filter = ["313F"]
+            if not restore_schema:
+                msg_code_filter.extend(["0005", "000C"])
+
+            return {
+                dtm: pkt
+                for dtm, pkt in client_state.get(SZ_PACKETS, {}).items()
+                if dt.fromisoformat(dtm) > dt.now() - timedelta(days=1)
+                and pkt[41:45] not in msg_code_filter
+            }
+
+        await self.client.start(cached_packets=cached_packets())
 
         # Perform initial update, then poll at intervals
         await self.async_update()
@@ -138,28 +145,6 @@ class RamsesBroker:
             self._ser_name, loop=self.hass.loop, **client_config, **config_schema
         )
 
-    def _filter_cached_packets(
-        self, cached_packets: dict, restore_schema: bool
-    ) -> dict:
-        """Filter cached packets for replay on startup."""
-
-        msg_code_filter = ["313F"]
-        if not restore_schema:
-            msg_code_filter.extend(["0005", "000C"])
-
-        return {
-            dtm: pkt
-            for dtm, pkt in cached_packets.items()
-            if dt.fromisoformat(dtm) > dt.now() - timedelta(days=1)
-            and pkt[41:45] not in msg_code_filter
-        }
-
-    async def _async_load_storage(self) -> dict:
-        """May return an empty dict."""
-
-        app_storage = await self._store.async_load()  # return None if no store
-        return app_storage or {}
-
     async def async_save_client_state(self, *args, **kwargs) -> None:
         """Save the client state to the application store."""
 
@@ -180,7 +165,6 @@ class RamsesBroker:
     async def async_update(self, _: dt | None = None) -> None:
         """Retrieve the latest state data from the client library."""
 
-        @callback
         def async_add_devices(platform: str, devices: list[RamsesRFEntity]) -> None:
             if not devices:
                 return
@@ -190,7 +174,6 @@ class RamsesBroker:
                 )
             )
 
-        @callback
         def new_entities(
             known: set[RamsesRFEntity], current: list[RamsesRFEntity]
         ) -> list[RamsesRFEntity]:
