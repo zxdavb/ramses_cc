@@ -99,7 +99,7 @@ async def async_setup_platform(
         )
 
     entities = [
-        RamsesRemote(broker, device, RemoteEntityDescription(key="remote"))
+        RamsesRemote(broker, device, RamsesRemoteEntityDescription(key="remote"))
         for device in discovery_info["devices"]
     ]
     async_add_entities(entities)
