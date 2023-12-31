@@ -8,9 +8,7 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
-from ramses_rf.device.base import DeviceInfo as RamseRFDeviceInfo
-from ramses_rf.entity_base import Child, Entity as RamsesRFEntity
-from ramses_rf.system.zones import Zone
+from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_tx.exceptions import TransportSerialError
 import voluptuous as vol
 
@@ -120,7 +118,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    if not await broker.async_unload_platforms():
+        return False
+
+    hass.services.async_remove(DOMAIN, SVC_FAKE_DEVICE)
+    hass.services.async_remove(DOMAIN, SVC_FORCE_UPDATE)
+    hass.services.async_remove(DOMAIN, SVC_SEND_PACKET)
+
     hass.data[DOMAIN].pop(entry.entry_id)
+
     return True
 
 
@@ -184,18 +191,18 @@ def async_register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         broker.client.send_cmd(broker.client.create_cmd(**kwargs))
         hass.helpers.event.async_call_later(5, broker.async_update)
 
-        hass.services.async_register(
-            DOMAIN, SVC_FAKE_DEVICE, async_fake_device, schema=SVC_FAKE_DEVICE_SCHEMA
-        )
-        hass.services.async_register(DOMAIN, SVC_FORCE_UPDATE, async_force_update)
+    hass.services.async_register(
+        DOMAIN, SVC_FAKE_DEVICE, async_fake_device, schema=SVC_FAKE_DEVICE_SCHEMA
+    )
+    hass.services.async_register(DOMAIN, SVC_FORCE_UPDATE, async_force_update)
 
-        if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
-            hass.services.async_register(
-                DOMAIN,
-                SVC_SEND_PACKET,
-                async_send_packet,
-                schema=SVC_SEND_PACKET_SCHEMA,
-            )
+    if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
+        hass.services.async_register(
+            DOMAIN,
+            SVC_SEND_PACKET,
+            async_send_packet,
+            schema=SVC_SEND_PACKET_SCHEMA,
+        )
 
 
 class RamsesEntity(Entity):
@@ -221,35 +228,7 @@ class RamsesEntity(Entity):
         self.entity_description = entity_description
 
         self._attr_unique_id = device.id
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device info for this device."""
-        name = self._device.id
-        if hasattr(self._device, "name") and self._device.name:
-            name = self._device.name
-        elif hasattr(self._device, "_SLUG") and self._device._SLUG:
-            name = f"{self._device._SLUG} {self._device.id}"
-
-        manufacturer = None
-        model = None
-        if isinstance(self._device, RamseRFDeviceInfo) and self._device.device_info:
-            manufacturer = self._device.device_info.get("manufacturer_sub_id")
-            model = self._device.device_info.get("description")
-
-        via_device = None
-        if isinstance(self._device, Zone) and self._device.tcs:
-            via_device = (DOMAIN, self._device.tcs.id)
-        elif isinstance(self._device, Child) and self._device._parent:
-            via_device = (DOMAIN, self._device._parent.id)
-
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device.id)},
-            name=name,
-            manufacturer=manufacturer,
-            model=model,
-            via_device=via_device,
-        )
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, device.id)})
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

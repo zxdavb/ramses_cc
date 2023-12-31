@@ -11,7 +11,7 @@ from typing import Any
 from ramses_rf import Gateway
 from ramses_rf.device.base import Device
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
-from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_rf.entity_base import Child, Entity as RamsesRFEntity
 from ramses_rf.schemas import (
     SZ_CONFIG,
     SZ_RESTORE_CACHE,
@@ -21,12 +21,15 @@ from ramses_rf.schemas import (
 )
 from ramses_rf.system.heat import Evohome, MultiZone, System
 from ramses_rf.system.zones import DhwZone, Zone
+from ramses_tx.const import Code
 from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
@@ -35,7 +38,13 @@ from homeassistant.helpers.entity_platform import EntityPlatform
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
 
-from .const import SIGNAL_NEW_DEVICES, SIGNAL_UPDATE, STORAGE_KEY, STORAGE_VERSION
+from .const import (
+    DOMAIN,
+    SIGNAL_NEW_DEVICES,
+    SIGNAL_UPDATE,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+)
 from .schemas import merge_schemas, normalise_config, schema_is_minimal
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,9 +73,10 @@ class RamsesBroker:
         self._remotes: dict[str, str] = None  # type: ignore[assignment]
 
         self._platform_setup_tasks = {}
-        self.entry.async_on_unload(self._async_unload_platforms)
 
         self._entities = {}  # domain entities
+
+        self._device_info: dict[str, DeviceInfo] = {}
 
         # Discovered client objects...
         self._devices: set[Device] = set()
@@ -196,7 +206,7 @@ class RamsesBroker:
             )
         await self._platform_setup_tasks[platform]
 
-    async def _async_unload_platforms(self) -> None:
+    async def async_unload_platforms(self) -> bool:
         """Unload platforms."""
         tasks = []
 
@@ -212,6 +222,43 @@ class RamsesBroker:
                 tasks.append(task)
 
         return all(await asyncio.gather(*tasks))
+
+    def _update_device(self, device: RamsesRFEntity) -> None:
+        if hasattr(device, "name") and device.name:
+            name = device.name
+        elif device._SLUG:
+            name = f"{device._SLUG} {device.id}"
+        else:
+            name = device.id
+
+        if info := device._msg_value_code(Code._10E0):
+            model = info.get("description")
+        else:
+            model = device._SLUG
+
+        if isinstance(device, Zone) and device.tcs:
+            via_device = (DOMAIN, device.tcs.id)
+        elif isinstance(device, Child) and device._parent:
+            via_device = (DOMAIN, device._parent.id)
+        else:
+            via_device = None
+
+        device_info = DeviceInfo(
+            identifiers={(DOMAIN, device.id)},
+            name=name,
+            manufacturer=None,
+            model=model,
+            via_device=via_device,
+        )
+
+        if self._device_info.get(device.id) == device_info:
+            return
+        self._device_info[device.id] = device_info
+
+        device_registry = dr.async_get(self.hass)
+        device_registry.async_get_or_create(
+            config_entry_id=self.entry.entry_id, **device_info
+        )
 
     async def async_update(self, _: dt | None = None) -> None:
         """Retrieve the latest state data from the client library."""
@@ -241,6 +288,9 @@ class RamsesBroker:
                 *[s.zones for s in self.client.systems if isinstance(s, MultiZone)]
             ),
         )
+
+        for device in self._devices | self._systems | self._zones:
+            self._update_device(device)
 
         new_sensor_devices = new_devices | new_systems | new_zones
         await async_add_devices(Platform.BINARY_SENSOR, new_sensor_devices)
