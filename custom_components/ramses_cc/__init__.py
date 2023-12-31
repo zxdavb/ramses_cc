@@ -84,13 +84,17 @@ SVC_SEND_PACKET_SCHEMA = vol.Schema(
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Ramses integration."""
     hass.data[DOMAIN] = {}
-    hass.async_create_task(
-        hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": config_entries.SOURCE_IMPORT},
-            data=config[DOMAIN],
+
+    # One-off import of entry from config yaml
+    if DOMAIN in config and not hass.config_entries.async_entries(DOMAIN):
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": config_entries.SOURCE_IMPORT},
+                data=config[DOMAIN],
+            )
         )
-    )
+
     return True
 
 
