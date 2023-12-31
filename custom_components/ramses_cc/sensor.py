@@ -221,6 +221,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         name="Heat demand",
         icon="mdi:radiator",
         icon_off="mdi:radiator-off",
+        native_unit_of_measurement=PERCENTAGE,
     ),
     RamsesSensorEntityDescription(
         key=SZ_RELAY_DEMAND,

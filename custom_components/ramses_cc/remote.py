@@ -87,7 +87,7 @@ async def async_setup_entry(
     @callback
     def add_devices(devices: list[HvacRemote]) -> None:
         entities = [
-            RamsesRemote(broker, device, RemoteEntityDescription(key="remote"))
+            RamsesRemote(broker, device, RamsesRemoteEntityDescription(key="remote"))
             for device in devices
         ]
         async_add_entities(entities)
