@@ -31,6 +31,7 @@ from .const import (
     CONF_SEND_PACKET,
     DOMAIN,
     SIGNAL_UPDATE,
+    SVC_BIND_DEVICE,
     SVC_FAKE_DEVICE,
     SVC_FORCE_UPDATE,
     SVC_SEND_PACKET,
@@ -67,7 +68,7 @@ _SCH_BIND_PAIRS = vol.Schema(
     {vol.Required(_SCH_CMD_CODE, default="00"): _SCH_OEM_ID},
 )
 
-SCH_BIND_DEVICE = vol.Schema(
+SVC_BIND_DEVICE_SCHEMA = vol.Schema(
     {
         vol.Required("device_id"): _SCH_DEVICE_ID,
         vol.Required("tender"): vol.All(_SCH_BIND_PAIRS, vol.Length(min=1)),
@@ -183,6 +184,9 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         broker.client.send_cmd(broker.client.create_cmd(**kwargs))
         hass.helpers.event.async_call_later(5, broker.async_update)
 
+    hass.services.async_register(
+        DOMAIN, SVC_BIND_DEVICE, async_bind_device, schema=SVC_BIND_DEVICE_SCHEMA
+    )
     hass.services.async_register(
         DOMAIN, SVC_FAKE_DEVICE, async_fake_device, schema=SVC_FAKE_DEVICE_SCHEMA
     )
