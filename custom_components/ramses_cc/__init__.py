@@ -9,6 +9,7 @@ import logging
 from typing import Any
 
 from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_tx.const import COMMAND_REGEX
 from ramses_tx.exceptions import TransportSerialError
 import voluptuous as vol
 
@@ -57,6 +58,24 @@ PLATFORMS = [
     Platform.REMOTE,
     Platform.WATER_HEATER,
 ]
+
+_SCH_DEVICE_ID = cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$")
+_SCH_CMD_CODE = cv.matches_regex(r"^[0-9A-F]{4}$")
+_SCH_OEM_ID = cv.matches_regex(r"^[0-9A-F]{2}$")
+_SCH_COMMAND = cv.matches_regex(COMMAND_REGEX)
+_SCH_BIND_PAIRS = vol.Schema(
+    {vol.Required(_SCH_CMD_CODE, default="00"): _SCH_OEM_ID},
+)
+
+SCH_BIND_DEVICE = vol.Schema(
+    {
+        vol.Required("device_id"): _SCH_DEVICE_ID,
+        vol.Required("tender"): vol.All(_SCH_BIND_PAIRS, vol.Length(min=1)),
+        vol.Optional("affirm", default={}): _SCH_BIND_PAIRS,
+        vol.Optional("device_info", default=None): vol.Any(None, _SCH_COMMAND),
+    },
+    extra=vol.PREVENT_EXTRA,
+)
 
 SVC_FAKE_DEVICE_SCHEMA = vol.Schema(
     {
@@ -129,6 +148,15 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
 @callback  # TODO: add async_ to routines where required to do so
 def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
     """Set up the handlers for the domain-wide services."""
+
+    @verify_domain_control(hass, DOMAIN)  # TODO: WIP
+    async def async_bind_device(call: ServiceCall) -> None:
+        try:
+            broker.client.fake_device(**call.data)
+        except LookupError as exc:
+            _LOGGER.error("%s", exc)
+            return
+        hass.helpers.event.async_call_later(5, broker.async_update)
 
     @verify_domain_control(hass, DOMAIN)
     async def async_fake_device(call: ServiceCall) -> None:
