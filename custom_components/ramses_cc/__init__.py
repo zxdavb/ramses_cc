@@ -155,18 +155,18 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         broker.client.send_cmd(broker.client.create_cmd(**kwargs))
         hass.helpers.event.async_call_later(5, broker.async_update)
 
-        hass.services.async_register(
-            DOMAIN, SVC_FAKE_DEVICE, async_fake_device, schema=SVC_FAKE_DEVICE_SCHEMA
-        )
-        hass.services.async_register(DOMAIN, SVC_FORCE_UPDATE, async_force_update)
+    hass.services.async_register(
+        DOMAIN, SVC_FAKE_DEVICE, async_fake_device, schema=SVC_FAKE_DEVICE_SCHEMA
+    )
+    hass.services.async_register(DOMAIN, SVC_FORCE_UPDATE, async_force_update)
 
-        if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
-            hass.services.async_register(
-                DOMAIN,
-                SVC_SEND_PACKET,
-                async_send_packet,
-                schema=SVC_SEND_PACKET_SCHEMA,
-            )
+    if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
+        hass.services.async_register(
+            DOMAIN,
+            SVC_SEND_PACKET,
+            async_send_packet,
+            schema=SVC_SEND_PACKET_SCHEMA,
+        )
 
 
 class RamsesEntity(Entity):
