@@ -68,7 +68,6 @@ PRESET_PERMANENT = "permanent"
 # Services
 SVC_DELETE_COMMAND = "delete_command"
 SVC_BIND_DEVICE = "bind_device"
-SVC_FAKE_DEVICE = "fake_device"
 SVC_FORCE_UPDATE = "force_update"
 SVC_GET_DHW_SCHEDULE = "get_dhw_schedule"
 SVC_GET_ZONE_SCHEDULE = "get_zone_schedule"
