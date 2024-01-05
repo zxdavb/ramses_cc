@@ -21,6 +21,7 @@ from ramses_rf.schemas import (
     SZ_SYSTEM,
     SZ_ZONES,
 )
+from ramses_tx.const import COMMAND_REGEX
 from ramses_tx.schemas import (
     SCH_ENGINE_DICT,
     SZ_PORT_CONFIG,
@@ -66,7 +67,7 @@ SCH_ADVANCED_FEATURES = vol.Schema(
 )
 
 SCH_GLOBAL_TRAITS_DICT, SCH_TRAITS = sch_global_traits_dict_factory(
-    hvac_traits={vol.Optional(CONF_COMMANDS): dict}
+    hvac_traits={vol.Optional(CONF_COMMANDS): {str: cv.matches_regex(COMMAND_REGEX)}}
 )
 
 SCH_GATEWAY_CONFIG = SCH_GATEWAY_CONFIG.extend(

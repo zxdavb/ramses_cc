@@ -111,7 +111,7 @@ class RamsesBroker:
             if not restore_state:
                 return {}
 
-            msg_code_filter = ["313F"]
+            msg_code_filter = ["313F"]  # ? 1FC9
             if not restore_schema:
                 msg_code_filter.extend(["0005", "000C"])
 
@@ -174,7 +174,7 @@ class RamsesBroker:
 
         _LOGGER.info("Saving the client state cache (packets, schema)")
 
-        (schema, packets) = self.client._get_state()
+        schema, packets = self.client.get_state()
         remotes = self._remotes | {
             k: v._commands for k, v in self._entities.items() if hasattr(v, "_commands")
         }

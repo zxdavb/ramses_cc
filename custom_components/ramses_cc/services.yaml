@@ -1,8 +1,53 @@
 #
 # integration-wide service calls
 
+bind_device:
+  name: Bind a Device
+  description: >-
+    Bind a device to a CH/DHW controller or a fan/ventilation unit.
+
+    The device will be either a sensor (e.g. temperature, humidity, etc.) or a
+    remote (e.g. a 4-way switch).
+
+    It must be included in the known_list and correctly configured with an
+    appropriate class and faking enabled.
+
+  fields:
+    device_id:
+      description: >-
+        The device id of the supplicant.
+
+        Heating (CH/DHW) devices ids must start with a well-known device type.
+        HVAC devices ids should start with a device type that is consistent with their
+        hardware manufacturer's scheme.
+      example: 03:123456
+      required: true
+
+    offer:
+      description: >-
+        The command_code / domain_idx pairs for the binding offer.
+
+        If you include '10E0' (device info), ensure the domain id is is set to the
+        the hardware manufacturer's oem_code.
+      example: '{"30C9": "00"}'
+      required: true
+
+    confirm:
+      description: >-
+        The command_code / domain_idx pairs for the binding confirmation, if required.
+      required: false
+
+    device_info:
+      description: >-
+        The device_info command of the supplicant (needed to complete some bindings).
+
+        This is required if you include 10E0 (device info) within the offer.
+        It must be the correct payload for the device class.
+      required: false
+
+
 fake_device:
-  name: Fake a RAMSES device
+  name: Fake a RAMSES device (deprecated)
   description: >-
     Fake a device, so that it can then cast state data via HA service calls.
 

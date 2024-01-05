@@ -8,7 +8,10 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
+from ramses_rf.device import Fakeable
 from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_tx import Command
+from ramses_tx.const import COMMAND_REGEX
 from ramses_tx.exceptions import TransportSerialError
 import voluptuous as vol
 
@@ -33,7 +36,7 @@ from .const import (
     CONF_SEND_PACKET,
     DOMAIN,
     SIGNAL_UPDATE,
-    SVC_FAKE_DEVICE,
+    SVC_BIND_DEVICE,
     SVC_FORCE_UPDATE,
     SVC_SEND_PACKET,
 )
@@ -61,12 +64,24 @@ PLATFORMS = [
     Platform.WATER_HEATER,
 ]
 
-SVC_FAKE_DEVICE_SCHEMA = vol.Schema(
+_SCH_DEVICE_ID = cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$")
+_SCH_CMD_CODE = cv.matches_regex(r"^[0-9A-F]{4}$")
+_SCH_DOM_IDX = cv.matches_regex(r"^[0-9A-F]{4}$")
+_SCH_COMMAND = cv.matches_regex(COMMAND_REGEX)
+_SCH_BINDING = vol.Schema({vol.Required(_SCH_CMD_CODE): vol.Any(None, _SCH_DOM_IDX)})
+
+SCH = vol.All(_SCH_BINDING, vol.Length(min=1))
+
+SVC_BIND_DEVICE_SCHEMA = vol.Schema(
     {
-        vol.Required(ATTR_DEVICE_ID): cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$"),
-        vol.Optional("create_device", default=False): vol.Any(None, cv.boolean),
-        vol.Optional("start_binding", default=False): vol.Any(None, cv.boolean),
-    }
+        vol.Required("device_id"): _SCH_DEVICE_ID,
+        vol.Required("offer"): vol.All(_SCH_BINDING, vol.Length(min=1)),
+        vol.Optional("confirm", default={}): vol.Any(
+            {}, vol.All(_SCH_BINDING, vol.Length(min=1))
+        ),
+        vol.Optional("device_info", default=None): vol.Any(None, _SCH_COMMAND),
+    },
+    extra=vol.PREVENT_EXTRA,
 )
 
 SVC_SEND_PACKET_SCHEMA = vol.Schema(
@@ -166,13 +181,26 @@ def async_register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> N
 def async_register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
     """Set up the handlers for the domain-wide services."""
 
-    @verify_domain_control(hass, DOMAIN)
-    async def async_fake_device(call: ServiceCall) -> None:
+    @verify_domain_control(hass, DOMAIN)  # TODO: WIP
+    async def async_bind_device(call: ServiceCall) -> None:
+        device: Fakeable
+
         try:
-            broker.client.fake_device(**call.data)
+            device = broker.client.fake_device(call.data["device_id"])
         except LookupError as exc:
             _LOGGER.error("%s", exc)
             return
+
+        if call.data["device_info"]:
+            cmd = Command(call.data["device_info"])
+        else:
+            cmd = None
+
+        await device._initiate_binding_process(  # may: BindingFlowFailed
+            list(call.data["offer"].keys()),
+            confirm_code=list(call.data["confirm"].keys()),
+            ratify_cmd=cmd,
+        )
         hass.helpers.event.async_call_later(5, broker.async_update)
 
     @verify_domain_control(hass, DOMAIN)
@@ -192,7 +220,7 @@ def async_register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         hass.helpers.event.async_call_later(5, broker.async_update)
 
     hass.services.async_register(
-        DOMAIN, SVC_FAKE_DEVICE, async_fake_device, schema=SVC_FAKE_DEVICE_SCHEMA
+        DOMAIN, SVC_BIND_DEVICE, async_bind_device, schema=SVC_BIND_DEVICE_SCHEMA
     )
     hass.services.async_register(DOMAIN, SVC_FORCE_UPDATE, async_force_update)
 
