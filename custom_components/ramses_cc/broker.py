@@ -14,7 +14,7 @@ from ramses_rf.device.base import Device
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
 from ramses_rf.entity_base import Child, Entity as RamsesRFEntity
 from ramses_rf.schemas import SZ_SCHEMA
-from ramses_rf.system.heat import Evohome, MultiZone, System
+from ramses_rf.system.heat import Evohome, MultiZone, StoredHw, System
 from ramses_rf.system.zones import DhwZone, Zone
 from ramses_tx.const import Code
 from ramses_tx.schemas import (
@@ -278,7 +278,12 @@ class RamsesBroker:
         new_zones = new_entities(
             self._zones,
             set().union(
-                *[s.zones for s in self.client.systems if isinstance(s, MultiZone)]
+                *[s.zones for s in self.client.systems if isinstance(s, MultiZone)],
+                [
+                    s.dhw
+                    for s in self.client.systems
+                    if isinstance(s, StoredHw) and s.dhw
+                ],
             ),
         )
 

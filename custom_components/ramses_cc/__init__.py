@@ -66,8 +66,9 @@ PLATFORMS = [
 
 _SCH_DEVICE_ID = cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$")
 _SCH_CMD_CODE = cv.matches_regex(r"^[0-9A-F]{4}$")
-_SCH_DOM_IDX = cv.matches_regex(r"^[0-9A-F]{4}$")
+_SCH_DOM_IDX = cv.matches_regex(r"^[0-9A-F]{2}$")
 _SCH_COMMAND = cv.matches_regex(COMMAND_REGEX)
+
 _SCH_BINDING = vol.Schema({vol.Required(_SCH_CMD_CODE): vol.Any(None, _SCH_DOM_IDX)})
 
 SVC_BIND_DEVICE_SCHEMA = vol.Schema(
