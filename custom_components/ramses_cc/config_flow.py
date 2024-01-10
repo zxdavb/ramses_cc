@@ -1,22 +1,361 @@
 """Config flow to configure Ramses integration."""
 
+from abc import abstractmethod
+from copy import deepcopy
 import logging
+import re
 from typing import Any
 
+from ramses_rf.schemas import SCH_GATEWAY_DICT, SCH_GLOBAL_SCHEMAS, SZ_SCHEMA
+from ramses_tx.schemas import (
+    SCH_ENGINE_DICT,
+    SCH_GLOBAL_TRAITS_DICT,
+    SZ_BAUDRATE,
+    SZ_ENFORCE_KNOWN_LIST,
+    SZ_FILE_NAME,
+    SZ_KNOWN_LIST,
+    SZ_PACKET_LOG,
+    SZ_PORT_NAME,
+    SZ_ROTATE_BACKUPS,
+    SZ_ROTATE_BYTES,
+    SZ_SERIAL_PORT,
+)
+from ramses_tx.transport import comports
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
+from config.deps.ramses_cc.custom_components.ramses_cc.broker import (
+    SZ_CLIENT_STATE,
+    SZ_PACKETS,
+)
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigEntryState,
+    ConfigFlow,
+    OptionsFlow,
+)
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import selector
+from homeassistant.data_entry_flow import FlowHandler, FlowResult
+from homeassistant.helpers import config_validation as cv, selector
+from homeassistant.helpers.storage import Store
 
-from .const import DOMAIN
+from .const import (
+    CONF_ADVANCED_FEATURES,
+    CONF_MESSAGE_EVENTS,
+    CONF_RAMSES_RF,
+    CONF_SCHEMA,
+    CONF_SEND_PACKET,
+    DOMAIN,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class RamsesConfigFlow(ConfigFlow, domain=DOMAIN):
+class BaseRamsesFlow(FlowHandler):
+    """Mixin for common Ramses flow steps and forms."""
+
+    options: dict[str, Any]
+
+    def __init__(self, options: dict[str, Any] = {}) -> None:
+        """Initialize flow."""
+        options.setdefault(CONF_RAMSES_RF, {})
+        self.options = options
+
+    @abstractmethod
+    def _async_save(self) -> FlowResult:
+        """Finish the flow."""
+
+    async def async_step_serial_port(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Ramses serial port step."""
+        suggested_values = user_input or self.options.get(SZ_SERIAL_PORT, {})
+        errors = {}
+        description_placeholders = {}
+
+        if user_input is not None:
+            # TODO: Validate port?
+            self.options.update({SZ_SERIAL_PORT: user_input})
+            return self._async_save()
+
+        ports = comports(include_links=True)
+
+        return self.async_show_form(
+            step_id="serial_port",
+            data_schema=vol.Schema(
+                {
+                    # TODO: Split into multiple steps so we can use list mode?
+                    vol.Required(
+                        SZ_PORT_NAME,
+                        description={
+                            "suggested_value": suggested_values.get(SZ_PORT_NAME)
+                        },
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=ports,
+                            custom_value=True,
+                        )
+                    ),
+                    vol.Optional(
+                        SZ_BAUDRATE,
+                        description={
+                            "suggested_value": str(
+                                suggested_values.get(SZ_BAUDRATE, "115200")
+                            )
+                        },
+                    ): vol.All(
+                        selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=["57600", "115200"],
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                            )
+                        ),
+                        cv.positive_int,
+                    ),
+                    # TODO: Add ability to set advanced serial port config
+                }
+            ),
+            description_placeholders=description_placeholders,
+            errors=errors,
+        )
+
+    async def async_step_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Gateway config step."""
+        suggested_values = user_input or {
+            CONF_SCAN_INTERVAL: self.options.get(CONF_SCAN_INTERVAL),
+            CONF_RAMSES_RF: {
+                k: v
+                for k, v in self.options[CONF_RAMSES_RF].items()
+                if k not in (SZ_ENFORCE_KNOWN_LIST,)
+            },
+        }
+        errors = {}
+        description_placeholders = {}
+
+        if user_input is not None:
+            try:
+                vol.Schema(SCH_GATEWAY_DICT | SCH_ENGINE_DICT, extra=vol.PREVENT_EXTRA)(
+                    user_input.get(CONF_RAMSES_RF, {})
+                )
+            except vol.Invalid as err:
+                errors[CONF_RAMSES_RF] = "invalid_gateway_config"
+                description_placeholders["error_detail"] = err.msg
+
+            if not errors:
+                self.options[CONF_RAMSES_RF] |= user_input.pop(CONF_RAMSES_RF, {})
+                self.options.update(user_input)
+                return self._async_save()
+
+        return self.async_show_form(
+            step_id="config",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_SCAN_INTERVAL,
+                        default=60,
+                        description={
+                            "suggested_value": suggested_values.get(
+                                CONF_SCAN_INTERVAL, 60
+                            )
+                        },
+                    ): vol.All(
+                        selector.NumberSelector(
+                            selector.NumberSelectorConfig(
+                                min=0,
+                                max=600,
+                                unit_of_measurement="seconds",
+                                mode=selector.NumberSelectorMode.BOX,
+                            )
+                        ),
+                        cv.positive_int,
+                    ),
+                    vol.Optional(
+                        CONF_RAMSES_RF,
+                        description={
+                            "suggested_value": suggested_values.get(CONF_RAMSES_RF)
+                        },
+                    ): selector.ObjectSelector(),
+                }
+            ),
+            description_placeholders=description_placeholders,
+            errors=errors,
+        )
+
+    async def async_step_packet_log(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Packet log step."""
+        suggested_values = user_input or self.options.get(SZ_PACKET_LOG, {})
+        errors = {}
+        description_placeholders = {}
+
+        if user_input is not None:
+            self.options.update({SZ_PACKET_LOG: user_input})
+            return self._async_save()
+
+        return self.async_show_form(
+            step_id="packet_log",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        SZ_FILE_NAME,
+                        description={
+                            "suggested_value": suggested_values.get(SZ_FILE_NAME)
+                        },
+                    ): selector.TextSelector(),
+                    vol.Optional(
+                        SZ_ROTATE_BYTES,
+                        description={
+                            "suggested_value": suggested_values.get(SZ_ROTATE_BYTES)
+                        },
+                    ): vol.All(
+                        selector.NumberSelector(
+                            selector.NumberSelectorConfig(
+                                min=0,
+                                unit_of_measurement="bytes",
+                                mode=selector.NumberSelectorMode.BOX,
+                            )
+                        ),
+                        cv.positive_int,
+                    ),
+                    vol.Optional(
+                        SZ_ROTATE_BACKUPS,
+                        default=7,
+                        description={
+                            "suggested_value": suggested_values.get(SZ_ROTATE_BACKUPS)
+                        },
+                    ): vol.All(
+                        selector.NumberSelector(
+                            selector.NumberSelectorConfig(
+                                min=0,
+                                unit_of_measurement="backups",
+                                mode=selector.NumberSelectorMode.BOX,
+                            )
+                        ),
+                        cv.positive_int,
+                    ),
+                }
+            ),
+            description_placeholders=description_placeholders,
+            errors=errors,
+        )
+
+    async def async_step_advanced_features(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Advanced features step."""
+        suggested_values = user_input or self.options.get(CONF_ADVANCED_FEATURES, {})
+        errors = {}
+        description_placeholders = {}
+
+        if user_input is not None:
+            if message_events := user_input.get(CONF_MESSAGE_EVENTS):
+                try:
+                    re.compile(message_events)
+                except re.error as err:
+                    errors[CONF_MESSAGE_EVENTS] = "invalid_regex"
+                    description_placeholders["error_detail"] = err.msg
+
+            if not errors:
+                self.options.update({CONF_ADVANCED_FEATURES: user_input})
+                return self._async_save()
+
+        return self.async_show_form(
+            step_id="advanced_features",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_SEND_PACKET,
+                        default=False,
+                        description={
+                            "suggested_value": suggested_values.get(CONF_SEND_PACKET)
+                        },
+                    ): selector.BooleanSelector(),
+                    vol.Optional(
+                        CONF_MESSAGE_EVENTS,
+                        description={
+                            "suggested_value": suggested_values.get(CONF_MESSAGE_EVENTS)
+                        },
+                    ): selector.TextSelector(),
+                }
+            ),
+            description_placeholders=description_placeholders,
+            errors=errors,
+        )
+
+    async def async_step_schema(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """System schema step."""
+        suggested_values = user_input or {
+            CONF_SCHEMA: self.options.get(CONF_SCHEMA),
+            SZ_KNOWN_LIST: self.options.get(SZ_KNOWN_LIST),
+            SZ_ENFORCE_KNOWN_LIST: self.options[CONF_RAMSES_RF].get(
+                SZ_ENFORCE_KNOWN_LIST
+            ),
+        }
+        errors = {}
+        description_placeholders = {}
+
+        if user_input is not None:
+            try:
+                SCH_GLOBAL_SCHEMAS(user_input.get(CONF_SCHEMA, {}))
+            except vol.Invalid as err:
+                errors[CONF_SCHEMA] = "invalid_schema"
+                description_placeholders["error_detail"] = err.msg
+
+            try:
+                vol.Schema(SCH_GLOBAL_TRAITS_DICT)(
+                    {SZ_KNOWN_LIST: user_input.get(SZ_KNOWN_LIST)}
+                )
+            except vol.Invalid as err:
+                errors[SZ_KNOWN_LIST] = "invalid_traits"
+                description_placeholders["error_detail"] = err.msg
+
+            if not errors:
+                self.options[CONF_RAMSES_RF][SZ_ENFORCE_KNOWN_LIST] = user_input.pop(
+                    SZ_ENFORCE_KNOWN_LIST
+                )
+                self.options.update(user_input)
+                return self._async_save()
+
+        return self.async_show_form(
+            step_id="schema",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_SCHEMA,
+                        description={
+                            "suggested_value": suggested_values.get(CONF_SCHEMA)
+                        },
+                    ): selector.ObjectSelector(),
+                    vol.Optional(
+                        SZ_KNOWN_LIST,
+                        description={
+                            "suggested_value": suggested_values.get(SZ_KNOWN_LIST)
+                        },
+                    ): selector.ObjectSelector(),
+                    vol.Optional(
+                        SZ_ENFORCE_KNOWN_LIST,
+                        default=False,
+                        description={
+                            "suggested_value": suggested_values.get(
+                                SZ_ENFORCE_KNOWN_LIST
+                            )
+                        },
+                    ): selector.BooleanSelector(),
+                }
+            ),
+            description_placeholders=description_placeholders,
+            errors=errors,
+        )
+
+
+class RamsesConfigFlow(BaseRamsesFlow, ConfigFlow, domain=DOMAIN):
     """Config flow for Ramses."""
 
     VERSION = 1
@@ -25,24 +364,42 @@ class RamsesConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle a flow initiated by the user."""
-        if self._async_current_entries():
+        if self._async_current_entries() and False:
             return self.async_abort(reason="single_instance_allowed")
 
-        if user_input is not None:
-            return self.async_create_entry(title="Gateway", data=user_input[DOMAIN])
+        return await self.async_step_serial_port()
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema({vol.Optional(DOMAIN): selector.ObjectSelector()}),
-        )
+    def _async_save(self) -> FlowResult:
+        # TODO: Guide user through all options steps rather than just setting up serial port?
+        return self.async_create_entry(title="", data={}, options=self.options)
 
-    async def async_step_import(self, import_data):
+    async def async_step_import(self, import_data: dict[str, Any]) -> FlowResult:
         """Import entry from configuration.yaml."""
         if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
 
-        import_data[CONF_SCAN_INTERVAL] = import_data[CONF_SCAN_INTERVAL].seconds
-        return self.async_create_entry(title="Gateway", data=import_data)
+        import_data.pop("restore_cache")
+        if serial_port := import_data.pop(SZ_SERIAL_PORT, None):
+            if isinstance(serial_port, str):
+                serial_port = {SZ_PORT_NAME: serial_port}
+            self.options[SZ_SERIAL_PORT] = serial_port
+        if scan_interval := import_data.pop(CONF_SCAN_INTERVAL, None):
+            self.options[CONF_SCAN_INTERVAL] = int(scan_interval)
+        if gateway_config := import_data.pop(CONF_RAMSES_RF, None):
+            self.options[CONF_RAMSES_RF] = gateway_config
+        if advanced_features := import_data.pop(CONF_ADVANCED_FEATURES, None):
+            self.options[CONF_ADVANCED_FEATURES] = advanced_features
+        if known_list := import_data.pop(SZ_KNOWN_LIST, None):
+            self.options[SZ_KNOWN_LIST] = {
+                dev_id: traits or {} for dev_id, traits in known_list.items()
+            }
+        if packet_log := import_data.pop(SZ_PACKET_LOG, None):
+            if isinstance(packet_log, str):
+                packet_log = {SZ_FILE_NAME: packet_log}
+            self.options[SZ_PACKET_LOG] = packet_log
+        self.options[CONF_SCHEMA] = import_data
+
+        return self._async_save()
 
     @staticmethod
     @callback
@@ -51,34 +408,93 @@ class RamsesConfigFlow(ConfigFlow, domain=DOMAIN):
         return RamsesOptionsFlow(config_entry)
 
 
-class RamsesOptionsFlow(OptionsFlow):
-    """Options flow options for Ramses."""
+class RamsesOptionsFlow(BaseRamsesFlow, OptionsFlow):
+    """Options flow for Ramses."""
 
     def __init__(self, entry: ConfigEntry) -> None:
-        """Initialize AccuWeather options flow."""
+        """Initialize Ramses options flow."""
         self.config_entry = entry
+        super().__init__(deepcopy(dict(entry.options)))
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
-        if user_input is not None:
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data=user_input[DOMAIN]
-            )
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=[
+                "serial_port",
+                "config",
+                "schema",
+                "advanced_features",
+                "packet_log",
+                "clear_cache",
+            ],
+        )
+
+    def _async_save(self) -> FlowResult:
+        result = self.async_create_entry(title="", data=self.options)
+
+        # Reload only if setup is failing as changes are normally handled by the update listener
+        if self.config_entry.state in (
+            ConfigEntryState.SETUP_ERROR,
+            ConfigEntryState.SETUP_RETRY,
+        ):
             self.hass.async_create_task(
                 self.hass.config_entries.async_reload(self.config_entry.entry_id)
             )
-            return self.async_create_entry(title="", data=None)
+
+        return result
+
+    async def async_step_clear_cache(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Clear cache step."""
+        if user_input is not None:
+            # Unload immediately to stop scheduled broker state saves
+            if self.config_entry.state == ConfigEntryState.LOADED:
+                await self.hass.config_entries.async_unload(self.config_entry.entry_id)
+
+            store: Store = self.hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
+            storage: dict[str, Any] | None = await store.async_load()
+            if SZ_CLIENT_STATE in storage:
+                if user_input["clear_schema"]:
+                    storage[SZ_CLIENT_STATE].pop(SZ_SCHEMA)
+
+                    def filter_schema_packets(
+                        packets: dict[str, str],
+                    ) -> dict[str, str]:
+                        return {
+                            dtm: pkt
+                            for dtm, pkt in packets.items()
+                            if pkt[41:45] not in ["0005", "000C"]
+                        }
+
+                    # Filter out cached packets used for schema discovery
+                    storage[SZ_CLIENT_STATE][SZ_PACKETS] = filter_schema_packets(
+                        storage[SZ_CLIENT_STATE].get(SZ_PACKETS, {})
+                    )
+
+                if user_input["clear_packets"]:
+                    storage[SZ_CLIENT_STATE].pop(SZ_PACKETS)
+            await store.async_save(storage)
+
+            self.hass.async_create_task(
+                self.hass.config_entries.async_setup(self.config_entry.entry_id)
+            )
+
+            return self.async_abort(reason="cache_cleared")
 
         return self.async_show_form(
-            step_id="init",
+            step_id="clear_cache",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(
-                        DOMAIN,
-                        default=dict(self.config_entry.data),
-                    ): selector.ObjectSelector()
+                    vol.Required(
+                        "clear_schema", default=True
+                    ): selector.BooleanSelector(),
+                    vol.Required(
+                        "clear_packets", default=True
+                    ): selector.BooleanSelector(),
                 }
             ),
         )

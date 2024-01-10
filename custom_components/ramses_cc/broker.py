@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from copy import deepcopy
 from datetime import datetime as dt, timedelta
 import logging
 from threading import Semaphore
@@ -12,17 +13,16 @@ from ramses_rf import Gateway
 from ramses_rf.device.base import Device
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
 from ramses_rf.entity_base import Child, Entity as RamsesRFEntity
-from ramses_rf.schemas import (
-    SZ_CONFIG,
-    SZ_RESTORE_CACHE,
-    SZ_RESTORE_SCHEMA,
-    SZ_RESTORE_STATE,
-    SZ_SCHEMA,
-)
+from ramses_rf.schemas import SZ_SCHEMA
 from ramses_rf.system.heat import Evohome, MultiZone, System
 from ramses_rf.system.zones import DhwZone, Zone
 from ramses_tx.const import Code
-from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
+from ramses_tx.schemas import (
+    SZ_KNOWN_LIST,
+    SZ_PACKET_LOG,
+    SZ_SERIAL_PORT,
+    extract_serial_port,
+)
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
@@ -39,13 +39,15 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.helpers.storage import Store
 
 from .const import (
+    CONF_RAMSES_RF,
+    CONF_SCHEMA,
     DOMAIN,
     SIGNAL_NEW_DEVICES,
     SIGNAL_UPDATE,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
-from .schemas import merge_schemas, normalise_config, schema_is_minimal
+from .schemas import merge_schemas, schema_is_minimal
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,10 +66,10 @@ class RamsesBroker:
 
         self.hass = hass
         self.entry = entry
+        self.options = deepcopy(dict(entry.options))
         self._store: Store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
 
-        _LOGGER.debug("Config = %s", entry.data)
-        self._ser_name, self._client_config, self.config = normalise_config(entry.data)
+        _LOGGER.debug("Config = %s", entry.options)
 
         self.client: Gateway = None  # type: ignore[assignment]
         self._remotes: dict[str, str] = None  # type: ignore[assignment]
@@ -89,32 +91,32 @@ class RamsesBroker:
 
     async def async_setup(self) -> None:
         """Set up the client, loading and checking state and config."""
-
-        CONFIG_KEYS = (SZ_CONFIG, SZ_PACKET_LOG, SZ_PORT_CONFIG)
-
         storage = await self._store.async_load() or {}
         _LOGGER.debug("Storage = %s", storage)
 
-        self._remotes = storage.get(SZ_REMOTES, {}) | self.config[SZ_REMOTES]
+        self._remotes = storage.get(SZ_REMOTES, {})  # | self.config[SZ_REMOTES]
         client_state: dict[str, Any] = storage.get(SZ_CLIENT_STATE, {})
 
-        restore_state = self.config[SZ_RESTORE_CACHE][SZ_RESTORE_STATE]
-        restore_schema = self.config[SZ_RESTORE_CACHE][SZ_RESTORE_SCHEMA]
+        config_schema = self.options.get(CONF_SCHEMA, {})
+        if not schema_is_minimal(config_schema):  # move this logic into ramses_rf?
+            _LOGGER.warning("The config schema is not minimal (consider minimising it)")
 
-        self.client = self._create_client(
-            {k: v for k, v in self._client_config.items() if k in CONFIG_KEYS},
-            {k: v for k, v in self._client_config.items() if k not in CONFIG_KEYS},
-            client_state.get(SZ_SCHEMA, {}) if restore_schema else {},
-        )
+        cached_schema = client_state.get(SZ_SCHEMA, {})
+        if cached_schema and (
+            merged_schema := merge_schemas(config_schema, cached_schema)
+        ):
+            try:
+                self.client = self._create_client(merged_schema)
+            except (LookupError, vol.MultipleInvalid) as exc:
+                # LookupError:     ...in the schema, but also in the block_list
+                # MultipleInvalid: ...extra keys not allowed @ data['???']
+                _LOGGER.warning("Failed to initialise with merged schema: %s", exc)
+
+        if not self.client:
+            self.client = self._create_client(config_schema)
 
         def cached_packets() -> dict[str, str]:  # dtm_str, packet_as_str
-            if not restore_state:
-                return {}
-
             msg_code_filter = ["313F"]  # ? 1FC9
-            if not restore_schema:
-                msg_code_filter.extend(["0005", "000C"])
-
             return {
                 dtm: pkt
                 for dtm, pkt in client_state.get(SZ_PACKETS, {}).items()
@@ -132,7 +134,7 @@ class RamsesBroker:
             async_track_time_interval(
                 self.hass,
                 self.async_update,
-                timedelta(seconds=self.config[CONF_SCAN_INTERVAL]),
+                timedelta(seconds=self.options.get(CONF_SCAN_INTERVAL, 60)),
             )
         )
 
@@ -145,28 +147,19 @@ class RamsesBroker:
 
     def _create_client(
         self,
-        client_config: dict[str:Any],
-        config_schema: dict[str:Any],
-        cached_schema: dict[str:Any] | None = None,
+        schema: dict[str, Any],
     ) -> Gateway:
-        """Create a client with an inital schema (merged or config)."""
-
-        # TODO: move this to volutuous schema
-        if not schema_is_minimal(config_schema):  # move this logic into ramses_rf?
-            _LOGGER.warning("The config schema is not minimal (consider minimising it)")
-
-        if cached_schema and (merged := merge_schemas(config_schema, cached_schema)):
-            try:
-                return Gateway(
-                    self._ser_name, loop=self.hass.loop, **client_config, **merged
-                )
-            except (LookupError, vol.MultipleInvalid) as exc:
-                # LookupError:     ...in the schema, but also in the block_list
-                # MultipleInvalid: ...extra keys not allowed @ data['???']
-                _LOGGER.warning("Failed to initialise with merged schema: %s", exc)
+        """Create a client with an initial schema (merged or config)."""
+        port_name, port_config = extract_serial_port(self.options[SZ_SERIAL_PORT])
 
         return Gateway(
-            self._ser_name, loop=self.hass.loop, **client_config, **config_schema
+            port_name=port_name,
+            loop=self.hass.loop,
+            port_config=port_config,
+            packet_log=self.options.get(SZ_PACKET_LOG, {}),
+            known_list=self.options.get(SZ_KNOWN_LIST, []),
+            config=self.options.get(CONF_RAMSES_RF, {}),
+            **schema,
         )
 
     async def async_save_client_state(self, *args, **kwargs) -> None:

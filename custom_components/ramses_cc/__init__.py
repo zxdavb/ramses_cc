@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
+import re
 from typing import Any
 
 from ramses_rf.device import Fakeable
@@ -40,7 +41,6 @@ from .const import (
     SVC_FORCE_UPDATE,
     SVC_SEND_PACKET,
 )
-from .schemas import SCH_DOMAIN_CONFIG
 
 
 @dataclass(kw_only=True)
@@ -54,7 +54,7 @@ class RamsesEntityDescription(EntityDescription):
 _LOGGER = logging.getLogger(__name__)
 
 
-CONFIG_SCHEMA = vol.Schema({DOMAIN: SCH_DOMAIN_CONFIG}, extra=vol.ALLOW_EXTRA)
+CONFIG_SCHEMA = cv.deprecated(DOMAIN, raise_if_present=False)
 
 PLATFORMS = [
     Platform.BINARY_SENSOR,
@@ -69,8 +69,6 @@ _SCH_CMD_CODE = cv.matches_regex(r"^[0-9A-F]{4}$")
 _SCH_DOM_IDX = cv.matches_regex(r"^[0-9A-F]{4}$")
 _SCH_COMMAND = cv.matches_regex(COMMAND_REGEX)
 _SCH_BINDING = vol.Schema({vol.Required(_SCH_CMD_CODE): vol.Any(None, _SCH_DOM_IDX)})
-
-SCH = vol.All(_SCH_BINDING, vol.Length(min=1))
 
 SVC_BIND_DEVICE_SCHEMA = vol.Schema(
     {
@@ -125,10 +123,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = broker
     await broker.async_start()
 
-    async_register_domain_services(hass, broker)
-    async_register_domain_events(hass, broker)
+    async_register_domain_services(hass, entry, broker)
+    async_register_domain_events(hass, entry, broker)
+
+    entry.async_on_unload(entry.add_update_listener(async_update_listener))
 
     return True
+
+
+async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -137,7 +142,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if not await broker.async_unload_platforms():
         return False
 
-    hass.services.async_remove(DOMAIN, SVC_FAKE_DEVICE)
+    hass.services.async_remove(DOMAIN, SVC_BIND_DEVICE)
     hass.services.async_remove(DOMAIN, SVC_FORCE_UPDATE)
     hass.services.async_remove(DOMAIN, SVC_SEND_PACKET)
 
@@ -147,13 +152,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 @callback  # TODO: the following is a mess - to add register/deregister of clients
-def async_register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
+def async_register_domain_events(
+    hass: HomeAssistant, entry: ConfigEntry, broker: RamsesBroker
+) -> None:
     """Set up the handlers for the system-wide events."""
 
     @callback
     def process_msg(msg, *args, **kwargs):  # process_msg(msg, prev_msg=None)
         if (
-            regex := broker.config[CONF_ADVANCED_FEATURES][CONF_MESSAGE_EVENTS]
+            regex := re.compile(
+                entry.options.get(CONF_ADVANCED_FEATURES, {}).get(CONF_MESSAGE_EVENTS)
+            )
         ) and regex.match(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
@@ -178,7 +187,9 @@ def async_register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> N
 
 
 @callback
-def async_register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
+def async_register_domain_services(
+    hass: HomeAssistant, entry: ConfigEntry, broker: RamsesBroker
+):
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)  # TODO: WIP
@@ -224,7 +235,7 @@ def async_register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
     )
     hass.services.async_register(DOMAIN, SVC_FORCE_UPDATE, async_force_update)
 
-    if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
+    if entry.options.get(CONF_ADVANCED_FEATURES, {}).get(CONF_SEND_PACKET):
         hass.services.async_register(
             DOMAIN,
             SVC_SEND_PACKET,
