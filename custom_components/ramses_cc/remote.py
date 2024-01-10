@@ -11,7 +11,7 @@ from typing import Any
 from ramses_rf.device.hvac import HvacRemote
 from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_tx import Command, Priority
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components.remote import (
     DOMAIN as PLATFORM,
@@ -128,7 +128,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         self.entity_id = f"{DOMAIN}.{device.id}"
 
         self._attr_is_on = True
-        self._commands: dict[str, dict] = broker._remotes.get(device.id, {})
+        self._commands: dict[str, str] = broker._remotes.get(device.id, {})
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -170,6 +170,14 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
           entity_id: remote.device_id
         """
 
+        # HACK to make it work as per HA service call
+        command = [command] if isinstance(command, str) else list(command)
+
+        if len(command) != 1:  # TODO: Bug was here
+            raise TypeError("must be exactly one command to learn")
+        if not isinstance(timeout, float | int) or not 5 <= timeout <= 300:
+            raise TypeError("timeout must be 5 to 300 (default 60)")
+
         @callback
         def event_filter(event: Event) -> bool:
             """Return True if the listener callable should run."""
@@ -182,14 +190,6 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
             # if event.data["packet"] in self._commands.values():  # TODO
             #     raise DuplicateError
             self._commands[command[0]] = event.data["packet"]
-
-        if isinstance(command, str):  # HACK to make it work as per HA service call
-            command = [command]
-
-        if len(command) != 1:  # TODO: Bug was here
-            raise TypeError("must be exactly one command to learn")
-        if not isinstance(timeout, float | int) or not 5 <= timeout <= 300:
-            raise TypeError("timeout must be 5 to 300 (default 60)")
 
         if command[0] in self._commands:
             await self.async_delete_command(command)
@@ -227,8 +227,8 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
           entity_id: remote.device_id
         """
 
-        if isinstance(command, str):  # HACK to make it work as per HA service call
-            command = [command]
+        # HACK to make it work as per HA service call
+        command = [command] if isinstance(command, str) else list(command)
 
         if len(command) != 1:
             raise TypeError("must be exactly one command to send")

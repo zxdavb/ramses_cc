@@ -1,7 +1,6 @@
 """Support for RAMSES binary sensors."""
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import logging
@@ -186,7 +185,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
     _device: HgiGateway
 
     @property
-    def extra_state_attributes(self) -> Mapping[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
 
         def shrink(device_hints) -> dict:
@@ -197,6 +196,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
             }
 
         gwy: Gateway = self._device._gwy
+
         return super().extra_state_attributes | {
             SZ_SCHEMA: {gwy.tcs.id: gwy.tcs._schema_min} if gwy.tcs else {},
             SZ_CONFIG: {"enforce_known_list": gwy._enforce_known_list},

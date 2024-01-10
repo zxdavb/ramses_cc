@@ -53,7 +53,7 @@ from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.system.heat import SystemBase
 from ramses_rf.system.zones import ZoneBase
 from ramses_tx.const import SZ_HEAT_DEMAND, SZ_RELAY_DEMAND, SZ_SETPOINT, SZ_TEMPERATURE
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components.binary_sensor import ENTITY_ID_FORMAT
 from homeassistant.components.sensor import (
@@ -216,15 +216,17 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         )
         return f"{prefix} {super().name}"
 
-    async def async_put_co2_level(self, co2_level: int = None) -> None:
+    # FIXME: will need refactoring (move to device)
+    async def async_put_co2_level(self, co2_level: int) -> None:
         """Set the CO2 level."""
         if not isinstance(self._device, CarbonDioxide):
             raise TypeError(
                 f"Cannot set CO2 level on {self._device.__class__.__name__}"
             )
-        self._device.co2_level = co2_level
+        self._device.co2_level = co2_level  # TODO: fixme
 
-    async def async_put_indoor_humidity(self, indoor_humidity: float = None) -> None:
+    # FIXME: will need refactoring (move to device)
+    async def async_put_indoor_humidity(self, indoor_humidity: float) -> None:
         """Set the indoor humidity level."""
         if not isinstance(self._device, IndoorHumidity):
             raise TypeError(

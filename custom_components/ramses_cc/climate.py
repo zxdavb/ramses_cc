@@ -13,7 +13,7 @@ from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.system.heat import Evohome
 from ramses_rf.system.zones import Zone
 from ramses_tx.const import SZ_MODE, SZ_SETPOINT, SZ_SYSTEM_MODE
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components.climate import (
     DOMAIN as PLATFORM,
@@ -78,7 +78,7 @@ class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescr
     """Class describing Ramses binary sensor entities."""
 
     entity_class: ClimateEntity | None = None
-    rf_class: type | UnionType | None = RamsesRFEntity
+    ramses_class: type | UnionType | None = RamsesRFEntity
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -285,7 +285,7 @@ async def async_setup_platform(
         (description.entity_class)(broker, device, description)
         for device in discovery_info["devices"]
         for description in CLIMATE_DESCRIPTIONS
-        if isinstance(device, description.rf_class)
+        if isinstance(device, description.ramses_class)
     ]
     async_add_entities(entities)
 
@@ -344,7 +344,7 @@ class RamsesController(RamsesEntity, ClimateEntity):
         """Return the Controller's current running hvac operation."""
 
         if self._device.system_mode is None:
-            return  # unable to determine
+            return None  # unable to determine
         if self._device.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACAction.OFF
 
@@ -360,7 +360,7 @@ class RamsesController(RamsesEntity, ClimateEntity):
         """Return the Controller's current operating mode of a Controller."""
 
         if self._device.system_mode is None:
-            return  # unable to determine
+            return None  # unable to determine
         if self._device.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACMode.OFF
         if self._device.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY:
@@ -377,7 +377,7 @@ class RamsesController(RamsesEntity, ClimateEntity):
         """Return the Controller's current preset mode, e.g., home, away, temp."""
 
         if self._device.system_mode is None:
-            return  # unable to determine
+            return None  # unable to determine
         return PRESET_TCS_TO_HA[self._device.system_mode[SZ_SYSTEM_MODE]]
 
     @property
@@ -483,14 +483,14 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         """Return the Zone's hvac operation ie. heat, cool mode."""
 
         if self._device.tcs.system_mode is None:
-            return  # unable to determine
+            return None  # unable to determine
         if self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY:
             return HVACMode.AUTO
         if self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACMode.OFF
 
         if self._device.mode is None or self._device.mode[SZ_SETPOINT] is None:
-            return  # unable to determine
+            return None  # unable to determine
         if (
             self._device.config
             and self._device.mode[SZ_SETPOINT] <= self._device.config["min_temp"]
@@ -562,14 +562,13 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         )
 
     @callback
-    def set_temperature(self, temperature: float = None, **kwargs) -> None:
+    def set_temperature(self, temperature: float | None = None, **kwargs) -> None:
         """Set a new target temperature."""
         self.async_set_zone_mode(setpoint=temperature)
 
+    # FIXME: will need refactoring (move to device, make async/not callback)
     @callback
-    def async_put_zone_temp(
-        self, temperature: float, **kwargs
-    ) -> None:  # set_current_temp
+    def async_put_zone_temp(self, temperature: float, **kwargs) -> None:  # TODO: kwrgs?
         """Fake the measured temperature of the Zone sensor.
 
         This is not the setpoint (see: set_temperature), but the measured temperature.
@@ -599,7 +598,11 @@ class RamsesZone(RamsesEntity, ClimateEntity):
 
     @callback
     def async_set_zone_mode(
-        self, mode=None, setpoint=None, duration=None, until=None
+        self,
+        mode: str | None = None,
+        setpoint: float | None = None,
+        duration: timedelta | None = None,
+        until: datetime | None = None,
     ) -> None:
         """Set the (native) operating mode of the Zone."""
         if until is None and duration is not None:
@@ -668,14 +671,14 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     @property
     def hvac_action(self) -> HVACAction | str | None:
         """Return the current running hvac operation if supported."""
-        if self._device.fan_info is not None:
-            return self._device.fan_info
+        return self._device.fan_info
 
     @property
     def hvac_mode(self) -> HVACMode | str | None:
         """Return hvac operation ie. heat, cool mode."""
-        if self._device.fan_info is not None:
-            return HVACMode.OFF if self._device.fan_info == "off" else HVACMode.AUTO
+        if self._device.fan_info is None:
+            return None
+        return HVACMode.OFF if self._device.fan_info == "off" else HVACMode.AUTO
 
     @property
     def icon(self) -> str | None:
@@ -695,10 +698,12 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
 
 CLIMATE_DESCRIPTIONS: tuple[RamsesClimateEntityDescription, ...] = (
     RamsesClimateEntityDescription(
-        key="controller", rf_class=Evohome, entity_class=RamsesController
+        key="controller", ramses_class=Evohome, entity_class=RamsesController
     ),
-    RamsesClimateEntityDescription(key="zone", rf_class=Zone, entity_class=RamsesZone),
     RamsesClimateEntityDescription(
-        key="hvac", rf_class=HvacVentilator, entity_class=RamsesHvac
+        key="zone", ramses_class=Zone, entity_class=RamsesZone
+    ),
+    RamsesClimateEntityDescription(
+        key="hvac", ramses_class=HvacVentilator, entity_class=RamsesHvac
     ),
 )

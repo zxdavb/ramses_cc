@@ -10,7 +10,7 @@ from typing import Any
 from ramses_rf.system.heat import StoredHw
 from ramses_rf.system.zones import DhwZone
 from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components.water_heater import (
     DOMAIN as PLATFORM,
@@ -197,12 +197,12 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         super().__init__(broker, device, entity_description)
 
     @property
-    def current_operation(self) -> str:
+    def current_operation(self) -> str | None:
         """Return the current operating mode (Auto, On, or Off)."""
         try:
             mode = self._device.mode[SZ_MODE]
         except TypeError:
-            return
+            return None  # unable to determine
         if mode == ZoneMode.SCHEDULE:
             return STATE_AUTO
         elif mode == ZoneMode.PERMANENT:
@@ -231,7 +231,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         try:
             return self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY
         except TypeError:
-            return
+            return None  # unable to determine
 
     @property
     def name(self) -> str | None:
@@ -258,12 +258,13 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
             mode=MODE_HA_TO_RAMSES[operation_mode], active=active, until=until
         )
 
-    def set_temperature(self, temperature: float = None, **kwargs) -> None:
+    def set_temperature(self, temperature: float | None = None, **kwargs) -> None:
         """Set the target temperature of the water heater."""
         self.async_set_dhw_params(setpoint=temperature)
 
+    # FIXME: will need refactoring (move to device, make async/not callback)
     @callback
-    def async_put_dhw_temp(self) -> None:
+    def async_put_dhw_temp(self, temperature: float) -> None:
         """Fake the measured temperature of the DHW's sensor."""
         raise NotImplementedError
 
@@ -287,7 +288,11 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
 
     @callback
     def async_set_dhw_mode(
-        self, mode=None, active: bool = None, duration=None, until=None
+        self,
+        mode: str | None = None,
+        active: bool | None = None,
+        duration: timedelta | None = None,
+        until: dt | None = None,
     ) -> None:
         """Set the (native) operating mode of the water heater."""
         if until is None and duration is not None:
@@ -297,7 +302,10 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
 
     @callback
     def async_set_dhw_params(
-        self, setpoint: float = None, overrun=None, differential=None
+        self,
+        setpoint: float | None = None,
+        overrun: int | None = None,
+        differential: float | None = None,
     ) -> None:
         """Set the configuration of the water heater."""
         self._device.set_config(

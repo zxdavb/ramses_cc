@@ -189,4 +189,4 @@ def schema_is_minimal(schema: dict) -> bool:
         if SZ_ZONES in sch and list(sch[SZ_ZONES].values())[0][SZ_SENSOR] != key:
             return False
 
-        return True
+    return True

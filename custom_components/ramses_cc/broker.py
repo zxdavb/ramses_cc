@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime as dt, timedelta
 import logging
 from threading import Semaphore
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ramses_rf import Gateway
 from ramses_rf.device.base import Device
@@ -17,8 +17,7 @@ from ramses_rf.schemas import (
     SZ_RESTORE_STATE,
     SZ_SCHEMA,
 )
-from ramses_rf.system.heat import Evohome, MultiZone, StoredHw, System
-from ramses_rf.system.zones import DhwZone, Zone
+from ramses_rf.system import Evohome, System, Zone
 from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 import voluptuous as vol  # type: ignore[import-untyped]
 
@@ -32,6 +31,10 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, SIGNAL_UPDATE, STORAGE_KEY, STORAGE_VERSION
 from .schemas import merge_schemas, normalise_config, schema_is_minimal
+
+if TYPE_CHECKING:
+    from . import RamsesEntity
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,15 +61,16 @@ class RamsesBroker:
         )
 
         self.client: Gateway = None  # type: ignore[assignment]
-        self._remotes: dict[str, str] = None  # type: ignore[assignment]
+        self._remotes: dict[str, dict[str, str]] = {}
 
-        self._services = {}
-        self._entities = {}  # domain entities
+        self._services: dict = {}
+        self._entities: dict[str, RamsesEntity] = {}  # domain entities
 
         # Discovered client objects...
-        self._devices: set[Device] = set()
-        self._systems: set[System] = set()
-        self._zones: set[Zone] = set()
+        self._devices: list[Device] = []
+        self._systems: list[System] = []
+        self._zones: list[Zone] = []
+        self._dhws: list[Zone] = []
 
         self._sem = Semaphore(value=1)
 
@@ -121,9 +125,9 @@ class RamsesBroker:
 
     def _create_client(
         self,
-        client_config: dict[str:Any],
-        config_schema: dict[str:Any],
-        cached_schema: dict[str:Any] | None = None,
+        client_config: dict[str, Any],
+        config_schema: dict[str, Any],
+        cached_schema: dict[str, Any] | None = None,
     ) -> Gateway:
         """Create a client with an inital schema (merged or config)."""
 
@@ -165,57 +169,55 @@ class RamsesBroker:
     async def async_update(self, _: dt | None = None) -> None:
         """Retrieve the latest state data from the client library."""
 
-        def async_add_devices(platform: str, devices: list[RamsesRFEntity]) -> None:
+        gwy: Gateway = self.client
+
+        def async_add_entities(platform: str, devices: list[RamsesRFEntity]) -> None:
             if not devices:
-                return
+                return None
             self.hass.async_create_task(
                 async_load_platform(
                     self.hass, platform, DOMAIN, {"devices": devices}, self.hass_config
                 )
             )
 
-        def new_entities(
-            known: set[RamsesRFEntity], current: list[RamsesRFEntity]
-        ) -> list[RamsesRFEntity]:
-            new = current - known
-            known |= new
-            return new
+        def find_new_entities(
+            known: list[RamsesRFEntity], current: list[RamsesRFEntity]
+        ) -> tuple[list[RamsesRFEntity], list[RamsesRFEntity]]:
+            new = [x for x in current if x not in known]
+            return known + new, new
 
-        new_devices = new_entities(self._devices, set(self.client.devices))
-        new_systems = new_entities(self._systems, set(self.client.systems))
-        new_zones = new_entities(
-            self._zones,
-            set().union(
-                *[s.zones for s in self.client.systems if isinstance(s, MultiZone)],
-                [
-                    s.dhw
-                    for s in self.client.systems
-                    if isinstance(s, StoredHw) and s.dhw
-                ],
-            ),
+        self._systems, new_systems = find_new_entities(
+            self._systems,
+            [s for s in gwy.systems if isinstance(s, Evohome)],
         )
+        self._zones, new_zones = find_new_entities(
+            self._zones,
+            [z for s in gwy.systems for z in s.zones if isinstance(s, Evohome)],
+        )
+        self._dhws, new_dhws = find_new_entities(
+            self._dhws,
+            [s.dhw for s in gwy.systems if s.dhw if isinstance(s, Evohome)],
+        )
+        self._devices, new_devices = find_new_entities(self._devices, gwy.devices)
 
-        new_sensor_devices = new_devices | new_systems | new_zones
-        async_add_devices(Platform.BINARY_SENSOR, new_sensor_devices)
-        async_add_devices(Platform.SENSOR, new_sensor_devices)
+        new_entities = new_devices + new_systems + new_zones + new_dhws
+        async_add_entities(Platform.BINARY_SENSOR, new_entities)
+        async_add_entities(Platform.SENSOR, new_entities)
 
-        async_add_devices(
+        #  these isinstance(d, ) are required...
+        async_add_entities(
             Platform.CLIMATE, [d for d in new_devices if isinstance(d, HvacVentilator)]
         )
-        async_add_devices(
+        async_add_entities(
             Platform.REMOTE, [d for d in new_devices if isinstance(d, HvacRemoteBase)]
         )
-        async_add_devices(
-            Platform.CLIMATE, [s for s in new_systems if isinstance(s, Evohome)]
-        )
 
-        for zone in new_zones:
-            if isinstance(zone, DhwZone):
-                async_add_devices(Platform.WATER_HEATER, [zone])
-            elif isinstance(zone.tcs, Evohome):
-                async_add_devices(Platform.CLIMATE, [zone])
+        #  these isinstance(x, ) are not required...
+        async_add_entities(Platform.CLIMATE, [s for s in new_systems])  # (s, Evohome)
+        async_add_entities(Platform.CLIMATE, [z for z in new_zones])  # (z.tcs, Evohome)
+        async_add_entities(Platform.WATER_HEATER, [d for d in new_dhws])  # (d, DhwZone)
 
-        if new_devices or new_systems or new_zones:
+        if new_entities:
             async_call_later(self.hass, 5, self.async_save_client_state)
 
         # Trigger state updates of all entities
