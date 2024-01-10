@@ -159,6 +159,12 @@ class RamsesLogbookBinarySensor(RamsesBinarySensor):
         msg = self._device._msgs.get("0418")
         return msg and dt.now() - msg.dtm < timedelta(seconds=1200)
 
+    @property
+    def is_on(self) -> bool | None:
+        """Return the state of the binary sensor."""
+        result = getattr(self._device, self.entity_description.attr)
+        return None if result is None else bool(result)
+
 
 class RamsesSystemBinarySensor(RamsesBinarySensor):
     """Representation of a system (a controller)."""
