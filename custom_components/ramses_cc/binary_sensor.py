@@ -161,10 +161,9 @@ class RamsesLogbookBinarySensor(RamsesBinarySensor):
         return msg and dt.now() - msg.dtm < timedelta(seconds=1200)
 
     @property
-    def is_on(self) -> bool | None:
+    def is_on(self) -> bool:
         """Return the state of the binary sensor."""
-        result = getattr(self._device, self.entity_description.attr)
-        return None if result is None else bool(result)
+        return self._device.active_fault is not None
 
 
 class RamsesSystemBinarySensor(RamsesBinarySensor):
