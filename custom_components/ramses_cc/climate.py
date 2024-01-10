@@ -663,7 +663,7 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     @property
     def fan_mode(self) -> str | None:
         """Return the fan setting."""
-        return None
+        return self._device.fan_info
 
     @property
     def hvac_action(self) -> HVACAction | str | None:

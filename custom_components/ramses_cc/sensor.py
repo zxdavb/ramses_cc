@@ -41,10 +41,17 @@ from ramses_rf.device.heat import (
     SZ_OEM_CODE,
     SZ_OUTSIDE_TEMP,
     SZ_REL_MODULATION_LEVEL,
+    DhwSensor,
     OtbGateway,
+    OutSensor,
+    Thermostat,
+    TrvActuator,
+    UfhController,
 )
 from ramses_rf.device.hvac import CarbonDioxide, IndoorHumidity
 from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_rf.system.heat import SystemBase
+from ramses_rf.system.zones import ZoneBase
 from ramses_tx.const import SZ_HEAT_DEMAND, SZ_RELAY_DEMAND, SZ_SETPOINT, SZ_TEMPERATURE
 import voluptuous as vol
 
@@ -89,7 +96,7 @@ class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescrip
 
     attr: str | None = None
     entity_class: RamsesSensor | None = None
-    rf_class: type | UnionType | None = RamsesRFEntity
+    ramses_class: type | UnionType | None = RamsesRFEntity
     state_class: SensorStateClass | None = SensorStateClass.MEASUREMENT
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
     icon_off: str | None = None
@@ -152,7 +159,7 @@ async def async_setup_platform(
         (description.entity_class or RamsesSensor)(broker, device, description)
         for device in discovery_info["devices"]
         for description in SENSOR_DESCRIPTIONS
-        if isinstance(device, description.rf_class)
+        if isinstance(device, description.ramses_class)
         and hasattr(device, description.attr)
     ]
     async_add_entities(entities)
@@ -230,6 +237,16 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     RamsesSensorEntityDescription(
         key=SZ_TEMPERATURE,
         device_class=SensorDeviceClass.TEMPERATURE,
+        ramses_class=TrvActuator,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        extra_attributes={
+            ATTR_SETPOINT: SZ_SETPOINT,
+        },
+    ),
+    RamsesSensorEntityDescription(  # not TrvActuator
+        key=SZ_TEMPERATURE,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        ramses_class=DhwSensor | OutSensor | Thermostat,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         entity_category=None,
         extra_attributes={
@@ -241,7 +258,17 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         name="Heat demand",
         icon="mdi:radiator",
         icon_off="mdi:radiator-off",
+        ramses_class=OtbGateway,
         native_unit_of_measurement=PERCENTAGE,
+    ),
+    RamsesSensorEntityDescription(  # not OtbGateway
+        key=SZ_HEAT_DEMAND,
+        name="Heat demand",
+        icon="mdi:radiator",
+        icon_off="mdi:radiator-off",
+        ramses_class=SystemBase | TrvActuator | UfhController | ZoneBase,
+        native_unit_of_measurement=PERCENTAGE,
+        entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_RELAY_DEMAND,
@@ -321,6 +348,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         key=SZ_REL_MODULATION_LEVEL,
         name="Relative modulation level",
         native_unit_of_measurement=PERCENTAGE,
+        entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_MAX_REL_MODULATION,
@@ -419,7 +447,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_SUPPLY_FAN_SPEED,
-        name="Suply fan speed",
+        name="Supply fan speed",
         native_unit_of_measurement=PERCENTAGE,
     ),
     RamsesSensorEntityDescription(
@@ -437,14 +465,14 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     RamsesSensorEntityDescription(
         key=SZ_OEM_CODE,
         name="OEM code",
-        rf_class=OtbGateway,
+        ramses_class=OtbGateway,
         state_class=None,
         entity_registry_enabled_default=False,
     ),
     RamsesSensorEntityDescription(
         key="percent",
         name="Percent",
-        rf_class=OtbGateway,
+        ramses_class=OtbGateway,
         icon="mdi:power-plug",
         icon_off="mdi:power-plug-off",
         native_unit_of_measurement=PERCENTAGE,
@@ -453,7 +481,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     RamsesSensorEntityDescription(
         key="value",
         name="Value",
-        rf_class=OtbGateway,
+        ramses_class=OtbGateway,
         native_unit_of_measurement="units",
         entity_registry_enabled_default=False,
     ),
