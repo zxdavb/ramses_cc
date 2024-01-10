@@ -17,7 +17,7 @@ from ramses_rf.schemas import (
     SZ_RESTORE_STATE,
     SZ_SCHEMA,
 )
-from ramses_rf.system.heat import Evohome, MultiZone, System
+from ramses_rf.system.heat import Evohome, MultiZone, StoredHw, System
 from ramses_rf.system.zones import DhwZone, Zone
 from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 import voluptuous as vol
@@ -186,7 +186,12 @@ class RamsesBroker:
         new_zones = new_entities(
             self._zones,
             set().union(
-                *[s.zones for s in self.client.systems if isinstance(s, MultiZone)]
+                *[s.zones for s in self.client.systems if isinstance(s, MultiZone)],
+                [
+                    s.dhw
+                    for s in self.client.systems
+                    if isinstance(s, StoredHw) and s.dhw
+                ],
             ),
         )
 
