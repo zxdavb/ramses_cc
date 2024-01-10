@@ -94,7 +94,7 @@ from .const import (
 class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescription):
     """Class describing Ramses binary sensor entities."""
 
-    attr: str | None = None
+    attr: str = None  # type: ignore[assignment]
     entity_class: RamsesSensor | None = None
     ramses_class: type | UnionType | None = RamsesRFEntity
     state_class: SensorStateClass | None = SensorStateClass.MEASUREMENT

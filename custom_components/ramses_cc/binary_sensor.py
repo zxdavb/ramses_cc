@@ -60,7 +60,7 @@ class RamsesBinarySensorEntityDescription(
 ):
     """Class describing Ramses binary sensor entities."""
 
-    attr: str | None = None
+    attr: str = None  # type: ignore[assignment]
     entity_class: RamsesBinarySensor | None = None
     ramses_class: type | UnionType | None = RamsesRFEntity
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
