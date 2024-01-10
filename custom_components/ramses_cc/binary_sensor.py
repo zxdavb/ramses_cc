@@ -22,7 +22,7 @@ from ramses_rf.device.heat import (
     SZ_FLAME_ACTIVE,
     SZ_OTC_ACTIVE,
     SZ_SUMMER_MODE,
-    Actuator,
+    BdrSwitch,
     OtbGateway,
     TrvActuator,
 )
@@ -123,7 +123,7 @@ class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
         return self.state is not None
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         """Return the state of the binary sensor."""
         return getattr(self._device, self.entity_description.attr)
 
@@ -209,14 +209,14 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
 BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key="status",
-        attr="id",
+        attr="id",  # FIXME:
         name="Gateway status",
         rf_class=HgiGateway,
         entity_class=RamsesGatewayBinarySensor,
     ),
     RamsesBinarySensorEntityDescription(
         key="status",
-        attr="id",
+        attr="id",  # FIXME:
         name="System status",
         rf_class=System,
         entity_class=RamsesSystemBinarySensor,
@@ -230,8 +230,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         device_class=BinarySensorDeviceClass.WINDOW,
     ),
     RamsesBinarySensorEntityDescription(
-        key=Actuator.ACTUATOR_STATE,
-        name="Actuator state",
+        key=BdrSwitch.ACTIVE,
+        name="Active",
         icon="mdi:electric-switch",
         icon_off="mdi:electric-switch-closed",
     ),
