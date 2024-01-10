@@ -125,7 +125,8 @@ class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return the state of the binary sensor."""
-        return getattr(self._device, self.entity_description.attr)
+        result = getattr(self._device, self.entity_description.attr)
+        return None if result is None else bool(result)
 
     @property
     def icon(self) -> str:
@@ -158,12 +159,6 @@ class RamsesLogbookBinarySensor(RamsesBinarySensor):
         """Return True if the device has been seen recently."""
         msg = self._device._msgs.get("0418")
         return msg and dt.now() - msg.dtm < timedelta(seconds=1200)
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return the state of the binary sensor."""
-        result = getattr(self._device, self.entity_description.attr)
-        return None if result is None else bool(result)
 
 
 class RamsesSystemBinarySensor(RamsesBinarySensor):
