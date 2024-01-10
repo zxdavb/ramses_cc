@@ -20,7 +20,7 @@ from ramses_rf.schemas import (
 from ramses_rf.system.heat import Evohome, MultiZone, StoredHw, System
 from ramses_rf.system.zones import DhwZone, Zone
 from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
 from homeassistant.core import HomeAssistant

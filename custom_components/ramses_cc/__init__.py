@@ -13,7 +13,7 @@ from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_tx import Command
 from ramses_tx.const import COMMAND_REGEX
 from ramses_tx.exceptions import TransportSerialError
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.const import ATTR_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback

@@ -32,7 +32,7 @@ from ramses_tx.schemas import (
     sch_packet_log_dict_factory,
     sch_serial_port_dict_factory,
 )
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
