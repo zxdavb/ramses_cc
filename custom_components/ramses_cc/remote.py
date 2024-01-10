@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import logging
-from typing import Any
+from typing import Any, TypeAlias
 
 from ramses_rf.device.hvac import HvacRemote
 from ramses_rf.entity_base import Entity as RamsesRFEntity
@@ -253,3 +253,6 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
             self._broker.client.send_cmd(cmd)
 
         await self._broker.async_update()
+
+
+_RemoteEntityT: TypeAlias = type[RamsesRemote]

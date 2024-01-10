@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import json
 import logging
 from types import UnionType
-from typing import Any
+from typing import Any, TypeAlias
 
 from ramses_rf.device.hvac import HvacVentilator
 from ramses_rf.entity_base import Entity as RamsesRFEntity
@@ -77,8 +77,8 @@ from .const import (
 class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescription):
     """Class describing Ramses binary sensor entities."""
 
-    entity_class: ClimateEntity | None = None
-    ramses_class: type | UnionType | None = RamsesRFEntity
+    entity_class: _ClimateEntityT = None  # type: ignore[assignment]
+    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity  # type: ignore[assignment]
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -282,7 +282,7 @@ async def async_setup_platform(
         )
 
     entities = [
-        (description.entity_class)(broker, device, description)
+        description.entity_class(broker, device, description)
         for device in discovery_info["devices"]
         for description in CLIMATE_DESCRIPTIONS
         if isinstance(device, description.ramses_class)
@@ -706,4 +706,9 @@ CLIMATE_DESCRIPTIONS: tuple[RamsesClimateEntityDescription, ...] = (
     RamsesClimateEntityDescription(
         key="hvac", ramses_class=HvacVentilator, entity_class=RamsesHvac
     ),
+)
+
+
+_ClimateEntityT: TypeAlias = (
+    type[RamsesController] | type[RamsesZone] | type[RamsesHvac]
 )

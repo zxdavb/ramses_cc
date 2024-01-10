@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 from types import UnionType
-from typing import Any
+from typing import Any, TypeAlias
 
 from ramses_rf.const import (
     SZ_AIR_QUALITY,
@@ -95,8 +95,8 @@ class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescrip
     """Class describing Ramses binary sensor entities."""
 
     attr: str = None  # type: ignore[assignment]
-    entity_class: RamsesSensor | None = None
-    ramses_class: type | UnionType | None = RamsesRFEntity
+    entity_class: _SensorEntityT = None  # type: ignore[assignment]
+    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
     state_class: SensorStateClass | None = SensorStateClass.MEASUREMENT
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
     icon_off: str | None = None
@@ -105,6 +105,7 @@ class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescrip
     def __post_init__(self):
         """Defaults entity attr to key."""
         self.attr = self.attr or self.key
+        self.entity_class = self.entity_class or RamsesSensor
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -156,7 +157,7 @@ async def async_setup_platform(
         )
 
     entities = [
-        (description.entity_class or RamsesSensor)(broker, device, description)
+        description.entity_class(broker, device, description)
         for device in discovery_info["devices"]
         for description in SENSOR_DESCRIPTIONS
         if isinstance(device, description.ramses_class)
@@ -488,3 +489,5 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         entity_registry_enabled_default=False,
     ),
 )
+
+_SensorEntityT: TypeAlias = type[RamsesSensor]

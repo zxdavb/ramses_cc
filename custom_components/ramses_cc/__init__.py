@@ -45,7 +45,7 @@ class RamsesEntityDescription(EntityDescription):
     """Class describing Ramses entities."""
 
     has_entity_name: bool = True
-    extra_attributes: dict[str, str] | None = None
+    extra_attributes: dict[str, str] | None = None  # TODO: may not ever be None?
 
 
 _LOGGER = logging.getLogger(__name__)

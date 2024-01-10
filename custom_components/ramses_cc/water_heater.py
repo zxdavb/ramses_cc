@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import json
 import logging
-from typing import Any
+from typing import Any, TypeAlias
 
 from ramses_rf.system.heat import StoredHw
 from ramses_rf.system.zones import DhwZone
@@ -324,3 +324,6 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     async def async_set_dhw_schedule(self, schedule: str, **kwargs) -> None:
         """Set the weekly schedule of the DHW."""
         await self._device.set_schedule(json.loads(schedule))
+
+
+_WaterHeaterEntityT: TypeAlias = type[RamsesWaterHeater]

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import logging
 from types import UnionType
-from typing import Any
+from typing import Any, TypeAlias
 
 from ramses_rf import Gateway
 from ramses_rf.device.base import BatteryState, HgiGateway
@@ -61,14 +61,15 @@ class RamsesBinarySensorEntityDescription(
     """Class describing Ramses binary sensor entities."""
 
     attr: str = None  # type: ignore[assignment]
-    entity_class: RamsesBinarySensor | None = None
-    ramses_class: type | UnionType | None = RamsesRFEntity
+    entity_class: _BinarySensorEntityT = None  # type: ignore[assignment]
+    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
     icon_off: str | None = None
 
     def __post_init__(self):
         """Defaults entity attr to key."""
         self.attr = self.attr or self.key
+        self.entity_class = self.entity_class or RamsesBinarySensor
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -88,7 +89,7 @@ async def async_setup_platform(
     broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
     entities = [
-        (description.entity_class or RamsesBinarySensor)(broker, device, description)
+        description.entity_class(broker, device, description)
         for device in discovery_info["devices"]
         for description in BINARY_SENSOR_DESCRIPTIONS
         if isinstance(device, description.ramses_class)
@@ -218,14 +219,14 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         attr="id",  # FIXME:
         name="Gateway status",
         ramses_class=HgiGateway,
-        entity_class=RamsesGatewayBinarySensor,
+        entity_class=RamsesGatewayBinarySensor,  # FIXME
     ),
     RamsesBinarySensorEntityDescription(
         key="status",
         attr="id",  # FIXME:
         name="System status",
         ramses_class=System,
-        entity_class=RamsesSystemBinarySensor,
+        entity_class=RamsesSystemBinarySensor,  # FIXME
         extra_attributes={
             ATTR_WORKING_SCHEMA: SZ_SCHEMA,
         },
@@ -253,7 +254,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         key="active_fault",
         name="Active fault",
         ramses_class=Logbook,
-        entity_class=RamsesLogbookBinarySensor,
+        entity_class=RamsesLogbookBinarySensor,  # FIXME
         device_class=BinarySensorDeviceClass.PROBLEM,
         extra_attributes={
             ATTR_ACTIVE_FAULT: "active_fault",
@@ -351,3 +352,5 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         entity_registry_enabled_default=False,
     ),
 )
+
+_BinarySensorEntityT: TypeAlias = type[RamsesBinarySensor]
