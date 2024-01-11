@@ -78,7 +78,7 @@ class RamsesBroker:
 
         self._sem = Semaphore(value=1)
 
-        self.learn_device_id = None  # TODO: remove me
+        self.learn_device_id: str | None = None  # TODO: can we do without this?
 
     async def start(self) -> None:
         """Invoke the client/co-ordinator (according to the config/cache)."""

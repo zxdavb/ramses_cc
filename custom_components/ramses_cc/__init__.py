@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ramses_rf.device import Fakeable
 from ramses_rf.entity_base import Entity as RamsesRFEntity
@@ -38,6 +38,9 @@ from .const import (
     SVC_SEND_PACKET,
 )
 from .schemas import SCH_DOMAIN_CONFIG
+
+if TYPE_CHECKING:
+    from ramses_tx import Message
 
 
 @dataclass(kw_only=True)
@@ -115,7 +118,7 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
     """Set up the handlers for the system-wide events."""
 
     @callback
-    def process_msg(msg, *args, **kwargs):  # process_msg(msg, prev_msg=None)
+    def process_msg(msg: Message, *args, **kwargs):  # process_msg(msg, prev_msg=None)
         if (
             regex := broker.config[CONF_ADVANCED_FEATURES][CONF_MESSAGE_EVENTS]
         ) and regex.match(f"{msg!r}"):
