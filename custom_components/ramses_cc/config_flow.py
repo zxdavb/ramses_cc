@@ -21,12 +21,8 @@ from ramses_tx.schemas import (
     SZ_SERIAL_PORT,
 )
 from ramses_tx.transport import comports
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
-from config.deps.ramses_cc.custom_components.ramses_cc.broker import (
-    SZ_CLIENT_STATE,
-    SZ_PACKETS,
-)
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigEntryState,
@@ -48,6 +44,8 @@ from .const import (
     DOMAIN,
     STORAGE_KEY,
     STORAGE_VERSION,
+    SZ_CLIENT_STATE,
+    SZ_PACKETS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,8 +56,10 @@ class BaseRamsesFlow(FlowHandler):
 
     options: dict[str, Any]
 
-    def __init__(self, options: dict[str, Any] = {}) -> None:
+    def __init__(self, options: dict[str, Any] | None = None) -> None:
         """Initialize flow."""
+        if options is None:
+            options = {}
         options.setdefault(CONF_RAMSES_RF, {})
         self.options = options
 
@@ -71,9 +71,11 @@ class BaseRamsesFlow(FlowHandler):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Ramses serial port step."""
-        suggested_values = user_input or self.options.get(SZ_SERIAL_PORT, {})
-        errors = {}
-        description_placeholders = {}
+        suggested_values: dict[str, Any] = user_input or self.options.get(
+            SZ_SERIAL_PORT, {}
+        )
+        errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] = {}
 
         if user_input is not None:
             # TODO: Validate port?
@@ -125,7 +127,7 @@ class BaseRamsesFlow(FlowHandler):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Gateway config step."""
-        suggested_values = user_input or {
+        suggested_values: dict[str, Any] = user_input or {
             CONF_SCAN_INTERVAL: self.options.get(CONF_SCAN_INTERVAL),
             CONF_RAMSES_RF: {
                 k: v
@@ -133,8 +135,8 @@ class BaseRamsesFlow(FlowHandler):
                 if k not in (SZ_ENFORCE_KNOWN_LIST,)
             },
         }
-        errors = {}
-        description_placeholders = {}
+        errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] = {}
 
         if user_input is not None:
             try:
@@ -189,9 +191,11 @@ class BaseRamsesFlow(FlowHandler):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Packet log step."""
-        suggested_values = user_input or self.options.get(SZ_PACKET_LOG, {})
-        errors = {}
-        description_placeholders = {}
+        suggested_values: dict[str, Any] = user_input or self.options.get(
+            SZ_PACKET_LOG, {}
+        )
+        errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] = {}
 
         if user_input is not None:
             self.options.update({SZ_PACKET_LOG: user_input})
@@ -248,9 +252,11 @@ class BaseRamsesFlow(FlowHandler):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Advanced features step."""
-        suggested_values = user_input or self.options.get(CONF_ADVANCED_FEATURES, {})
-        errors = {}
-        description_placeholders = {}
+        suggested_values: dict[str, Any] = user_input or self.options.get(
+            CONF_ADVANCED_FEATURES, {}
+        )
+        errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] = {}
 
         if user_input is not None:
             if message_events := user_input.get(CONF_MESSAGE_EVENTS):
@@ -291,15 +297,15 @@ class BaseRamsesFlow(FlowHandler):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """System schema step."""
-        suggested_values = user_input or {
+        suggested_values: dict[str, Any] = user_input or {
             CONF_SCHEMA: self.options.get(CONF_SCHEMA),
             SZ_KNOWN_LIST: self.options.get(SZ_KNOWN_LIST),
             SZ_ENFORCE_KNOWN_LIST: self.options[CONF_RAMSES_RF].get(
                 SZ_ENFORCE_KNOWN_LIST
             ),
         }
-        errors = {}
-        description_placeholders = {}
+        errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] = {}
 
         if user_input is not None:
             try:
@@ -355,7 +361,7 @@ class BaseRamsesFlow(FlowHandler):
         )
 
 
-class RamsesConfigFlow(BaseRamsesFlow, ConfigFlow, domain=DOMAIN):
+class RamsesConfigFlow(BaseRamsesFlow, ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Config flow for Ramses."""
 
     VERSION = 1
@@ -364,7 +370,7 @@ class RamsesConfigFlow(BaseRamsesFlow, ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle a flow initiated by the user."""
-        if self._async_current_entries() and False:
+        if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
 
         return await self.async_step_serial_port()
@@ -456,7 +462,7 @@ class RamsesOptionsFlow(BaseRamsesFlow, OptionsFlow):
                 await self.hass.config_entries.async_unload(self.config_entry.entry_id)
 
             store: Store = self.hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
-            storage: dict[str, Any] | None = await store.async_load()
+            storage: dict[str, Any] = await store.async_load() or {}
             if SZ_CLIENT_STATE in storage:
                 if user_input["clear_schema"]:
                     storage[SZ_CLIENT_STATE].pop(SZ_SCHEMA)

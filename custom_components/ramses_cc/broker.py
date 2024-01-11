@@ -45,6 +45,9 @@ from .const import (
     SIGNAL_UPDATE,
     STORAGE_KEY,
     STORAGE_VERSION,
+    SZ_CLIENT_STATE,
+    SZ_PACKETS,
+    SZ_REMOTES,
 )
 from .schemas import merge_schemas, schema_is_minimal
 
@@ -53,10 +56,6 @@ if TYPE_CHECKING:
 
 
 _LOGGER = logging.getLogger(__name__)
-
-SZ_CLIENT_STATE = "client_state"
-SZ_PACKETS = "packets"
-SZ_REMOTES = "remotes"
 
 SAVE_STATE_INTERVAL = timedelta(seconds=300)  # TODO: 5 minutes
 
@@ -77,7 +76,7 @@ class RamsesBroker:
         self.client: Gateway = None  # type: ignore[assignment]
         self._remotes: dict[str, dict[str, str]] = {}
 
-        self._platform_setup_tasks = {}
+        self._platform_setup_tasks: dict[str, asyncio.Task] = {}
 
         self._entities: dict[str, RamsesEntity] = {}  # domain entities
 
@@ -292,12 +291,12 @@ class RamsesBroker:
         )
         self._devices, new_devices = find_new_entities(self._devices, gwy.devices)
 
-        for device in self._devices | self._systems | self._zones:
+        for device in self._devices + self._systems + self._zones:
             self._update_device(device)
 
         new_entities = new_devices + new_systems + new_zones + new_dhws
-        async_add_entities(Platform.BINARY_SENSOR, new_entities)
-        async_add_entities(Platform.SENSOR, new_entities)
+        await async_add_entities(Platform.BINARY_SENSOR, new_entities)
+        await async_add_entities(Platform.SENSOR, new_entities)
 
         await async_add_entities(
             Platform.CLIMATE, [d for d in new_devices if isinstance(d, HvacVentilator)]
