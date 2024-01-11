@@ -54,7 +54,6 @@ from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.system.heat import SystemBase
 from ramses_rf.system.zones import ZoneBase
 from ramses_tx.const import SZ_HEAT_DEMAND, SZ_RELAY_DEMAND, SZ_SETPOINT, SZ_TEMPERATURE
-import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components.binary_sensor import ENTITY_ID_FORMAT
 from homeassistant.components.sensor import (
@@ -73,17 +72,17 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv, entity_platform
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    EntityPlatform,
+    async_get_current_platform,
+)
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import (
-    ATTR_CO2_LEVEL,
-    ATTR_INDOOR_HUMIDITY,
     ATTR_SETPOINT,
-    ATTR_TEMPERATURE,
     BROKER,
     DOMAIN,
     SVC_PUT_CO2_LEVEL,
@@ -91,6 +90,12 @@ from .const import (
     SVC_PUT_INDOOR_HUMIDITY,
     SVC_PUT_ROOM_TEMP,
     UnitOfVolumeFlowRate,
+)
+from .schemas import (
+    SCH_PUT_CO2_LEVEL,
+    SCH_PUT_DHW_TEMP,
+    SCH_PUT_INDOOR_HUMIDITY,
+    SCH_PUT_ROOM_TEMP,
 )
 
 
@@ -114,48 +119,6 @@ class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescrip
 
 _LOGGER = logging.getLogger(__name__)
 
-MIN_CO2_LEVEL = 300
-MAX_CO2_LEVEL = 9999
-MIN_DHW_TEMP = 0
-MAX_DHW_TEMP = 99
-MIN_INDOOR_HUMIDITY = 0
-MAX_INDOOR_HUMIDITY = 100
-MIN_ROOM_TEMP = -20
-MAX_ROOM_TEMP = 60
-
-SCH_PUT_CO2_LEVEL = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_CO2_LEVEL): vol.All(
-            cv.positive_int,
-            vol.Range(min=MIN_CO2_LEVEL, max=MAX_CO2_LEVEL),
-        ),
-    }
-)
-SCH_PUT_DHW_TEMP = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_TEMPERATURE): vol.All(
-            vol.Coerce(float),
-            vol.Range(min=MIN_DHW_TEMP, max=MAX_DHW_TEMP),
-        ),
-    }
-)
-SCH_PUT_INDOOR_HUMIDITY = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_INDOOR_HUMIDITY): vol.All(
-            cv.positive_float,
-            vol.Range(min=MIN_INDOOR_HUMIDITY, max=MAX_INDOOR_HUMIDITY),
-        ),
-    }
-)
-SCH_PUT_ROOM_TEMP = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_TEMPERATURE): vol.All(
-            vol.Coerce(float),
-            vol.Range(min=MIN_ROOM_TEMP, max=MAX_ROOM_TEMP),
-        ),
-    }
-)
-
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -172,28 +135,19 @@ async def async_setup_platform(
 
     if not broker._services.get(PLATFORM):
         broker._services[PLATFORM] = True
+        platform: EntityPlatform = async_get_current_platform()
 
-        platform = entity_platform.async_get_current_platform()
-
         platform.async_register_entity_service(
-            SVC_PUT_CO2_LEVEL,
-            SCH_PUT_CO2_LEVEL,
-            "put_co2_level",
+            SVC_PUT_CO2_LEVEL, SCH_PUT_CO2_LEVEL, "put_co2_level"
         )
         platform.async_register_entity_service(
-            SVC_PUT_DHW_TEMP,
-            SCH_PUT_DHW_TEMP,
-            "put_dhw_temp",
+            SVC_PUT_DHW_TEMP, SCH_PUT_DHW_TEMP, "put_dhw_temp"
         )
         platform.async_register_entity_service(
-            SVC_PUT_INDOOR_HUMIDITY,
-            SCH_PUT_INDOOR_HUMIDITY,
-            "put_indoor_humidity",
+            SVC_PUT_INDOOR_HUMIDITY, SCH_PUT_INDOOR_HUMIDITY, "put_humidity"
         )
         platform.async_register_entity_service(
-            SVC_PUT_ROOM_TEMP,
-            SCH_PUT_ROOM_TEMP,
-            "put_room_temp",
+            SVC_PUT_ROOM_TEMP, SCH_PUT_ROOM_TEMP, "put_room_temp"
         )
 
     entities = [
@@ -259,7 +213,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         )
         return f"{prefix} {super().name}"
 
-    async def put_co2_level(self, co2_level: int) -> None:
+    def put_co2_level(self, co2_level: int) -> None:
         """Cast the CO2 level (if faked)."""
 
         # TODO: Remove from here...
@@ -273,7 +227,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         # setter will raise an exception if device is not faked
         self._device.co2_level = co2_level  # would accept None
 
-    async def put_dhw_temp(self, temperature: float) -> None:
+    def put_dhw_temp(self, temperature: float) -> None:
         """Cast the DHW cylinder temperature (if faked)."""
 
         # TODO: Remove from here...
@@ -287,7 +241,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         # setter will raise an exception if device is not faked
         self._device.temperature = temperature  # would accept None
 
-    async def put_indoor_humidity(self, indoor_humidity: float) -> None:
+    def put_indoor_humidity(self, indoor_humidity: float) -> None:
         """Cast the indoor humidity level (if faked)."""
 
         # TODO: Remove from here...
@@ -301,7 +255,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         # setter will raise an exception if device is not faked
         self._device.indoor_humidity = indoor_humidity / 100  # would accept None
 
-    async def put_room_temp(self, temperature: float) -> None:
+    def put_room_temp(self, temperature: float) -> None:
         """Cast the room temperature (if faked)."""
 
         # TODO: Remove from here...

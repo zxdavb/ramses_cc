@@ -22,8 +22,12 @@ from homeassistant.components.water_heater import (
 )
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, entity_platform
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    EntityPlatform,
+    async_get_current_platform,
+)
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
@@ -40,6 +44,7 @@ from .const import (
     BROKER,
     DOMAIN,
     SVC_GET_DHW_SCHEDULE,
+    SVC_PUT_DHW_TEMP,
     SVC_RESET_DHW_MODE,
     SVC_RESET_DHW_PARAMS,
     SVC_SET_DHW_BOOST,
@@ -49,6 +54,7 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
+from .schemas import SCH_PUT_DHW_TEMP
 
 
 @dataclass(kw_only=True)
@@ -71,7 +77,7 @@ MODE_HA_TO_RAMSES = {
     STATE_ON: ZoneMode.PERMANENT,
 }
 
-SVC_SET_DHW_MODE_SCHEMA = cv.make_entity_service_schema(
+SCH_SET_DHW_MODE = cv.make_entity_service_schema(
     {
         vol.Optional(ATTR_MODE): vol.In(
             [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
@@ -85,7 +91,7 @@ SVC_SET_DHW_MODE_SCHEMA = cv.make_entity_service_schema(
     }
 )
 
-SVC_SET_DHW_PARAMS_SCHEMA = cv.make_entity_service_schema(
+SCH_SET_DHW_PARAMS = cv.make_entity_service_schema(
     {
         vol.Optional(ATTR_SETPOINT, default=50): vol.All(
             cv.positive_float,
@@ -102,7 +108,7 @@ SVC_SET_DHW_PARAMS_SCHEMA = cv.make_entity_service_schema(
     }
 )
 
-SVC_SET_DHW_SCHEDULE_SCHEMA = cv.make_entity_service_schema(
+SCH_SET_DHW_SCHEDULE = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_SCHEDULE): cv.string,
     }
@@ -124,29 +130,27 @@ async def async_setup_platform(
 
     if not broker._services.get(PLATFORM):
         broker._services[PLATFORM] = True
+        platform: EntityPlatform = async_get_current_platform()
 
-        platform = entity_platform.async_get_current_platform()
-
         platform.async_register_entity_service(
-            SVC_SET_DHW_BOOST, {}, "async_set_dhw_boost"
+            SVC_PUT_DHW_TEMP, SCH_PUT_DHW_TEMP, "fake_dhw_temp"
+        )
+        platform.async_register_entity_service(SVC_SET_DHW_BOOST, {}, "set_dhw_boost")
+        platform.async_register_entity_service(
+            SVC_SET_DHW_MODE, SCH_SET_DHW_MODE, "set_dhw_mode"
+        )
+        platform.async_register_entity_service(SVC_RESET_DHW_MODE, {}, "reset_dhw_mode")
+        platform.async_register_entity_service(
+            SVC_SET_DHW_PARAMS, SCH_SET_DHW_PARAMS, "set_dhw_params"
         )
         platform.async_register_entity_service(
-            SVC_SET_DHW_MODE, SVC_SET_DHW_MODE_SCHEMA, "async_set_dhw_mode"
-        )
-        platform.async_register_entity_service(
-            SVC_RESET_DHW_MODE, {}, "async_reset_dhw_mode"
-        )
-        platform.async_register_entity_service(
-            SVC_SET_DHW_PARAMS, SVC_SET_DHW_PARAMS_SCHEMA, "async_set_dhw_params"
-        )
-        platform.async_register_entity_service(
-            SVC_RESET_DHW_PARAMS, {}, "async_reset_dhw_params"
+            SVC_RESET_DHW_PARAMS, {}, "reset_dhw_params"
         )
         platform.async_register_entity_service(
             SVC_GET_DHW_SCHEDULE, {}, "async_get_dhw_schedule"
         )
         platform.async_register_entity_service(
-            SVC_SET_DHW_SCHEDULE, SVC_SET_DHW_SCHEDULE_SCHEMA, "async_set_dhw_schedule"
+            SVC_SET_DHW_SCHEDULE, SCH_SET_DHW_SCHEDULE, "async_set_dhw_schedule"
         )
 
     entites = [
@@ -250,25 +254,31 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         self.async_set_dhw_params(setpoint=temperature)
 
     @callback
-    def async_reset_dhw_mode(self) -> None:
+    def fake_dhw_temp(self) -> None:
         """Reset the operating mode of the water heater."""
         self._device.reset_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def async_reset_dhw_params(self) -> None:
+    def reset_dhw_mode(self) -> None:
+        """Reset the operating mode of the water heater."""
+        self._device.reset_mode()
+        self.async_write_ha_state_delayed()
+
+    @callback
+    def reset_dhw_params(self) -> None:
         """Reset the configuration of the water heater."""
         self._device.reset_config()
         self.async_write_ha_state_delayed()
 
     @callback
-    def async_set_dhw_boost(self) -> None:
+    def set_dhw_boost(self) -> None:
         """Enable the water heater for an hour."""
         self._device.set_boost_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def async_set_dhw_mode(
+    def set_dhw_mode(
         self,
         mode: str | None = None,
         active: bool | None = None,
@@ -282,7 +292,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         self.async_write_ha_state_delayed()
 
     @callback
-    def async_set_dhw_params(
+    def set_dhw_params(
         self,
         setpoint: float | None = None,
         overrun: int | None = None,

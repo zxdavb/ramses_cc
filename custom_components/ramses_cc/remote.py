@@ -21,8 +21,12 @@ from homeassistant.components.remote import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, entity_platform
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    EntityPlatform,
+    async_get_current_platform,
+)
 from homeassistant.helpers.typing import DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
@@ -86,7 +90,7 @@ async def async_setup_platform(
 
     if not broker._services.get(PLATFORM):
         broker._services[PLATFORM] = True
-        platform = entity_platform.async_get_current_platform()
+        platform: EntityPlatform = async_get_current_platform()
 
         platform.async_register_entity_service(
             SVC_LEARN_COMMAND, SVC_LEARN_COMMAND_SCHEMA, "async_learn_command"

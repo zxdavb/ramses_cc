@@ -527,6 +527,71 @@ set_dhw_schedule:
 
 
 #
+# faked entity service calls
+
+fake_zone_temp:
+  name: Fake a Room temperature
+  description: >-
+    Set the current temperature (not setpoint) of an evohome zone.
+
+  fields:
+    entity_id:
+      name: Zone
+      description: >-
+        The entity_id of the evohome zone.
+        Raises an exception if its sensor is not faked (fully-faked, or impersonated).
+      example: climate.01_123456_02
+      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: climate
+
+    temperature:
+      description: The current temperature in degrees Celsius (not the setpoint).
+      required: true
+      example: 21.3
+      selector:
+        number:
+          unit_of_measurement: °C
+          min: -20
+          max: 60
+          step: 0.5
+          mode: slider
+
+
+fake_dhw_temp:
+  name: Fake a DHW temperature
+  description: >-
+    Set the current temperature (not setpoint) of an evohome water heater.
+
+  fields:
+    entity_id:
+      name: Stored HW
+      description: >-
+        The entity_id of the evohome water heater.
+        Raises an exception if its sensor is not faked (fully-faked, or impersonated).
+      example: water_heater.01_123456
+      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: water_heater
+
+    temperature:
+      description: The current temperature in degrees Celsius (not the setpoint).
+      required: true
+      example: 63.4
+      selector:
+        number:
+          unit_of_measurement: °C
+          min: 0
+          max: 99
+          step: 0.5
+          mode: slider
+
+
+#
 # faked sensor service calls
 
 put_room_temp:
