@@ -105,9 +105,9 @@ async def test_delete_command(hass: HomeAssistant) -> None:
 
     await hass.services.async_call(DOMAIN, SERVICE_DELETE_COMMAND, data)
 
-    # await hass.async_block_till_done()
+    await hass.async_block_till_done()
 
-    await hass.stop()
+    hass.stop()
 
     assert len(delete_command_calls) == 1
     call = delete_command_calls[-1]
@@ -115,5 +115,3 @@ async def test_delete_command(hass: HomeAssistant) -> None:
     assert call.domain == remote.DOMAIN
     assert call.service == SERVICE_DELETE_COMMAND
     assert call.data[ATTR_ENTITY_ID] == ENTITY_ID
-
-    hass.stop()
