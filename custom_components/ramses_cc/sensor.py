@@ -48,7 +48,7 @@ from ramses_rf.device.heat import (
     TrvActuator,
     UfhController,
 )
-from ramses_rf.device.hvac import CarbonDioxide, IndoorHumidity
+from ramses_rf.device.hvac import HvacCarbonDioxideSensor, HvacHumiditySensor
 from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.system.heat import SystemBase
 from ramses_rf.system.zones import ZoneBase
@@ -217,23 +217,61 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         )
         return f"{prefix} {super().name}"
 
-    # FIXME: will need refactoring (move to device)
-    async def async_put_co2_level(self, co2_level: int) -> None:
-        """Set the CO2 level."""
-        if not isinstance(self._device, CarbonDioxide):
-            raise TypeError(
-                f"Cannot set CO2 level on {self._device.__class__.__name__}"
-            )
-        self._device.co2_level = co2_level
+    async def put_co2_level(self, co2_level: int) -> None:
+        """Cast the CO2 level (if faked)."""
 
-    # FIXME: will need refactoring (move to device)
-    async def async_put_indoor_humidity(self, indoor_humidity: float) -> None:
-        """Set the indoor humidity level."""
-        if not isinstance(self._device, IndoorHumidity):
-            raise TypeError(
-                f"Cannot set indoor humidity level on {self._device.__class__.__name__}"
-            )
-        self._device.indoor_humidity = indoor_humidity / 100
+        # TODO: Remove from here...
+        assert self._attr_device_class == SensorDeviceClass.CO2
+        assert self._attr_unit_of_measurement == CONCENTRATION_PARTS_PER_MILLION
+
+        if not isinstance(self._device, HvacCarbonDioxideSensor):
+            raise TypeError(f"Cannot set CO2 level on {self._device}")
+        # TODO: Until here
+
+        # setter will raise an exception if device is not faked
+        self._device.co2_level = co2_level  # would accept None
+
+    async def put_dhw_temp(self, temperature: float) -> None:
+        """Cast the DHW cylinder temperature (if faked)."""
+
+        # TODO: Remove from here...
+        assert self._attr_device_class == SensorDeviceClass.TEMPERATURE
+        assert self._attr_unit_of_measurement == UnitOfTemperature.CELSIUS
+
+        if not isinstance(self._device, DhwSensor):
+            raise TypeError(f"Cannot set CO2 level on {self._device}")
+        # TODO: Until here
+
+        # setter will raise an exception if device is not faked
+        self._device.temperature = temperature  # would accept None
+
+    async def put_indoor_humidity(self, indoor_humidity: float) -> None:
+        """Cast the indoor humidity level (if faked)."""
+
+        # TODO: Remove from here...
+        assert self._attr_device_class == SensorDeviceClass.HUMIDITY
+        assert self._attr_unit_of_measurement == PERCENTAGE
+
+        if not isinstance(self._device, HvacHumiditySensor):
+            raise TypeError(f"Cannot set indoor humidity level on {self._device}")
+        # TODO: Until here
+
+        # setter will raise an exception if device is not faked
+        self._device.indoor_humidity = indoor_humidity / 100  # would accept None
+
+    async def put_room_temp(self, temperature: float) -> None:
+        """Cast the room temperature (if faked)."""
+
+        # TODO: Remove from here...
+        assert self._attr_device_class == SensorDeviceClass.TEMPERATURE
+        assert self._attr_unit_of_measurement == UnitOfTemperature.CELSIUS
+
+        if not isinstance(self._device, Thermostat):
+            raise TypeError(f"Cannot set CO2 level on {self._device}")
+        # TODO: Until here
+
+        # setter will raise an exception if device is not faked
+        self._device.temperature = temperature  # would accept None
 
 
 SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (

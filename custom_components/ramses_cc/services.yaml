@@ -234,26 +234,7 @@ get_zone_schedule:
 
 put_zone_temp:
   name: Fake the Sensor temperature of a Zone
-  description: >-
-    Announce the current temperature of a zone's temperature sensor. The zone must have
-    a faked sensor (see the `fake_device` service call).
-
-  fields:
-    entity_id: *entity_id_zone
-
-    temperature:
-      description: >-
-        The current temperature in degrees Celsius. This is the measured temperature,
-        not the target temperature (i.e. not the setpoint).
-      example: 21.3
-      required: true
-      selector:
-        number:
-          min: -99
-          max: 99
-          step: 0.5
-          unit_of_measurement: °C
-          mode: slider
+  description: Currently deprecated, use `put_room_temp` instead.
 
 
 reset_zone_config:
@@ -405,30 +386,6 @@ get_dhw_schedule:
           domain: water_heater
 
 
-put_dhw_temp:
-  name: Fake the Sensor temperature of a DHW
-  description: >-
-    Announce the current temperature of a DHW temperature sensor. The sensor must be
-    faked (see the `fake_device` service call).
-
-  fields:
-    entity_id: *entity_id_dhw
-
-    temperature:
-      description: >-
-        The current temperature in degrees Celsius. This is the measured temperature,
-        not the target temperature (i.e. not the setpoint).
-      example: 63.4
-      required: true
-      selector:
-        number:
-          min: -99
-          max: 99
-          step: 0.5
-          unit_of_measurement: °C
-          mode: slider
-
-
 reset_dhw_mode:
   name: Reset the Mode of a DHW
   description: Reset the operating mode of the system's DHW.
@@ -570,13 +527,85 @@ set_dhw_schedule:
 
 
 #
-# HVAC sensor service calls
+# faked sensor service calls
+
+put_room_temp:
+  name: Announce an room temperature
+  description: >-
+    Announce the measured room temperature of an evohome zone sensor.
+
+    The device must be faked (in the known_list), and should be bound to
+    a CH/DHW controller as a zone sensor.
+
+  fields:
+    entity_id:
+      name: Thermostat
+      description: >-
+        The entity_id of the sensor. Raises an exception if it is not faked.
+        Does not raise an exception if not is not bound.
+      example: sensor.03_123456_temperature
+      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: sensor
+          device_class: temperature
+
+    temperature:
+      description: The current temperature in degrees Celsius (not the setpoint).
+      required: true
+      example: 21.3
+      selector:
+        number:
+          unit_of_measurement: °C
+          min: -20
+          max: 60
+          step: 0.5
+          mode: slider
+
+
+put_dhw_temp:
+  name: Announce a DHW temperature
+  description: >-
+    Announce the measured temperature of an evohome DHW sensor.
+
+    The device must be faked (in the known_list), and should be bound to
+    a CH/DHW controller as a DHW sensor.
+
+  fields:
+    entity_id:
+      name: Stored DHW
+      description: >-
+        The entity_id of the sensor. Raises an exception if it is not faked.
+        Does not raise an exception if not is not bound.
+      example: sensor.07_123456_dhw_temp
+      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: sensor
+          device_class: dhw_temp
+
+    temperature:
+      description: The current temperature in degrees Celsius (not the setpoint).
+      required: true
+      example: 63.4
+      selector:
+        number:
+          unit_of_measurement: °C
+          min: 0
+          max: 99
+          step: 0.5
+          mode: slider
+
 
 put_co2_level:
-  name: Fake a CO2 sensor's reading
+  name: Announce an indoor CO2 level
   description: >-
-    Announce the CO2 level of a faked CO2 sensor (experimental).
-    To be useful, the sensor must bound to a fan (see the `fake_device` service call).
+    Announce the measured CO2 level of a indoor sensor (experimental).
+
+    The device must faked (in the known_list), and should be bound to
+    a fan/ventilation unit as a CO2 sensor.
 
   fields:
     entity_id:
@@ -597,16 +626,20 @@ put_co2_level:
       example: 363
       selector:
         number:
+          unit_of_measurement: ppm
           min: 300
           max: 9999
+          step: 25
           mode: slider
 
 
 put_indoor_humidity:
-  name: Fake a Humidity sensor's reading
+  name: Announce an indoor relative humidity
   description: >-
-    Announce the relative humidity of a faked indoor sensor (experimental).
-    To be useful, the sensor must bound to a fan (see the `fake_device` service call).
+    Announce the measured relative humidity of a indoor sensor (experimental).
+
+    The device must be faked (in the known_list), and should be bound to
+    a fan/ventilation unit as a humidity sensor.
 
   fields:
     entity_id:
@@ -627,6 +660,7 @@ put_indoor_humidity:
       example: 59.3
       selector:
         number:
+          unit_of_measurement: '%'
           min: 0
           max: 100
           step: 0.5
@@ -634,13 +668,15 @@ put_indoor_humidity:
 
 
 #
-# HVAC remote service calls
+# faked remote service calls
 
 delete_command:
   name: Delete a Remote command
   description: >-
     Deletes a RAMSES command from the database.
     This is a convenience wrapper for HA's own `delete_command` service call.
+    The device must be faked (in the known_list), and should be bound to
+    a fan/ventilation unit as a switch.
 
   fields:
     entity_id: &entity_id_remote
@@ -667,6 +703,8 @@ learn_command:
   description: >-
     Learns a RAMSES command and adds it to the database.
     This is a convenience wrapper for HA's own `learn_command` service call.
+    The device must be faked (in the known_list), and should be bound to
+    a fan/ventilation unit as a switch.
 
   fields:
     entity_id: *entity_id_remote
@@ -680,10 +718,10 @@ learn_command:
       example: 60
       selector:
         number:
+          unit_of_measurement: seconds
           min: 30
           max: 300
           steps: 5
-          unit_of_measurement: seconds
           mode: slider
 
 
@@ -692,6 +730,8 @@ send_command:
   description: >-
     Sends a RAMSES command as if from a remote.
     This is a convenience wrapper for HA's own `send_command` service call.
+    The device must be faked (in the known_list), and should be bound to
+    a fan/ventilation unit as a switch.
 
   fields:
     entity_id: *entity_id_remote
@@ -717,10 +757,10 @@ send_command:
       example: 0.2
       selector:
         number:
+          unit_of_measurement: seconds
           min: 0.1
           max: 2.0
           steps: 0.1
-          unit_of_measurement: seconds
           mode: slider
 
 
