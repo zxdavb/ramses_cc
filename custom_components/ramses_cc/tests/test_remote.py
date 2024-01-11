@@ -1,6 +1,9 @@
 """The tests for the Remote."""
 import pytest
-from tests.common import async_mock_service, get_test_home_assistant
+from tests.common import (  # type: ignore[import-untyped]
+    async_mock_service,
+    get_test_home_assistant,
+)
 
 import homeassistant.components.remote as remote
 from homeassistant.components.remote import (
