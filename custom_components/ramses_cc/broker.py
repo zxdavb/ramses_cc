@@ -42,7 +42,7 @@ SZ_CLIENT_STATE = "client_state"
 SZ_PACKETS = "packets"
 SZ_REMOTES = "remotes"
 
-SAVE_STATE_INTERVAL = timedelta(seconds=300)  # TODO: 5 minutes
+SAVE_STATE_INTERVAL = timedelta(seconds=300)
 
 
 class RamsesBroker:
@@ -60,7 +60,7 @@ class RamsesBroker:
             hass_config[DOMAIN]
         )
 
-        self.client: Gateway = None  # type: ignore[assignment]
+        self.client: Gateway = None
         self._remotes: dict[str, dict[str, str]] = {}
 
         self._services: dict = {}

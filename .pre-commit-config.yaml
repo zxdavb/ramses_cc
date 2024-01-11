@@ -31,7 +31,7 @@ repos:
     hooks:
       # entry: '[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'  # email address
 
-    - id: secrets
+    - id: debugs
       name: check DEBUG flags
       entry: '_DBG_.*=.*True'
       language: pygrep

@@ -203,30 +203,30 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
             SZ_CONFIG: {"enforce_known_list": gwy._enforce_known_list},
             SZ_KNOWN_LIST: [{k: shrink(v)} for k, v in gwy.known_list.items()],
             SZ_BLOCK_LIST: [{k: shrink(v)} for k, v in gwy._exclude.items()],
-            SZ_IS_EVOFW3: gwy._transport.get_extra_info(SZ_IS_EVOFW3),  # TODO: FIXME
+            SZ_IS_EVOFW3: gwy._transport.get_extra_info(SZ_IS_EVOFW3),
         }
 
     @property
     def is_on(self) -> bool:
         """Return True if the gateway has received messages recently."""
-        msg = self._device._gwy._this_msg  # TODO
+        msg = self._device._gwy._this_msg
         return msg and dt.now() - msg.dtm < timedelta(seconds=300)
 
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key="status",
-        attr="id",  # FIXME:
+        attr="id",
         name="Gateway status",
         ramses_class=HgiGateway,
-        entity_class=RamsesGatewayBinarySensor,  # FIXME
+        entity_class=RamsesGatewayBinarySensor,
     ),
     RamsesBinarySensorEntityDescription(
         key="status",
-        attr="id",  # FIXME:
+        attr="id",
         name="System status",
         ramses_class=System,
-        entity_class=RamsesSystemBinarySensor,  # FIXME
+        entity_class=RamsesSystemBinarySensor,
         extra_attributes={
             ATTR_WORKING_SCHEMA: SZ_SCHEMA,
         },
@@ -254,7 +254,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         key="active_fault",
         name="Active fault",
         ramses_class=Logbook,
-        entity_class=RamsesLogbookBinarySensor,  # FIXME
+        entity_class=RamsesLogbookBinarySensor,
         device_class=BinarySensorDeviceClass.PROBLEM,
         extra_attributes={
             ATTR_ACTIVE_FAULT: "active_fault",

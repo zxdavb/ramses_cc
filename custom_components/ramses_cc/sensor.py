@@ -224,7 +224,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
             raise TypeError(
                 f"Cannot set CO2 level on {self._device.__class__.__name__}"
             )
-        self._device.co2_level = co2_level  # TODO: fixme
+        self._device.co2_level = co2_level
 
     # FIXME: will need refactoring (move to device)
     async def async_put_indoor_humidity(self, indoor_humidity: float) -> None:

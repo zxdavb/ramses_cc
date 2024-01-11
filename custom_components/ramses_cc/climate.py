@@ -78,7 +78,7 @@ class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescr
     """Class describing Ramses binary sensor entities."""
 
     entity_class: _ClimateEntityT = None  # type: ignore[assignment]
-    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity  # type: ignore[assignment]
+    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -543,15 +543,15 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         """Return the temperature we try to reach."""
         return self._device.setpoint
 
-    @callback
+    @callback  # TODO: a bit of a mess - why 25, why frost mode?
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set a Zone to one of its native operating modes."""
         if hvac_mode == HVACMode.AUTO:  # FollowSchedule
             self.async_reset_zone_mode()
         elif hvac_mode == HVACMode.HEAT:  # TemporaryOverride
-            self.async_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)  # TODO:
+            self.async_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)
         else:  # HVACMode.OFF, PermentOverride, temp = min
-            self.async_set_zone_mode(self._device.set_frost_mode)  # TODO:
+            self.async_set_zone_mode(self._device.set_frost_mode)
 
     @callback
     def set_preset_mode(self, preset_mode: str | None) -> None:

@@ -173,7 +173,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         # HACK to make it work as per HA service call
         command = [command] if isinstance(command, str) else list(command)
 
-        if len(command) != 1:  # TODO: Bug was here
+        if len(command) != 1:
             raise TypeError("must be exactly one command to learn")
         if not isinstance(timeout, float | int) or not 5 <= timeout <= 300:
             raise TypeError("timeout must be 5 to 300 (default 60)")

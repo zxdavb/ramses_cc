@@ -110,7 +110,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
-# TODO: add async_ to routines where required to do so
 @callback  # TODO: the following is a mess - to add register/deregister of clients
 def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
     """Set up the handlers for the system-wide events."""
@@ -142,11 +141,11 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
     broker.client.add_msg_handler(process_msg)
 
 
-@callback  # TODO: add async_ to routines where required to do so
+@callback
 def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
     """Set up the handlers for the domain-wide services."""
 
-    @verify_domain_control(hass, DOMAIN)  # TODO: WIP
+    @verify_domain_control(hass, DOMAIN)  # TODO: is a work in progress
     async def async_bind_device(call: ServiceCall) -> None:
         device: Fakeable
 
