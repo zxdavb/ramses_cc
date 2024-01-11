@@ -530,7 +530,7 @@ set_dhw_schedule:
 # faked sensor service calls
 
 put_room_temp:
-  name: Announce an room temperature
+  name: Announce a Room temperature
   description: >-
     Announce the measured room temperature of an evohome zone sensor.
 
@@ -600,7 +600,7 @@ put_dhw_temp:
 
 
 put_co2_level:
-  name: Announce an indoor CO2 level
+  name: Announce an Indoor CO2 level
   description: >-
     Announce the measured CO2 level of a indoor sensor (experimental).
 
@@ -634,7 +634,7 @@ put_co2_level:
 
 
 put_indoor_humidity:
-  name: Announce an indoor relative humidity
+  name: Announce an Indoor relative humidity
   description: >-
     Announce the measured relative humidity of a indoor sensor (experimental).
 

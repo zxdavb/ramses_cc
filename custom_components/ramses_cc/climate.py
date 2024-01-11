@@ -52,7 +52,6 @@ from .const import (
     ATTR_PERIOD,
     ATTR_SCHEDULE,
     ATTR_SETPOINT,
-    ATTR_TEMPERATURE,
     ATTR_UNTIL,
     BROKER,
     DOMAIN,
@@ -60,7 +59,6 @@ from .const import (
     PRESET_PERMANENT,
     PRESET_TEMPORARY,
     SVC_GET_ZONE_SCHEDULE,
-    SVC_PUT_ZONE_TEMP,
     SVC_RESET_SYSTEM_MODE,
     SVC_RESET_ZONE_CONFIG,
     SVC_RESET_ZONE_MODE,
@@ -171,14 +169,6 @@ SVC_SET_SYSTEM_MODE_SCHEMA = vol.Schema(
     )
 )
 
-SVC_PUT_ZONE_TEMP_SCHEMA = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_TEMPERATURE): vol.All(
-            vol.Coerce(float), vol.Range(min=-20, max=99)
-        ),
-    }
-)
-
 SVC_SET_ZONE_CONFIG_SCHEMA = cv.make_entity_service_schema(
     {
         vol.Optional(ATTR_MAX_TEMP, default=35): vol.All(
@@ -256,9 +246,6 @@ async def async_setup_platform(
         )
         platform.async_register_entity_service(
             SVC_SET_SYSTEM_MODE, SVC_SET_SYSTEM_MODE_SCHEMA, "async_set_system_mode"
-        )
-        platform.async_register_entity_service(
-            SVC_PUT_ZONE_TEMP, SVC_PUT_ZONE_TEMP_SCHEMA, "put_zone_temp"
         )
         platform.async_register_entity_service(
             SVC_SET_ZONE_CONFIG, SVC_SET_ZONE_CONFIG_SCHEMA, "async_set_zone_config"
@@ -565,18 +552,6 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     def set_temperature(self, temperature: float | None = None, **kwargs) -> None:
         """Set a new target temperature."""
         self.async_set_zone_mode(setpoint=temperature)
-
-    # FIXME: will need refactoring (move to device, make async/not callback)
-    @callback
-    def async_put_zone_temp(self, temperature: float, **kwargs) -> None:  # TODO: kwrgs?
-        """Fake the measured temperature of the Zone sensor.
-
-        This is not the setpoint (see: set_temperature), but the measured temperature.
-        """
-        self._device.sensor._make_fake()
-        self._device.sensor.temperature = temperature
-        self._device._get_temp()
-        self.async_write_ha_state()
 
     @callback
     def async_reset_zone_config(self) -> None:

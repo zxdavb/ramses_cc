@@ -36,12 +36,10 @@ from .const import (
     ATTR_OVERRUN,
     ATTR_SCHEDULE,
     ATTR_SETPOINT,
-    ATTR_TEMPERATURE,
     ATTR_UNTIL,
     BROKER,
     DOMAIN,
     SVC_GET_DHW_SCHEDULE,
-    SVC_PUT_DHW_TEMP,
     SVC_RESET_DHW_MODE,
     SVC_RESET_DHW_PARAMS,
     SVC_SET_DHW_BOOST,
@@ -72,14 +70,6 @@ MODE_HA_TO_RAMSES = {
     STATE_OFF: ZoneMode.PERMANENT,
     STATE_ON: ZoneMode.PERMANENT,
 }
-
-SVC_PUT_DHW_TEMP_SCHEMA = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_TEMPERATURE): vol.All(
-            vol.Coerce(float), vol.Range(min=-20, max=99)
-        ),
-    }
-)
 
 SVC_SET_DHW_MODE_SCHEMA = cv.make_entity_service_schema(
     {
@@ -137,9 +127,6 @@ async def async_setup_platform(
 
         platform = entity_platform.async_get_current_platform()
 
-        platform.async_register_entity_service(
-            SVC_PUT_DHW_TEMP, SVC_PUT_DHW_TEMP_SCHEMA, "async_put_dhw_temp"
-        )
         platform.async_register_entity_service(
             SVC_SET_DHW_BOOST, {}, "async_set_dhw_boost"
         )
@@ -261,12 +248,6 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     def set_temperature(self, temperature: float | None = None, **kwargs) -> None:
         """Set the target temperature of the water heater."""
         self.async_set_dhw_params(setpoint=temperature)
-
-    # FIXME: will need refactoring (move to device, make async/not callback)
-    @callback
-    def async_put_dhw_temp(self, temperature: float) -> None:
-        """Fake the measured temperature of the DHW's sensor."""
-        raise NotImplementedError
 
     @callback
     def async_reset_dhw_mode(self) -> None:

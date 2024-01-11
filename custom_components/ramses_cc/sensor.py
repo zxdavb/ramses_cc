@@ -27,6 +27,7 @@ from ramses_rf.const import (
     SZ_SUPPLY_FLOW,
     SZ_SUPPLY_TEMP,
 )
+from ramses_rf.device import Fakeable
 from ramses_rf.device.heat import (
     SZ_BOILER_OUTPUT_TEMP,
     SZ_BOILER_RETURN_TEMP,
@@ -82,10 +83,13 @@ from .const import (
     ATTR_CO2_LEVEL,
     ATTR_INDOOR_HUMIDITY,
     ATTR_SETPOINT,
+    ATTR_TEMPERATURE,
     BROKER,
     DOMAIN,
     SVC_PUT_CO2_LEVEL,
+    SVC_PUT_DHW_TEMP,
     SVC_PUT_INDOOR_HUMIDITY,
+    SVC_PUT_ROOM_TEMP,
     UnitOfVolumeFlowRate,
 )
 
@@ -110,20 +114,44 @@ class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescrip
 
 _LOGGER = logging.getLogger(__name__)
 
-SVC_PUT_CO2_LEVEL_SCHEMA = cv.make_entity_service_schema(
+MIN_CO2_LEVEL = 300
+MAX_CO2_LEVEL = 9999
+MIN_DHW_TEMP = 0
+MAX_DHW_TEMP = 99
+MIN_INDOOR_HUMIDITY = 0
+MAX_INDOOR_HUMIDITY = 100
+MIN_ROOM_TEMP = -20
+MAX_ROOM_TEMP = 60
+
+SCH_PUT_CO2_LEVEL = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_CO2_LEVEL): vol.All(
             cv.positive_int,
-            vol.Range(min=0, max=16384),
+            vol.Range(min=MIN_CO2_LEVEL, max=MAX_CO2_LEVEL),
         ),
     }
 )
-
-SVC_PUT_INDOOR_HUMIDITY_SCHEMA = cv.make_entity_service_schema(
+SCH_PUT_DHW_TEMP = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_TEMPERATURE): vol.All(
+            vol.Coerce(float),
+            vol.Range(min=MIN_DHW_TEMP, max=MAX_DHW_TEMP),
+        ),
+    }
+)
+SCH_PUT_INDOOR_HUMIDITY = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_INDOOR_HUMIDITY): vol.All(
             cv.positive_float,
-            vol.Range(min=0, max=100),
+            vol.Range(min=MIN_INDOOR_HUMIDITY, max=MAX_INDOOR_HUMIDITY),
+        ),
+    }
+)
+SCH_PUT_ROOM_TEMP = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_TEMPERATURE): vol.All(
+            vol.Coerce(float),
+            vol.Range(min=MIN_ROOM_TEMP, max=MAX_ROOM_TEMP),
         ),
     }
 )
@@ -148,12 +176,24 @@ async def async_setup_platform(
         platform = entity_platform.async_get_current_platform()
 
         platform.async_register_entity_service(
-            SVC_PUT_CO2_LEVEL, SVC_PUT_CO2_LEVEL_SCHEMA, "async_put_co2_level"
+            SVC_PUT_CO2_LEVEL,
+            SCH_PUT_CO2_LEVEL,
+            "put_co2_level",
+        )
+        platform.async_register_entity_service(
+            SVC_PUT_DHW_TEMP,
+            SCH_PUT_DHW_TEMP,
+            "put_dhw_temp",
         )
         platform.async_register_entity_service(
             SVC_PUT_INDOOR_HUMIDITY,
-            SVC_PUT_INDOOR_HUMIDITY_SCHEMA,
-            "async_put_indoor_humidity",
+            SCH_PUT_INDOOR_HUMIDITY,
+            "put_indoor_humidity",
+        )
+        platform.async_register_entity_service(
+            SVC_PUT_ROOM_TEMP,
+            SCH_PUT_ROOM_TEMP,
+            "put_room_temp",
         )
 
     entities = [
@@ -189,7 +229,9 @@ class RamsesSensor(RamsesEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return True if the entity is available."""
-        return self.state is not None
+        return (
+            isinstance(self._device, Fakeable) and self._device.is_faked
+        ) or self.state is not None  # TODO: but what is None is its state?
 
     @property
     def native_value(self) -> Any | None:
