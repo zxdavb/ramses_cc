@@ -98,7 +98,7 @@ SVC_SET_ZONE_MODE = "set_zone_mode"
 SVC_SET_ZONE_SCHEDULE = "set_zone_schedule"
 
 
-# Volume Flow Rate units, these are not defined in HA v2023.1
+# Volume Flow Rate units, these specific unit are not defined in HA v2024.1
 class UnitOfVolumeFlowRate(StrEnum):
     """Volume flow rate units (defined by integration)."""
 
