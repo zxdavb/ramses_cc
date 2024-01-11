@@ -46,50 +46,6 @@ bind_device:
       required: false
 
 
-fake_device:
-  name: Fake a RAMSES device (deprecated)
-  description: >-
-    Fake a device, so that it can then cast state data via HA service calls.
-
-    For example, a faked thermostat can be used as a zone sensor to send an explicitly
-    specified current temperature to the controller instead of a real thermostat.
-
-    If required, a virtual device can be created, or you can fake an existing device
-    (physical devices will continue to cast state date, and so should be deactivated to
-    avoid confusion).
-
-    If required, the device can be caused to immediately engage its binding mode.
-
-  fields:
-    device_id:
-      name: Device ID
-      description: >-
-        The device ID (a RAMSES ID, not an entity_id).
-        There is no default value.
-      example: 03:123000
-      required: true
-
-    create_device:
-      name: Enable faking
-      description: >-
-        Create the device. Raises an exception if the device exists.
-        Default is False.
-      default: false
-      example: false
-      selector:
-        boolean
-
-    start_binding:
-      name: Start binding mode
-      description: >-
-        Cause the device to immediately enter its appropriate binding mode.
-        Default is False
-      default: false
-      example: false
-      selector:
-        boolean
-
-
 force_update:
   name: Update the System state
   description: >-
