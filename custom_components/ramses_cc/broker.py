@@ -29,7 +29,15 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN, SIGNAL_UPDATE, STORAGE_KEY, STORAGE_VERSION
+from .const import (
+    DOMAIN,
+    SIGNAL_UPDATE,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+    SZ_CLIENT_STATE,
+    SZ_PACKETS,
+    SZ_REMOTES,
+)
 from .schemas import merge_schemas, normalise_config, schema_is_minimal
 
 if TYPE_CHECKING:
@@ -38,11 +46,7 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-SZ_CLIENT_STATE = "client_state"
-SZ_PACKETS = "packets"
-SZ_REMOTES = "remotes"
-
-SAVE_STATE_INTERVAL = timedelta(seconds=300)  # TODO: 5 minutes
+SAVE_STATE_INTERVAL = timedelta(minutes=5)
 
 
 class RamsesBroker:
@@ -204,7 +208,6 @@ class RamsesBroker:
         async_add_entities(Platform.BINARY_SENSOR, new_entities)
         async_add_entities(Platform.SENSOR, new_entities)
 
-        #  these isinstance(d, ) are required...
         async_add_entities(
             Platform.CLIMATE, [d for d in new_devices if isinstance(d, HvacVentilator)]
         )
@@ -212,10 +215,9 @@ class RamsesBroker:
             Platform.REMOTE, [d for d in new_devices if isinstance(d, HvacRemoteBase)]
         )
 
-        #  these isinstance(x, ) are not required...
-        async_add_entities(Platform.CLIMATE, [s for s in new_systems])  # (s, Evohome)
-        async_add_entities(Platform.CLIMATE, [z for z in new_zones])  # (z.tcs, Evohome)
-        async_add_entities(Platform.WATER_HEATER, [d for d in new_dhws])  # (d, DhwZone)
+        async_add_entities(Platform.CLIMATE, new_systems)
+        async_add_entities(Platform.CLIMATE, new_zones)
+        async_add_entities(Platform.WATER_HEATER, new_dhws)
 
         if new_entities:
             async_call_later(self.hass, 5, self.async_save_client_state)

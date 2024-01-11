@@ -22,6 +22,11 @@ CONF_RAMSES_RF = "ramses_rf"
 CONF_SEND_PACKET = "send_packet"
 CONF_UNKNOWN_CODES = "unknown_codes"
 
+# State
+SZ_CLIENT_STATE = "client_state"
+SZ_PACKETS = "packets"
+SZ_REMOTES = "remotes"
+
 # Entity/service attributes
 ATTR_ACTIVE = "active"
 ATTR_ACTIVE_FAULT = "active_fault"
