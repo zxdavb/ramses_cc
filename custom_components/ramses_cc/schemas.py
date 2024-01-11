@@ -15,7 +15,7 @@ from ramses_rf.schemas import (
     SZ_SYSTEM,
     SZ_ZONES,
 )
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
 _SchemaT: TypeAlias = dict[str, Any]
 
@@ -88,4 +88,4 @@ def schema_is_minimal(schema: dict) -> bool:
         if SZ_ZONES in sch and list(sch[SZ_ZONES].values())[0][SZ_SENSOR] != key:
             return False
 
-        return True
+    return True

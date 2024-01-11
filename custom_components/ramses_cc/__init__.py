@@ -14,7 +14,7 @@ from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_tx import Command
 from ramses_tx.const import COMMAND_REGEX
 from ramses_tx.exceptions import TransportSerialError
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
@@ -48,7 +48,7 @@ class RamsesEntityDescription(EntityDescription):
     """Class describing Ramses entities."""
 
     has_entity_name: bool = True
-    extra_attributes: dict[str, str] | None = None
+    extra_attributes: dict[str, str] | None = None  # TODO: may not ever be None?
 
 
 _LOGGER = logging.getLogger(__name__)

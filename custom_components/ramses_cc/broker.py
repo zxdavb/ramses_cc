@@ -7,15 +7,14 @@ from copy import deepcopy
 from datetime import datetime as dt, timedelta
 import logging
 from threading import Semaphore
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ramses_rf import Gateway
 from ramses_rf.device.base import Device
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
 from ramses_rf.entity_base import Child, Entity as RamsesRFEntity
 from ramses_rf.schemas import SZ_SCHEMA
-from ramses_rf.system.heat import Evohome, MultiZone, StoredHw, System
-from ramses_rf.system.zones import DhwZone, Zone
+from ramses_rf.system import Evohome, System, Zone
 from ramses_tx.const import Code
 from ramses_tx.schemas import (
     SZ_KNOWN_LIST,
@@ -23,7 +22,7 @@ from ramses_tx.schemas import (
     SZ_SERIAL_PORT,
     extract_serial_port,
 )
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
@@ -49,6 +48,10 @@ from .const import (
 )
 from .schemas import merge_schemas, schema_is_minimal
 
+if TYPE_CHECKING:
+    from . import RamsesEntity
+
+
 _LOGGER = logging.getLogger(__name__)
 
 SZ_CLIENT_STATE = "client_state"
@@ -72,18 +75,19 @@ class RamsesBroker:
         _LOGGER.debug("Config = %s", entry.options)
 
         self.client: Gateway = None  # type: ignore[assignment]
-        self._remotes: dict[str, str] = None  # type: ignore[assignment]
+        self._remotes: dict[str, dict[str, str]] = {}
 
         self._platform_setup_tasks = {}
 
-        self._entities = {}  # domain entities
+        self._entities: dict[str, RamsesEntity] = {}  # domain entities
 
         self._device_info: dict[str, DeviceInfo] = {}
 
         # Discovered client objects...
-        self._devices: set[Device] = set()
-        self._systems: set[System] = set()
-        self._zones: set[Zone] = set()
+        self._devices: list[Device] = []
+        self._systems: list[System] = []
+        self._zones: list[Zone] = []
+        self._dhws: list[Zone] = []
 
         self._sem = Semaphore(value=1)
 
@@ -256,61 +260,57 @@ class RamsesBroker:
     async def async_update(self, _: dt | None = None) -> None:
         """Retrieve the latest state data from the client library."""
 
-        async def async_add_devices(
+        gwy: Gateway = self.client
+
+        async def async_add_entities(
             platform: str, devices: list[RamsesRFEntity]
         ) -> None:
             if not devices:
-                return
+                return None
             await self._async_setup_platform(platform)
             async_dispatcher_send(
                 self.hass, SIGNAL_NEW_DEVICES.format(platform), devices
             )
 
-        def new_entities(
-            known: set[RamsesRFEntity], current: list[RamsesRFEntity]
-        ) -> list[RamsesRFEntity]:
-            new = current - known
-            known |= new
-            return new
+        def find_new_entities(
+            known: list[RamsesRFEntity], current: list[RamsesRFEntity]
+        ) -> tuple[list[RamsesRFEntity], list[RamsesRFEntity]]:
+            new = [x for x in current if x not in known]
+            return known + new, new
 
-        new_devices = new_entities(self._devices, set(self.client.devices))
-        new_systems = new_entities(self._systems, set(self.client.systems))
-        new_zones = new_entities(
-            self._zones,
-            set().union(
-                *[s.zones for s in self.client.systems if isinstance(s, MultiZone)],
-                [
-                    s.dhw
-                    for s in self.client.systems
-                    if isinstance(s, StoredHw) and s.dhw
-                ],
-            ),
+        self._systems, new_systems = find_new_entities(
+            self._systems,
+            [s for s in gwy.systems if isinstance(s, Evohome)],
         )
+        self._zones, new_zones = find_new_entities(
+            self._zones,
+            [z for s in gwy.systems for z in s.zones if isinstance(s, Evohome)],
+        )
+        self._dhws, new_dhws = find_new_entities(
+            self._dhws,
+            [s.dhw for s in gwy.systems if s.dhw if isinstance(s, Evohome)],
+        )
+        self._devices, new_devices = find_new_entities(self._devices, gwy.devices)
 
         for device in self._devices | self._systems | self._zones:
             self._update_device(device)
 
-        new_sensor_devices = new_devices | new_systems | new_zones
-        await async_add_devices(Platform.BINARY_SENSOR, new_sensor_devices)
-        await async_add_devices(Platform.SENSOR, new_sensor_devices)
+        new_entities = new_devices + new_systems + new_zones + new_dhws
+        async_add_entities(Platform.BINARY_SENSOR, new_entities)
+        async_add_entities(Platform.SENSOR, new_entities)
 
-        await async_add_devices(
+        await async_add_entities(
             Platform.CLIMATE, [d for d in new_devices if isinstance(d, HvacVentilator)]
         )
-        await async_add_devices(
+        await async_add_entities(
             Platform.REMOTE, [d for d in new_devices if isinstance(d, HvacRemoteBase)]
         )
-        await async_add_devices(
-            Platform.CLIMATE, [s for s in new_systems if isinstance(s, Evohome)]
-        )
 
-        for zone in new_zones:
-            if isinstance(zone, DhwZone):
-                await async_add_devices(Platform.WATER_HEATER, [zone])
-            elif isinstance(zone.tcs, Evohome):
-                await async_add_devices(Platform.CLIMATE, [zone])
+        await async_add_entities(Platform.CLIMATE, new_systems)
+        await async_add_entities(Platform.CLIMATE, new_zones)
+        await async_add_entities(Platform.WATER_HEATER, new_dhws)
 
-        if new_devices or new_systems or new_zones:
+        if new_entities:
             async_call_later(self.hass, 5, self.async_save_client_state)
 
         # Trigger state updates of all entities

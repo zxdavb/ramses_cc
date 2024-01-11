@@ -1,12 +1,11 @@
 """Support for RAMSES binary sensors."""
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import logging
 from types import UnionType
-from typing import Any
+from typing import Any, TypeAlias
 
 from ramses_rf import Gateway
 from ramses_rf.device.base import BatteryState, HgiGateway
@@ -61,15 +60,16 @@ class RamsesBinarySensorEntityDescription(
 ):
     """Class describing Ramses binary sensor entities."""
 
-    attr: str | None = None
-    entity_class: RamsesBinarySensor | None = None
-    rf_class: type | UnionType | None = RamsesRFEntity
+    attr: str = None  # type: ignore[assignment]
+    entity_class: _BinarySensorEntityT = None  # type: ignore[assignment]
+    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
     icon_off: str | None = None
 
     def __post_init__(self):
         """Defaults entity attr to key."""
         self.attr = self.attr or self.key
+        self.entity_class = self.entity_class or RamsesBinarySensor
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ async def async_setup_entry(
             )
             for device in devices
             for description in BINARY_SENSOR_DESCRIPTIONS
-            if isinstance(device, description.rf_class)
+            if isinstance(device, description.ramses_class)
             and hasattr(device, description.key)
         ]
         async_add_entities(entities)
@@ -150,10 +150,9 @@ class RamsesLogbookBinarySensor(RamsesBinarySensor):
         return msg and dt.now() - msg.dtm < timedelta(seconds=1200)
 
     @property
-    def is_on(self) -> bool | None:
+    def is_on(self) -> bool:
         """Return the state of the binary sensor."""
-        result = getattr(self._device, self.entity_description.attr)
-        return None if result is None else bool(result)
+        return self._device.active_fault is not None
 
 
 class RamsesSystemBinarySensor(RamsesBinarySensor):
@@ -176,7 +175,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
     _device: HgiGateway
 
     @property
-    def extra_state_attributes(self) -> Mapping[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
 
         def shrink(device_hints) -> dict:
@@ -187,6 +186,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
             }
 
         gwy: Gateway = self._device._gwy
+
         return super().extra_state_attributes | {
             SZ_SCHEMA: {gwy.tcs.id: gwy.tcs._schema_min} if gwy.tcs else {},
             SZ_CONFIG: {"enforce_known_list": gwy._enforce_known_list},
@@ -207,15 +207,15 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         key="status",
         attr="id",  # FIXME:
         name="Gateway status",
-        rf_class=HgiGateway,
-        entity_class=RamsesGatewayBinarySensor,
+        ramses_class=HgiGateway,
+        entity_class=RamsesGatewayBinarySensor,  # FIXME
     ),
     RamsesBinarySensorEntityDescription(
         key="status",
         attr="id",  # FIXME:
         name="System status",
-        rf_class=System,
-        entity_class=RamsesSystemBinarySensor,
+        ramses_class=System,
+        entity_class=RamsesSystemBinarySensor,  # FIXME
         extra_attributes={
             ATTR_WORKING_SCHEMA: SZ_SCHEMA,
         },
@@ -230,6 +230,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         name="Active",
         icon="mdi:electric-switch",
         icon_off="mdi:electric-switch-closed",
+        entity_category=None,
     ),
     RamsesBinarySensorEntityDescription(
         key=BatteryState.BATTERY_LOW,
@@ -241,8 +242,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key="active_fault",
         name="Active fault",
-        rf_class=Logbook,
-        entity_class=RamsesLogbookBinarySensor,
+        ramses_class=Logbook,
+        entity_class=RamsesLogbookBinarySensor,  # FIXME
         device_class=BinarySensorDeviceClass.PROBLEM,
         extra_attributes={
             ATTR_ACTIVE_FAULT: "active_fault",
@@ -306,37 +307,39 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key="bit_2_4",
         name="Bit 2/4",
-        rf_class=OtbGateway,
+        ramses_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_2_5",
         name="Bit 2/5",
-        rf_class=OtbGateway,
+        ramses_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_2_6",
         name="Bit 2/6",
-        rf_class=OtbGateway,
+        ramses_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_2_7",
         name="Bit 2/7",
-        rf_class=OtbGateway,
+        ramses_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_3_7",
         name="Bit 3/7",
-        rf_class=OtbGateway,
+        ramses_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_6_6",
         name="Bit 6/6",
-        rf_class=OtbGateway,
+        ramses_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
 )
+
+_BinarySensorEntityT: TypeAlias = type[RamsesBinarySensor]
