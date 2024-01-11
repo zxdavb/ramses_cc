@@ -254,10 +254,10 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         self.async_set_dhw_params(setpoint=temperature)
 
     @callback
-    def fake_dhw_temp(self) -> None:
-        """Reset the operating mode of the water heater."""
-        self._device.reset_mode()
-        self.async_write_ha_state_delayed()
+    def fake_dhw_temp(self, temperature: float) -> None:
+        """Cast the temperature of this water heater (if faked)."""
+
+        self._device.sensor.temperature = temperature  # would accept None
 
     @callback
     def reset_dhw_mode(self) -> None:

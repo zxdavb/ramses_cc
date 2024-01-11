@@ -560,6 +560,12 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         self.async_set_zone_mode(setpoint=temperature)
 
     @callback
+    def fake_zone_config(self, temperature: float) -> None:
+        """Cast the room temperature of this zone (if faked)."""
+
+        self._device.sensor.temperature = temperature  # would accept None
+
+    @callback
     def reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""
         self._device.reset_config()
