@@ -229,6 +229,8 @@ class RamsesBroker:
     def _update_device(self, device: RamsesRFEntity) -> None:
         if hasattr(device, "name") and device.name:
             name = device.name
+        elif isinstance(device, Evohome):
+            name = "Controller"
         elif device._SLUG:
             name = f"{device._SLUG} {device.id}"
         else:
@@ -252,6 +254,7 @@ class RamsesBroker:
             manufacturer=None,
             model=model,
             via_device=via_device,
+            serial_number=device.id,
         )
 
         if self._device_info.get(device.id) == device_info:
