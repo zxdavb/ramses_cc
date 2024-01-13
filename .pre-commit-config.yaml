@@ -31,12 +31,19 @@ repos:
     hooks:
       # entry: '[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'  # email address
 
-    - id: secrets
+    - id: debugs
       name: check DEBUG flags
       entry: '_DBG_.*=.*True'
       language: pygrep
       args: [-i]
       exclude: (.pre-commit-config.yaml|^tests/.*\.py$)  # avoid false +ve
+
+    # - id: fixme
+    #   name: check FIXME flags
+    #   entry: '#.*(FIXME)'  # |TODO)'
+    #   language: pygrep
+    #   args: [-i]
+    #   exclude: (.pre-commit-config.yaml|^tests/.*\.py$)  # avoid false +ve
 
     - id: secrets
       name: check secrets

@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-SAVE_STATE_INTERVAL = timedelta(seconds=300)  # TODO: 5 minutes
+SAVE_STATE_INTERVAL = timedelta(minutes=5)
 
 
 class RamsesBroker:
@@ -73,7 +73,7 @@ class RamsesBroker:
 
         _LOGGER.debug("Config = %s", entry.options)
 
-        self.client: Gateway = None  # type: ignore[assignment]
+        self.client: Gateway = None
         self._remotes: dict[str, dict[str, str]] = {}
 
         self._platform_setup_tasks: dict[str, asyncio.Task] = {}
@@ -90,7 +90,7 @@ class RamsesBroker:
 
         self._sem = Semaphore(value=1)
 
-        self.learn_device_id = None  # TODO: remove me
+        self.learn_device_id: str | None = None  # TODO: can we do without this?
 
     async def async_setup(self) -> None:
         """Set up the client, loading and checking state and config."""

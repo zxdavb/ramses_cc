@@ -35,8 +35,12 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, entity_platform
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    EntityPlatform,
+    async_get_current_platform,
+)
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
@@ -51,14 +55,13 @@ from .const import (
     ATTR_PERIOD,
     ATTR_SCHEDULE,
     ATTR_SETPOINT,
-    ATTR_TEMPERATURE,
     ATTR_UNTIL,
     DOMAIN,
     PRESET_CUSTOM,
     PRESET_PERMANENT,
     PRESET_TEMPORARY,
     SVC_GET_ZONE_SCHEDULE,
-    SVC_PUT_ZONE_TEMP,
+    SVC_PUT_ROOM_TEMP,
     SVC_RESET_SYSTEM_MODE,
     SVC_RESET_ZONE_CONFIG,
     SVC_RESET_ZONE_MODE,
@@ -69,6 +72,7 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
+from .schemas import SCH_PUT_ROOM_TEMP
 
 
 @dataclass(kw_only=True)
@@ -76,7 +80,7 @@ class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescr
     """Class describing Ramses binary sensor entities."""
 
     entity_class: _ClimateEntityT = None  # type: ignore[assignment]
-    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity  # type: ignore[assignment]
+    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -128,7 +132,7 @@ PRESET_ZONE_TO_HA = {
 }
 PRESET_HA_TO_ZONE = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
 
-SVC_SET_SYSTEM_MODE_SCHEMA = vol.Schema(
+SCH_SET_SYSTEM_MODE = vol.Schema(
     vol.Any(
         cv.make_entity_service_schema(
             {
@@ -169,15 +173,7 @@ SVC_SET_SYSTEM_MODE_SCHEMA = vol.Schema(
     )
 )
 
-SVC_PUT_ZONE_TEMP_SCHEMA = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_TEMPERATURE): vol.All(
-            vol.Coerce(float), vol.Range(min=-20, max=99)
-        ),
-    }
-)
-
-SVC_SET_ZONE_CONFIG_SCHEMA = cv.make_entity_service_schema(
+SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
     {
         vol.Optional(ATTR_MAX_TEMP, default=35): vol.All(
             cv.positive_float, vol.Range(min=21, max=35)
@@ -191,7 +187,7 @@ SVC_SET_ZONE_CONFIG_SCHEMA = cv.make_entity_service_schema(
     }
 )
 
-SVC_SET_ZONE_MODE_SCHEMA = vol.Schema(
+SCH_SET_ZONE_MODE = vol.Schema(
     vol.Any(
         cv.make_entity_service_schema(
             {
@@ -224,7 +220,7 @@ SVC_SET_ZONE_MODE_SCHEMA = vol.Schema(
     )
 )
 
-SVC_SET_ZONE_SCHEDULE_SCHEMA = cv.make_entity_service_schema(
+SCH_SET_ZONE_SCHEDULE = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_SCHEDULE): cv.string,
     }
@@ -236,36 +232,30 @@ async def async_setup_entry(
 ) -> None:
     """Set up the climate platform."""
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
-    platform = entity_platform.async_get_current_platform()
+    platform: EntityPlatform = async_get_current_platform()
 
     platform.async_register_entity_service(
-        SVC_RESET_SYSTEM_MODE, {}, "async_reset_system_mode"
+        SVC_PUT_ROOM_TEMP, SCH_PUT_ROOM_TEMP, "fake_zone_temp"
+    )
+    platform.async_register_entity_service(SVC_RESET_SYSTEM_MODE, {}, "reset_tcs_mode")
+    platform.async_register_entity_service(
+        SVC_SET_SYSTEM_MODE, SCH_SET_SYSTEM_MODE, "set_tcs_mode"
     )
     platform.async_register_entity_service(
-        SVC_SET_SYSTEM_MODE, SVC_SET_SYSTEM_MODE_SCHEMA, "async_set_system_mode"
+        SVC_SET_ZONE_CONFIG, SCH_SET_ZONE_CONFIG, "set_zone_config"
     )
     platform.async_register_entity_service(
-        SVC_PUT_ZONE_TEMP, SVC_PUT_ZONE_TEMP_SCHEMA, "put_zone_temp"
+        SVC_RESET_ZONE_CONFIG, {}, "reset_zone_config"
     )
     platform.async_register_entity_service(
-        SVC_SET_ZONE_CONFIG, SVC_SET_ZONE_CONFIG_SCHEMA, "async_set_zone_config"
+        SVC_SET_ZONE_MODE, SCH_SET_ZONE_MODE, "set_zone_mode"
     )
-    platform.async_register_entity_service(
-        SVC_RESET_ZONE_CONFIG, {}, "async_reset_zone_config"
-    )
-    platform.async_register_entity_service(
-        SVC_SET_ZONE_MODE, SVC_SET_ZONE_MODE_SCHEMA, "async_set_zone_mode"
-    )
-    platform.async_register_entity_service(
-        SVC_RESET_ZONE_MODE, {}, "async_reset_zone_mode"
-    )
+    platform.async_register_entity_service(SVC_RESET_ZONE_MODE, {}, "reset_zone_mode")
     platform.async_register_entity_service(
         SVC_GET_ZONE_SCHEDULE, {}, "async_get_zone_schedule"
     )
     platform.async_register_entity_service(
-        SVC_SET_ZONE_SCHEDULE,
-        SVC_SET_ZONE_SCHEDULE_SCHEMA,
-        "async_set_zone_schedule",
+        SVC_SET_ZONE_SCHEDULE, SCH_SET_ZONE_SCHEDULE, "async_set_zone_schedule"
     )
 
     @callback
@@ -393,13 +383,13 @@ class RamsesController(RamsesEntity, ClimateEntity):
         self.async_set_system_mode(PRESET_HA_TO_TCS.get(preset_mode, SystemMode.AUTO))
 
     @callback
-    def async_reset_system_mode(self) -> None:
+    def reset_tcs_mode(self) -> None:
         """Reset the (native) operating mode of the Controller."""
         self._device.reset_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def async_set_system_mode(self, mode, period=None, duration=None) -> None:
+    def set_tcs_mode(self, mode, period=None, duration=None) -> None:
         """Set the (native) operating mode of the Controller."""
         if period is not None:
             until = datetime.now() + period  # Period in days TODO: round down
@@ -534,15 +524,15 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         """Return the temperature we try to reach."""
         return self._device.setpoint
 
-    @callback
+    @callback  # TODO: a bit of a mess - why 25, why frost mode?
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set a Zone to one of its native operating modes."""
         if hvac_mode == HVACMode.AUTO:  # FollowSchedule
             self.async_reset_zone_mode()
         elif hvac_mode == HVACMode.HEAT:  # TemporaryOverride
-            self.async_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)  # TODO:
+            self.async_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)
         else:  # HVACMode.OFF, PermentOverride, temp = min
-            self.async_set_zone_mode(self._device.set_frost_mode)  # TODO:
+            self.async_set_zone_mode(self._device.set_frost_mode)
 
     @callback
     def set_preset_mode(self, preset_mode: str | None) -> None:
@@ -557,38 +547,32 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         """Set a new target temperature."""
         self.async_set_zone_mode(setpoint=temperature)
 
-    # FIXME: will need refactoring (move to device, make async/not callback)
     @callback
-    def async_put_zone_temp(self, temperature: float, **kwargs) -> None:  # TODO: kwrgs?
-        """Fake the measured temperature of the Zone sensor.
+    def fake_zone_temp(self, temperature: float) -> None:
+        """Cast the room temperature of this zone (if faked)."""
 
-        This is not the setpoint (see: set_temperature), but the measured temperature.
-        """
-        self._device.sensor._make_fake()
-        self._device.sensor.temperature = temperature
-        self._device._get_temp()
-        self.async_write_ha_state()
+        self._device.sensor.temperature = temperature  # would accept None
 
     @callback
-    def async_reset_zone_config(self) -> None:
+    def reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""
         self._device.reset_config()
         self.async_write_ha_state_delayed()
 
     @callback
-    def async_reset_zone_mode(self) -> None:
+    def reset_zone_mode(self) -> None:
         """Reset the (native) operating mode of the Zone."""
         self._device.reset_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def async_set_zone_config(self, **kwargs) -> None:
+    def set_zone_config(self, **kwargs) -> None:
         """Set the configuration of the Zone (min/max temp, etc.)."""
         self._device.set_config(**kwargs)
         self.async_write_ha_state_delayed()
 
     @callback
-    def async_set_zone_mode(
+    def set_zone_mode(
         self,
         mode: str | None = None,
         setpoint: float | None = None,

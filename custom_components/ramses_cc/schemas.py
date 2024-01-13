@@ -17,6 +17,10 @@ from ramses_rf.schemas import (
 )
 import voluptuous as vol  # type: ignore[import-untyped]
 
+from homeassistant.helpers import config_validation as cv
+
+from .const import ATTR_CO2_LEVEL, ATTR_INDOOR_HUMIDITY, ATTR_TEMPERATURE
+
 _SchemaT: TypeAlias = dict[str, Any]
 
 _LOGGER = logging.getLogger(__name__)
@@ -89,3 +93,53 @@ def schema_is_minimal(schema: dict) -> bool:
             return False
 
     return True
+
+
+# Service call consts & schemas
+MIN_CO2_LEVEL = 300
+MAX_CO2_LEVEL = 9999
+
+SCH_PUT_CO2_LEVEL = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_CO2_LEVEL): vol.All(
+            cv.positive_int,
+            vol.Range(min=MIN_CO2_LEVEL, max=MAX_CO2_LEVEL),
+        ),
+    }
+)
+
+MIN_DHW_TEMP = 0
+MAX_DHW_TEMP = 99
+
+SCH_PUT_DHW_TEMP = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_TEMPERATURE): vol.All(
+            vol.Coerce(float),
+            vol.Range(min=MIN_DHW_TEMP, max=MAX_DHW_TEMP),
+        ),
+    }
+)
+
+MIN_INDOOR_HUMIDITY = 0
+MAX_INDOOR_HUMIDITY = 100
+
+SCH_PUT_INDOOR_HUMIDITY = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_INDOOR_HUMIDITY): vol.All(
+            cv.positive_float,
+            vol.Range(min=MIN_INDOOR_HUMIDITY, max=MAX_INDOOR_HUMIDITY),
+        ),
+    }
+)
+
+MIN_ROOM_TEMP = -20
+MAX_ROOM_TEMP = 60
+
+SCH_PUT_ROOM_TEMP = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_TEMPERATURE): vol.All(
+            vol.Coerce(float),
+            vol.Range(min=MIN_ROOM_TEMP, max=MAX_ROOM_TEMP),
+        ),
+    }
+)

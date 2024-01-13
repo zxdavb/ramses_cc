@@ -80,7 +80,7 @@ SVC_LEARN_COMMAND = "learn_command"
 SVC_PUT_CO2_LEVEL = "put_co2_level"
 SVC_PUT_DHW_TEMP = "put_dhw_temp"
 SVC_PUT_INDOOR_HUMIDITY = "put_indoor_humidity"
-SVC_PUT_ZONE_TEMP = "put_zone_temp"
+SVC_PUT_ROOM_TEMP = "put_room_temp"
 SVC_RESET_DHW_MODE = "reset_dhw_mode"
 SVC_RESET_DHW_PARAMS = "reset_dhw_params"
 SVC_RESET_SYSTEM_MODE = "reset_system_mode"
@@ -98,7 +98,7 @@ SVC_SET_ZONE_MODE = "set_zone_mode"
 SVC_SET_ZONE_SCHEDULE = "set_zone_schedule"
 
 
-# Volume Flow Rate units, these are not defined in HA v2023.1
+# Volume Flow Rate units, these specific unit are not defined in HA v2024.1
 class UnitOfVolumeFlowRate(StrEnum):
     """Volume flow rate units (defined by integration)."""
 

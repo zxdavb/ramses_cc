@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ramses_rf.device import Fakeable
 from ramses_rf.entity_base import Entity as RamsesRFEntity
@@ -41,6 +41,9 @@ from .const import (
     SVC_FORCE_UPDATE,
     SVC_SEND_PACKET,
 )
+
+if TYPE_CHECKING:
+    from ramses_tx import Message
 
 
 @dataclass(kw_only=True)
@@ -159,7 +162,7 @@ def async_register_domain_events(
     """Set up the handlers for the system-wide events."""
 
     @callback
-    def process_msg(msg, *args, **kwargs):  # process_msg(msg, prev_msg=None)
+    def process_msg(msg: Message, *args, **kwargs):  # process_msg(msg, prev_msg=None)
         if (
             regex := re.compile(
                 entry.options.get(CONF_ADVANCED_FEATURES, {}).get(CONF_MESSAGE_EVENTS)
@@ -193,7 +196,7 @@ def async_register_domain_services(
 ):
     """Set up the handlers for the domain-wide services."""
 
-    @verify_domain_control(hass, DOMAIN)  # TODO: WIP
+    @verify_domain_control(hass, DOMAIN)  # TODO: is a work in progress
     async def async_bind_device(call: ServiceCall) -> None:
         device: Fakeable
 

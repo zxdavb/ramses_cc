@@ -19,8 +19,12 @@ from homeassistant.components.remote import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, entity_platform
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    EntityPlatform,
+    async_get_current_platform,
+)
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
@@ -72,7 +76,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up the remote platform."""
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
-    platform = entity_platform.async_get_current_platform()
+    platform: EntityPlatform = async_get_current_platform()
 
     platform.async_register_entity_service(
         SVC_LEARN_COMMAND, SVC_LEARN_COMMAND_SCHEMA, "async_learn_command"
@@ -139,8 +143,12 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
           entity_id: remote.device_id
         """
 
-        if isinstance(command, str):  # HACK to make it work as per HA service call
-            command = [command]
+        # HACK to make it work as per HA service call
+        command = [command] if isinstance(command, str) else list(command)
+        # if len(command) != 1:
+        #     raise TypeError("must be exactly one command to delete")
+
+        assert not kwargs, kwargs  # TODO: remove me
 
         self._commands = {k: v for k, v in self._commands.items() if k not in command}
 
@@ -162,11 +170,16 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
 
         # HACK to make it work as per HA service call
         command = [command] if isinstance(command, str) else list(command)
-
-        if len(command) != 1:  # TODO: Bug was here
+        if len(command) != 1:
             raise TypeError("must be exactly one command to learn")
-        if not isinstance(timeout, float | int) or not 5 <= timeout <= 300:
-            raise TypeError("timeout must be 5 to 300 (default 60)")
+
+        if not isinstance(timeout, float) or not 30 <= timeout <= 300:
+            raise TypeError("timeout must be 30 to 300 (default 60)")
+
+        assert not kwargs, kwargs  # TODO: remove me
+
+        if command[0] in self._commands:
+            await self.async_delete_command(command)
 
         @callback
         def event_filter(event: Event) -> bool:
@@ -180,9 +193,6 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
             # if event.data["packet"] in self._commands.values():  # TODO
             #     raise DuplicateError
             self._commands[command[0]] = event.data["packet"]
-
-        if command[0] in self._commands:
-            await self.async_delete_command(command)
 
         with self._broker._sem:
             self._broker.learn_device_id = self._device.id
@@ -201,9 +211,10 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
 
     async def async_send_command(
         self,
-        command: Iterable[str] | str,  # HA is Iterable, ramses is str
-        delay_secs: float = 0.05,
+        command: Iterable[str] | str,
         num_repeats: int = 3,
+        delay_secs: float = 0.05,
+        hold_seconds: None = None,
         **kwargs: Any,
     ) -> None:
         """Send commands from a device (remote).
@@ -219,28 +230,31 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
 
         # HACK to make it work as per HA service call
         command = [command] if isinstance(command, str) else list(command)
-
         if len(command) != 1:
             raise TypeError("must be exactly one command to send")
-        if not isinstance(delay_secs, float | int) or not 0.02 <= delay_secs <= 1:
-            raise TypeError("delay_secs must be 0.02 to 1.0 (default 0.05)")
+
         if not isinstance(num_repeats, int) or not 1 <= num_repeats <= 5:
             raise TypeError("num_repeats must be 1 to 5 (default 3)")
+        if not isinstance(delay_secs, float | int) or not 0.02 <= delay_secs <= 1:
+            raise TypeError("delay_secs must be 0.02 to 1.0 (default 0.05)")
+        if hold_seconds is not None:
+            raise TypeError("hold_seconds is not supported")
+
+        assert not kwargs, kwargs  # TODO: remove me
 
         if command[0] not in self._commands:
             raise LookupError(f"command '{command[0]}' is not known")
 
         if not self._device.is_faked:  # have to check here, as not using device method
-            raise TypeError(f"{self._device.id} is not enabled for faking")
+            raise TypeError(f"{self._device.id} is not configured for faking")
 
-        for x in range(num_repeats):
+        for x in range(num_repeats):  # TODO: use ramses_rf's QoS
             if x != 0:
                 await asyncio.sleep(delay_secs)
-            cmd = Command(
-                self._commands[command[0]],
-                qos={"priority": Priority.HIGH, "retries": 0},
+            cmd = Command(self._commands[command[0]])
+            self._broker.client.send_cmd(
+                cmd, qos={"priority": Priority.HIGH, "retries": 0}
             )
-            self._broker.client.send_cmd(cmd)
 
         await self._broker.async_update()
 
