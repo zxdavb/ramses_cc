@@ -99,8 +99,8 @@ class RamsesBroker:
         _LOGGER.debug("Storage = %s", storage)
 
         remote_commands = {
-            k: v.pop(CONF_COMMANDS)
-            for k, v in self.options.get(SZ_KNOWN_LIST, []).items()
+            k: v[CONF_COMMANDS]
+            for k, v in self.options.get(SZ_KNOWN_LIST, {}).items()
             if v.get(CONF_COMMANDS)
         }
         self._remotes = storage.get(SZ_REMOTES, {}) | remote_commands
@@ -167,7 +167,7 @@ class RamsesBroker:
             loop=self.hass.loop,
             port_config=port_config,
             packet_log=self.options.get(SZ_PACKET_LOG, {}),
-            known_list=self.options.get(SZ_KNOWN_LIST, []),
+            known_list=self.options.get(SZ_KNOWN_LIST, {}),
             config=self.options.get(CONF_RAMSES_RF, {}),
             **schema,
         )
