@@ -71,7 +71,7 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfTime,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
     EntityPlatform,
@@ -81,22 +81,8 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
-from .const import (
-    ATTR_SETPOINT,
-    BROKER,
-    DOMAIN,
-    SVC_PUT_CO2_LEVEL,
-    SVC_PUT_DHW_TEMP,
-    SVC_PUT_INDOOR_HUMIDITY,
-    SVC_PUT_ROOM_TEMP,
-    UnitOfVolumeFlowRate,
-)
-from .schemas import (
-    SCH_PUT_CO2_LEVEL,
-    SCH_PUT_DHW_TEMP,
-    SCH_PUT_INDOOR_HUMIDITY,
-    SCH_PUT_ROOM_TEMP,
-)
+from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
+from .schemas import SVCS_SENSOR
 
 
 @dataclass(kw_only=True)
@@ -137,18 +123,8 @@ async def async_setup_platform(
         broker._services[PLATFORM] = True
         platform: EntityPlatform = async_get_current_platform()
 
-        platform.async_register_entity_service(
-            SVC_PUT_CO2_LEVEL, SCH_PUT_CO2_LEVEL, "put_co2_level"
-        )
-        platform.async_register_entity_service(
-            SVC_PUT_DHW_TEMP, SCH_PUT_DHW_TEMP, "put_dhw_temp"
-        )
-        platform.async_register_entity_service(
-            SVC_PUT_INDOOR_HUMIDITY, SCH_PUT_INDOOR_HUMIDITY, "put_humidity"
-        )
-        platform.async_register_entity_service(
-            SVC_PUT_ROOM_TEMP, SCH_PUT_ROOM_TEMP, "put_room_temp"
-        )
+        for k, v in SVCS_SENSOR.items():
+            platform.async_register_entity_service(k, v, k)
 
     entities = [
         description.entity_class(broker, device, description)
@@ -213,6 +189,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         )
         return f"{prefix} {super().name}"
 
+    @callback
     def put_co2_level(self, co2_level: int) -> None:
         """Cast the CO2 level (if faked)."""
 
@@ -227,6 +204,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         # setter will raise an exception if device is not faked
         self._device.co2_level = co2_level  # would accept None
 
+    @callback
     def put_dhw_temp(self, temperature: float) -> None:
         """Cast the DHW cylinder temperature (if faked)."""
 
@@ -241,6 +219,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         # setter will raise an exception if device is not faked
         self._device.temperature = temperature  # would accept None
 
+    @callback
     def put_indoor_humidity(self, indoor_humidity: float) -> None:
         """Cast the indoor humidity level (if faked)."""
 
@@ -255,6 +234,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         # setter will raise an exception if device is not faked
         self._device.indoor_humidity = indoor_humidity / 100  # would accept None
 
+    @callback
     def put_room_temp(self, temperature: float) -> None:
         """Cast the room temperature (if faked)."""
 

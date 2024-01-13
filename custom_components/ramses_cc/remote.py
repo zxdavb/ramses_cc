@@ -29,14 +29,8 @@ from homeassistant.helpers.typing import DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
-from .const import (
-    BROKER,
-    DOMAIN,
-    SVC_DELETE_COMMAND,
-    SVC_LEARN_COMMAND,
-    SVC_SEND_COMMAND,
-)
-from .schemas import SCH_DELETE_COMMAND, SCH_LEARN_COMMAND, SCH_SEND_COMMAND
+from .const import BROKER, DOMAIN
+from .schemas import SVCS_REMOTE_ASYNC
 
 
 @dataclass(kw_only=True)
@@ -64,15 +58,8 @@ async def async_setup_platform(
         broker._services[PLATFORM] = True
         platform: EntityPlatform = async_get_current_platform()
 
-        platform.async_register_entity_service(
-            SVC_LEARN_COMMAND, SCH_LEARN_COMMAND, "async_learn_command"
-        )
-        platform.async_register_entity_service(
-            SVC_SEND_COMMAND, SCH_SEND_COMMAND, "async_send_command"
-        )
-        platform.async_register_entity_service(
-            SVC_DELETE_COMMAND, SCH_DELETE_COMMAND, "async_delete_command"
-        )
+        for k, v in SVCS_REMOTE_ASYNC.items():
+            platform.async_register_entity_service(k, v, f"async_{k}")
 
     entities = [
         RamsesRemote(broker, device, RamsesRemoteEntityDescription(key="remote"))

@@ -30,26 +30,8 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
-from .const import (
-    BROKER,
-    DOMAIN,
-    SVC_GET_DHW_SCHEDULE,
-    SVC_PUT_DHW_TEMP,
-    SVC_RESET_DHW_MODE,
-    SVC_RESET_DHW_PARAMS,
-    SVC_SET_DHW_BOOST,
-    SVC_SET_DHW_MODE,
-    SVC_SET_DHW_PARAMS,
-    SVC_SET_DHW_SCHEDULE,
-    SystemMode,
-    ZoneMode,
-)
-from .schemas import (
-    SCH_PUT_DHW_TEMP,
-    SCH_SET_DHW_MODE,
-    SCH_SET_DHW_PARAMS,
-    SCH_SET_DHW_SCHEDULE,
-)
+from .const import BROKER, DOMAIN, SystemMode, ZoneMode
+from .schemas import SVCS_WATER_HEATER, SVCS_WATER_HEATER_ASYNC
 
 
 @dataclass(kw_only=True)
@@ -90,26 +72,11 @@ async def async_setup_platform(
         broker._services[PLATFORM] = True
         platform: EntityPlatform = async_get_current_platform()
 
-        platform.async_register_entity_service(
-            SVC_PUT_DHW_TEMP, SCH_PUT_DHW_TEMP, "fake_dhw_temp"
-        )
-        platform.async_register_entity_service(SVC_SET_DHW_BOOST, {}, "set_dhw_boost")
-        platform.async_register_entity_service(
-            SVC_SET_DHW_MODE, SCH_SET_DHW_MODE, "set_dhw_mode"
-        )
-        platform.async_register_entity_service(SVC_RESET_DHW_MODE, {}, "reset_dhw_mode")
-        platform.async_register_entity_service(
-            SVC_SET_DHW_PARAMS, SCH_SET_DHW_PARAMS, "set_dhw_params"
-        )
-        platform.async_register_entity_service(
-            SVC_RESET_DHW_PARAMS, {}, "reset_dhw_params"
-        )
-        platform.async_register_entity_service(
-            SVC_GET_DHW_SCHEDULE, {}, "async_get_dhw_schedule"
-        )
-        platform.async_register_entity_service(
-            SVC_SET_DHW_SCHEDULE, SCH_SET_DHW_SCHEDULE, "async_set_dhw_schedule"
-        )
+        for k, v in SVCS_WATER_HEATER.items():
+            platform.async_register_entity_service(k, v, k)
+
+        for k, v in SVCS_WATER_HEATER_ASYNC.items():
+            platform.async_register_entity_service(k, v, f"async_{k}")
 
     entites = [
         RamsesWaterHeater(
