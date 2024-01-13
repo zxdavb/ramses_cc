@@ -130,7 +130,7 @@ class RamsesBroker:
             return {
                 dtm: pkt
                 for dtm, pkt in client_state.get(SZ_PACKETS, {}).items()
-                if dt.fromisoformat(dtm) > dt.now() - timedelta(days=100)
+                if dt.fromisoformat(dtm) > dt.now() - timedelta(days=1)
                 and pkt[41:45] not in msg_code_filter
             }
 
