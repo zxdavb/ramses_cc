@@ -249,12 +249,12 @@ class RamsesController(RamsesEntity, ClimateEntity):
     @callback
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set an operating mode for a Controller."""
-        self.async_set_system_mode(MODE_HA_TO_TCS.get(hvac_mode))
+        self.set_system_mode(MODE_HA_TO_TCS.get(hvac_mode))
 
     @callback
     def set_preset_mode(self, preset_mode: str | None) -> None:
         """Set the preset mode; if None, then revert to 'Auto' mode."""
-        self.async_set_system_mode(PRESET_HA_TO_TCS.get(preset_mode, SystemMode.AUTO))
+        self.set_system_mode(PRESET_HA_TO_TCS.get(preset_mode, SystemMode.AUTO))
 
     # the following methods are integration-specific service calls
 
@@ -404,16 +404,16 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set a Zone to one of its native operating modes."""
         if hvac_mode == HVACMode.AUTO:  # FollowSchedule
-            self.async_reset_zone_mode()
+            self.reset_zone_mode()
         elif hvac_mode == HVACMode.HEAT:  # TemporaryOverride
-            self.async_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)
+            self.set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)
         else:  # HVACMode.OFF, PermentOverride, temp = min
-            self.async_set_zone_mode(self._device.set_frost_mode)
+            self.set_zone_mode(self._device.set_frost_mode)
 
     @callback
     def set_preset_mode(self, preset_mode: str | None) -> None:
         """Set the preset mode; if None, then revert to following the schedule."""
-        self.async_set_zone_mode(
+        self.set_zone_mode(
             mode=PRESET_HA_TO_ZONE.get(preset_mode),
             setpoint=self.target_temperature if preset_mode == "permanent" else None,
         )
@@ -421,7 +421,7 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     @callback
     def set_temperature(self, temperature: float | None = None, **kwargs) -> None:
         """Set a new target temperature."""
-        self.async_set_zone_mode(setpoint=temperature)
+        self.set_zone_mode(setpoint=temperature)
 
     # the following are integration-specific methods service calls
 

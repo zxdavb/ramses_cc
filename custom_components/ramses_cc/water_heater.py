@@ -170,13 +170,13 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         elif operation_mode == STATE_ON:
             active = True
 
-        self.async_set_dhw_mode(
+        self.set_dhw_mode(
             mode=MODE_HA_TO_RAMSES[operation_mode], active=active, until=until
         )
 
     def set_temperature(self, temperature: float | None = None, **kwargs) -> None:
         """Set the target temperature of the water heater."""
-        self.async_set_dhw_params(setpoint=temperature)
+        self.set_dhw_params(setpoint=temperature)
 
     # the following methods are integration-specific service calls
 
