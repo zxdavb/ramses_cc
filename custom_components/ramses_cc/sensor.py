@@ -159,9 +159,10 @@ class RamsesSensor(RamsesEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return True if the entity is available."""
+        # TODO: Should use dtm of last packet received, rather than is not None
         return (
             isinstance(self._device, Fakeable) and self._device.is_faked
-        ) or self.state is not None  # TODO: but what is None is its state?
+        ) or self.state is not None  # TODO: but what if None _is_ its state?
 
     @property
     def native_value(self) -> Any | None:
@@ -196,8 +197,8 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         """Cast the CO2 level (if faked)."""
 
         # TODO: Remove from here...
-        assert self._attr_device_class == SensorDeviceClass.CO2
-        assert self._attr_unit_of_measurement == CONCENTRATION_PARTS_PER_MILLION
+        assert self.device_class == SensorDeviceClass.CO2
+        assert self.native_unit_of_measurement == CONCENTRATION_PARTS_PER_MILLION
 
         if not isinstance(self._device, HvacCarbonDioxideSensor):
             raise TypeError(f"Cannot set CO2 level on {self._device}")
@@ -211,8 +212,8 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         """Cast the DHW cylinder temperature (if faked)."""
 
         # TODO: Remove from here...
-        assert self._attr_device_class == SensorDeviceClass.TEMPERATURE
-        assert self._attr_unit_of_measurement == UnitOfTemperature.CELSIUS
+        assert self.device_class == SensorDeviceClass.TEMPERATURE
+        assert self.native_unit_of_measurement == UnitOfTemperature.CELSIUS
 
         if not isinstance(self._device, DhwSensor):
             raise TypeError(f"Cannot set CO2 level on {self._device}")
@@ -226,8 +227,8 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         """Cast the indoor humidity level (if faked)."""
 
         # TODO: Remove from here...
-        assert self._attr_device_class == SensorDeviceClass.HUMIDITY
-        assert self._attr_unit_of_measurement == PERCENTAGE
+        assert self.device_class == SensorDeviceClass.HUMIDITY
+        assert self.native_unit_of_measurement == PERCENTAGE
 
         if not isinstance(self._device, HvacHumiditySensor):
             raise TypeError(f"Cannot set indoor humidity level on {self._device}")
@@ -241,8 +242,8 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         """Cast the room temperature (if faked)."""
 
         # TODO: Remove from here...
-        assert self._attr_device_class == SensorDeviceClass.TEMPERATURE
-        assert self._attr_unit_of_measurement == UnitOfTemperature.CELSIUS
+        assert self.device_class == SensorDeviceClass.TEMPERATURE
+        assert self.native_unit_of_measurement == UnitOfTemperature.CELSIUS
 
         if not isinstance(self._device, Thermostat):
             raise TypeError(f"Cannot set CO2 level on {self._device}")
