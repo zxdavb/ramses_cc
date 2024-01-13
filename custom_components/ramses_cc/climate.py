@@ -13,7 +13,6 @@ from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.system.heat import Evohome
 from ramses_rf.system.zones import Zone
 from ramses_tx.const import SZ_MODE, SZ_SETPOINT, SZ_SYSTEM_MODE
-import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components.climate import (
     DOMAIN as PLATFORM,
@@ -35,7 +34,6 @@ from homeassistant.components.climate import (
 )
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
     EntityPlatform,
@@ -46,17 +44,6 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import (
-    ATTR_DURATION,
-    ATTR_LOCAL_OVERRIDE,
-    ATTR_MAX_TEMP,
-    ATTR_MIN_TEMP,
-    ATTR_MODE,
-    ATTR_MULTIROOM,
-    ATTR_OPENWINDOW,
-    ATTR_PERIOD,
-    ATTR_SCHEDULE,
-    ATTR_SETPOINT,
-    ATTR_UNTIL,
     BROKER,
     DOMAIN,
     PRESET_CUSTOM,
@@ -74,7 +61,13 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
-from .schemas import SCH_PUT_ROOM_TEMP
+from .schemas import (
+    SCH_PUT_ROOM_TEMP,
+    SCH_SET_SYSTEM_MODE,
+    SCH_SET_ZONE_CONFIG,
+    SCH_SET_ZONE_MODE,
+    SCH_SET_ZONE_SCHEDULE,
+)
 
 
 @dataclass(kw_only=True)
@@ -133,100 +126,6 @@ PRESET_ZONE_TO_HA = {
     ZoneMode.PERMANENT: PRESET_PERMANENT,
 }
 PRESET_HA_TO_ZONE = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
-
-SCH_SET_SYSTEM_MODE = vol.Schema(
-    vol.Any(
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In(
-                    [
-                        SystemMode.AUTO,
-                        SystemMode.HEAT_OFF,
-                        SystemMode.RESET,
-                    ]
-                )
-            }
-        ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In([SystemMode.ECO_BOOST]),
-                vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(hours=1), max=timedelta(hours=24)),
-                ),
-            }
-        ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In(
-                    [
-                        SystemMode.AWAY,
-                        SystemMode.CUSTOM,
-                        SystemMode.DAY_OFF,
-                        SystemMode.DAY_OFF_ECO,
-                    ]
-                ),
-                vol.Optional(ATTR_PERIOD, default=timedelta(days=0)): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(days=0), max=timedelta(days=99)),
-                ),  # 0 means until the end of the day
-            }
-        ),
-    )
-)
-
-SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
-    {
-        vol.Optional(ATTR_MAX_TEMP, default=35): vol.All(
-            cv.positive_float, vol.Range(min=21, max=35)
-        ),
-        vol.Optional(ATTR_MIN_TEMP, default=5): vol.All(
-            cv.positive_float, vol.Range(min=5, max=21)
-        ),
-        vol.Optional(ATTR_LOCAL_OVERRIDE, default=True): cv.boolean,
-        vol.Optional(ATTR_OPENWINDOW, default=True): cv.boolean,
-        vol.Optional(ATTR_MULTIROOM, default=True): cv.boolean,
-    }
-)
-
-SCH_SET_ZONE_MODE = vol.Schema(
-    vol.Any(
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In([ZoneMode.SCHEDULE]),
-            }
-        ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In(
-                    [ZoneMode.PERMANENT, ZoneMode.ADVANCED]
-                ),
-                vol.Optional(ATTR_SETPOINT, default=21): vol.All(
-                    cv.positive_float, vol.Range(min=5, max=30)
-                ),
-            }
-        ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In([ZoneMode.TEMPORARY]),
-                vol.Optional(ATTR_SETPOINT, default=21): vol.All(
-                    cv.positive_float, vol.Range(min=5, max=30)
-                ),
-                vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
-                vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
-                ),
-            }
-        ),
-    )
-)
-
-SCH_SET_ZONE_SCHEDULE = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_SCHEDULE): cv.string,
-    }
-)
 
 
 async def async_setup_platform(

@@ -10,7 +10,6 @@ from typing import Any, TypeAlias
 from ramses_rf.system.heat import StoredHw
 from ramses_rf.system.zones import DhwZone
 from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
-import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components.water_heater import (
     DOMAIN as PLATFORM,
@@ -22,7 +21,6 @@ from homeassistant.components.water_heater import (
 )
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
     EntityPlatform,
@@ -33,14 +31,6 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import (
-    ATTR_ACTIVE,
-    ATTR_DIFFERENTIAL,
-    ATTR_DURATION,
-    ATTR_MODE,
-    ATTR_OVERRUN,
-    ATTR_SCHEDULE,
-    ATTR_SETPOINT,
-    ATTR_UNTIL,
     BROKER,
     DOMAIN,
     SVC_GET_DHW_SCHEDULE,
@@ -54,7 +44,12 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
-from .schemas import SCH_PUT_DHW_TEMP
+from .schemas import (
+    SCH_PUT_DHW_TEMP,
+    SCH_SET_DHW_MODE,
+    SCH_SET_DHW_PARAMS,
+    SCH_SET_DHW_SCHEDULE,
+)
 
 
 @dataclass(kw_only=True)
@@ -76,43 +71,6 @@ MODE_HA_TO_RAMSES = {
     STATE_OFF: ZoneMode.PERMANENT,
     STATE_ON: ZoneMode.PERMANENT,
 }
-
-SCH_SET_DHW_MODE = cv.make_entity_service_schema(
-    {
-        vol.Optional(ATTR_MODE): vol.In(
-            [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
-        ),
-        vol.Optional(ATTR_ACTIVE): cv.boolean,
-        vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
-        vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
-            cv.time_period,
-            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
-        ),
-    }
-)
-
-SCH_SET_DHW_PARAMS = cv.make_entity_service_schema(
-    {
-        vol.Optional(ATTR_SETPOINT, default=50): vol.All(
-            cv.positive_float,
-            vol.Range(min=30, max=85),
-        ),
-        vol.Optional(ATTR_OVERRUN, default=5): vol.All(
-            cv.positive_int,
-            vol.Range(max=10),
-        ),
-        vol.Optional(ATTR_DIFFERENTIAL, default=1): vol.All(
-            cv.positive_float,
-            vol.Range(max=10),
-        ),
-    }
-)
-
-SCH_SET_DHW_SCHEDULE = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_SCHEDULE): cv.string,
-    }
-)
 
 
 async def async_setup_platform(

@@ -39,9 +39,27 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
+    ATTR_ACTIVE,
     ATTR_CO2_LEVEL,
+    ATTR_COMMAND,
+    ATTR_DELAY_SECS,
+    ATTR_DIFFERENTIAL,
+    ATTR_DURATION,
     ATTR_INDOOR_HUMIDITY,
+    ATTR_LOCAL_OVERRIDE,
+    ATTR_MAX_TEMP,
+    ATTR_MIN_TEMP,
+    ATTR_MODE,
+    ATTR_MULTIROOM,
+    ATTR_NUM_REPEATS,
+    ATTR_OPENWINDOW,
+    ATTR_OVERRUN,
+    ATTR_PERIOD,
+    ATTR_SCHEDULE,
+    ATTR_SETPOINT,
     ATTR_TEMPERATURE,
+    ATTR_TIMEOUT,
+    ATTR_UNTIL,
     CONF_ADVANCED_FEATURES,
     CONF_COMMANDS,
     CONF_DEV_MODE,
@@ -49,6 +67,8 @@ from .const import (
     CONF_RAMSES_RF,
     CONF_SEND_PACKET,
     CONF_UNKNOWN_CODES,
+    SystemMode,
+    ZoneMode,
 )
 
 _SchemaT: TypeAlias = dict[str, Any]
@@ -242,4 +262,158 @@ SCH_PUT_ROOM_TEMP = cv.make_entity_service_schema(
             vol.Range(min=MIN_ROOM_TEMP, max=MAX_ROOM_TEMP),
         ),
     }
+)
+
+SCH_SET_SYSTEM_MODE = vol.Schema(
+    vol.Any(
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In(
+                    [
+                        SystemMode.AUTO,
+                        SystemMode.HEAT_OFF,
+                        SystemMode.RESET,
+                    ]
+                )
+            }
+        ),
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In([SystemMode.ECO_BOOST]),
+                vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
+                    cv.time_period,
+                    vol.Range(min=timedelta(hours=1), max=timedelta(hours=24)),
+                ),
+            }
+        ),
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In(
+                    [
+                        SystemMode.AWAY,
+                        SystemMode.CUSTOM,
+                        SystemMode.DAY_OFF,
+                        SystemMode.DAY_OFF_ECO,
+                    ]
+                ),
+                vol.Optional(ATTR_PERIOD, default=timedelta(days=0)): vol.All(
+                    cv.time_period,
+                    vol.Range(min=timedelta(days=0), max=timedelta(days=99)),
+                ),  # 0 means until the end of the day
+            }
+        ),
+    )
+)
+
+SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
+    {
+        vol.Optional(ATTR_MAX_TEMP, default=35): vol.All(
+            cv.positive_float, vol.Range(min=21, max=35)
+        ),
+        vol.Optional(ATTR_MIN_TEMP, default=5): vol.All(
+            cv.positive_float, vol.Range(min=5, max=21)
+        ),
+        vol.Optional(ATTR_LOCAL_OVERRIDE, default=True): cv.boolean,
+        vol.Optional(ATTR_OPENWINDOW, default=True): cv.boolean,
+        vol.Optional(ATTR_MULTIROOM, default=True): cv.boolean,
+    }
+)
+
+SCH_SET_ZONE_MODE = vol.Schema(
+    vol.Any(
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In([ZoneMode.SCHEDULE]),
+            }
+        ),
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In(
+                    [ZoneMode.PERMANENT, ZoneMode.ADVANCED]
+                ),
+                vol.Optional(ATTR_SETPOINT, default=21): vol.All(
+                    cv.positive_float, vol.Range(min=5, max=30)
+                ),
+            }
+        ),
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In([ZoneMode.TEMPORARY]),
+                vol.Optional(ATTR_SETPOINT, default=21): vol.All(
+                    cv.positive_float, vol.Range(min=5, max=30)
+                ),
+                vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
+                vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
+                    cv.time_period,
+                    vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
+                ),
+            }
+        ),
+    )
+)
+
+SCH_SET_ZONE_SCHEDULE = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_SCHEDULE): cv.string,
+    }
+)
+
+SCH_SET_DHW_MODE = cv.make_entity_service_schema(
+    {
+        vol.Optional(ATTR_MODE): vol.In(
+            [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
+        ),
+        vol.Optional(ATTR_ACTIVE): cv.boolean,
+        vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
+        vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
+            cv.time_period,
+            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
+        ),
+    }
+)
+
+SCH_SET_DHW_PARAMS = cv.make_entity_service_schema(
+    {
+        vol.Optional(ATTR_SETPOINT, default=50): vol.All(
+            cv.positive_float,
+            vol.Range(min=30, max=85),
+        ),
+        vol.Optional(ATTR_OVERRUN, default=5): vol.All(
+            cv.positive_int,
+            vol.Range(max=10),
+        ),
+        vol.Optional(ATTR_DIFFERENTIAL, default=1): vol.All(
+            cv.positive_float,
+            vol.Range(max=10),
+        ),
+    }
+)
+
+SCH_SET_DHW_SCHEDULE = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_SCHEDULE): cv.string,
+    }
+)
+
+SCH_LEARN_COMMAND = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_COMMAND): cv.string,
+        vol.Required(ATTR_TIMEOUT, default=60): vol.All(
+            cv.positive_int, vol.Range(min=30, max=300)
+        ),
+    }
+)
+
+SCH_SEND_COMMAND = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_COMMAND): cv.string,
+        vol.Required(ATTR_NUM_REPEATS, default=3): cv.positive_int,
+        vol.Required(ATTR_DELAY_SECS, default=0.2): cv.positive_float,
+    },
+)
+
+SCH_DELETE_COMMAND = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_COMMAND): cv.string,
+    },
 )
