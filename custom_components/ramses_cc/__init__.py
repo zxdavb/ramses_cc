@@ -161,13 +161,15 @@ def async_register_domain_events(
 ) -> None:
     """Set up the handlers for the system-wide events."""
 
+    features: dict[str, Any] = entry.options.get(CONF_ADVANCED_FEATURES, {})
+    if message_events := features.get(CONF_MESSAGE_EVENTS):
+        message_events_regex = re.compile(message_events)
+    else:
+        message_events_regex = None
+
     @callback
     def process_msg(msg: Message, *args, **kwargs):  # process_msg(msg, prev_msg=None)
-        if (
-            regex := re.compile(
-                entry.options.get(CONF_ADVANCED_FEATURES, {}).get(CONF_MESSAGE_EVENTS)
-            )
-        ) and regex.match(f"{msg!r}"):
+        if message_events_regex and message_events_regex.match(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
                 "src": msg.src.id,
