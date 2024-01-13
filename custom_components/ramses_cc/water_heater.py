@@ -88,6 +88,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     _attr_icon: str = "mdi:thermometer-lines"
     _attr_max_temp: float = StoredHw.MAX_SETPOINT
     _attr_min_temp: float = StoredHw.MIN_SETPOINT
+    _attr_name: str | None = None
     _attr_operation_list: list[str] = list(MODE_HA_TO_RAMSES)
     _attr_supported_features: int = (
         WaterHeaterEntityFeature.OPERATION_MODE
@@ -141,11 +142,6 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
             return self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY
         except TypeError:
             return None  # unable to determine
-
-    @property
-    def name(self) -> str | None:
-        """Return the name of the zone."""
-        return self._device.name
 
     @property
     def target_temperature(self) -> float | None:

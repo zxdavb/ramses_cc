@@ -146,6 +146,7 @@ class RamsesController(RamsesEntity, ClimateEntity):
     _attr_hvac_modes: list[str] = list(MODE_HA_TO_TCS)
     _attr_max_temp: float | None = None
     _attr_min_temp: float | None = None
+    _attr_name: str | None = None
     _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_HA_TO_TCS)
     _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
@@ -215,11 +216,6 @@ class RamsesController(RamsesEntity, ClimateEntity):
         return HVACMode.HEAT
 
     @property
-    def name(self) -> str:
-        """Return the name of the Controller."""
-        return "Controller"
-
-    @property
     def preset_mode(self) -> str | None:
         """Return the Controller's current preset mode, e.g., home, away, temp."""
 
@@ -276,6 +272,7 @@ class RamsesZone(RamsesEntity, ClimateEntity):
 
     _attr_icon: str = "mdi:radiator"
     _attr_hvac_modes: list[str] = list(MODE_HA_TO_ZONE)
+    _attr_name: str | None = None
     _attr_precision: PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_HA_TO_ZONE)
     _attr_supported_features: int = (
@@ -362,11 +359,6 @@ class RamsesZone(RamsesEntity, ClimateEntity):
             return self._device.config["min_temp"]
         except TypeError:  # 'NoneType' object is not subscriptable
             return None
-
-    @property
-    def name(self) -> str | None:
-        """Return the name of the zone."""
-        return self._device.name
 
     @property
     def preset_mode(self) -> str | None:
@@ -529,11 +521,6 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     def icon(self) -> str | None:
         """Return the icon to use in the frontend, if any."""
         return "mdi:hvac-off" if self._device.fan_info == "off" else "mdi:hvac"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return self._device.id
 
     @property
     def preset_mode(self) -> str | None:

@@ -65,6 +65,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
     _device: HvacRemote
 
     _attr_assumed_state: bool = True
+    _attr_name: str | None = None
     _attr_supported_features: int = (
         RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
     )
