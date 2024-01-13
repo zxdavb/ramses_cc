@@ -438,11 +438,11 @@ class RamsesConfigFlow(BaseRamsesFlow, ConfigFlow, domain=DOMAIN):  # type: igno
         if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
 
-        return await self.async_step_serial_port()
+        return await self.async_step_choose_serial_port()
 
     def _async_save(self) -> FlowResult:
         # TODO: Guide user through all options steps rather than just setting up serial port?
-        return self.async_create_entry(title="", data={}, options=self.options)
+        return self.async_create_entry(title="RAMSES RF", data={}, options=self.options)
 
     async def async_step_import(self, import_data: dict[str, Any]) -> FlowResult:
         """Import entry from configuration.yaml."""
