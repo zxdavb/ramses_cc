@@ -51,7 +51,9 @@ async def async_setup_entry(
     @callback
     def add_devices(devices: list[HvacRemote]) -> None:
         entities = [
-            RamsesRemote(broker, device, RamsesRemoteEntityDescription(key="remote"))
+            RamsesRemote(
+                broker, device, RamsesRemoteEntityDescription(key="remote", name=None)
+            )
             for device in devices
         ]
         async_add_entities(entities)
@@ -65,7 +67,6 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
     _device: HvacRemote
 
     _attr_assumed_state: bool = True
-    _attr_name: str | None = None
     _attr_supported_features: int = (
         RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
     )

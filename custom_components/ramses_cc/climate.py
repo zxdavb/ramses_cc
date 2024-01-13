@@ -146,7 +146,6 @@ class RamsesController(RamsesEntity, ClimateEntity):
     _attr_hvac_modes: list[str] = list(MODE_HA_TO_TCS)
     _attr_max_temp: float | None = None
     _attr_min_temp: float | None = None
-    _attr_name: str | None = None
     _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_HA_TO_TCS)
     _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
@@ -272,7 +271,6 @@ class RamsesZone(RamsesEntity, ClimateEntity):
 
     _attr_icon: str = "mdi:radiator"
     _attr_hvac_modes: list[str] = list(MODE_HA_TO_ZONE)
-    _attr_name: str | None = None
     _attr_precision: PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_HA_TO_ZONE)
     _attr_supported_features: int = (
@@ -530,13 +528,22 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
 
 CLIMATE_DESCRIPTIONS: tuple[RamsesClimateEntityDescription, ...] = (
     RamsesClimateEntityDescription(
-        key="controller", ramses_class=Evohome, entity_class=RamsesController
+        key="controller",
+        name=None,
+        ramses_class=Evohome,
+        entity_class=RamsesController,
     ),
     RamsesClimateEntityDescription(
-        key="zone", ramses_class=Zone, entity_class=RamsesZone
+        key="zone",
+        name=None,
+        ramses_class=Zone,
+        entity_class=RamsesZone,
     ),
     RamsesClimateEntityDescription(
-        key="hvac", ramses_class=HvacVentilator, entity_class=RamsesHvac
+        key="hvac",
+        name=None,
+        ramses_class=HvacVentilator,
+        entity_class=RamsesHvac,
     ),
 )
 

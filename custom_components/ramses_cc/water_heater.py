@@ -71,7 +71,9 @@ async def async_setup_entry(
     def add_devices(devices: list[DhwZone]) -> None:
         entities = [
             RamsesWaterHeater(
-                broker, device, RamsesWaterHeaterEntityDescription(key="dhwzone")
+                broker,
+                device,
+                RamsesWaterHeaterEntityDescription(key="dhwzone", name=None),
             )
             for device in devices
         ]
@@ -88,7 +90,6 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
     _attr_icon: str = "mdi:thermometer-lines"
     _attr_max_temp: float = StoredHw.MAX_SETPOINT
     _attr_min_temp: float = StoredHw.MIN_SETPOINT
-    _attr_name: str | None = None
     _attr_operation_list: list[str] = list(MODE_HA_TO_RAMSES)
     _attr_supported_features: int = (
         WaterHeaterEntityFeature.OPERATION_MODE
