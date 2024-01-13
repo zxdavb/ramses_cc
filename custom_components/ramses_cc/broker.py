@@ -115,6 +115,8 @@ class RamsesBroker:
                 and pkt[41:45] not in msg_code_filter
             }
 
+        # NOTE: Warning: 'Detected blocking call to sleep inside the event loop'
+        # - in pyserial: rfc2217.py, in Serial.open(): `time.sleep(0.05)`
         await self.client.start(cached_packets=cached_packets())
 
         # Perform initial update, then poll at intervals
