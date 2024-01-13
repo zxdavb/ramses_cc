@@ -13,7 +13,6 @@ from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.system.heat import Evohome
 from ramses_rf.system.zones import Zone
 from ramses_tx.const import SZ_MODE, SZ_SETPOINT, SZ_SYSTEM_MODE
-import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components.climate import (
     FAN_AUTO,
@@ -35,7 +34,6 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
     EntityPlatform,
@@ -45,34 +43,14 @@ from homeassistant.helpers.entity_platform import (
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import (
-    ATTR_DURATION,
-    ATTR_LOCAL_OVERRIDE,
-    ATTR_MAX_TEMP,
-    ATTR_MIN_TEMP,
-    ATTR_MODE,
-    ATTR_MULTIROOM,
-    ATTR_OPENWINDOW,
-    ATTR_PERIOD,
-    ATTR_SCHEDULE,
-    ATTR_SETPOINT,
-    ATTR_UNTIL,
     DOMAIN,
     PRESET_CUSTOM,
     PRESET_PERMANENT,
     PRESET_TEMPORARY,
-    SVC_GET_ZONE_SCHEDULE,
-    SVC_PUT_ROOM_TEMP,
-    SVC_RESET_SYSTEM_MODE,
-    SVC_RESET_ZONE_CONFIG,
-    SVC_RESET_ZONE_MODE,
-    SVC_SET_SYSTEM_MODE,
-    SVC_SET_ZONE_CONFIG,
-    SVC_SET_ZONE_MODE,
-    SVC_SET_ZONE_SCHEDULE,
     SystemMode,
     ZoneMode,
 )
-from .schemas import SCH_PUT_ROOM_TEMP
+from .schemas import SVCS_CLIMATE, SVCS_CLIMATE_ASYNC
 
 
 @dataclass(kw_only=True)
@@ -132,100 +110,6 @@ PRESET_ZONE_TO_HA = {
 }
 PRESET_HA_TO_ZONE = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
 
-SCH_SET_SYSTEM_MODE = vol.Schema(
-    vol.Any(
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In(
-                    [
-                        SystemMode.AUTO,
-                        SystemMode.HEAT_OFF,
-                        SystemMode.RESET,
-                    ]
-                )
-            }
-        ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In([SystemMode.ECO_BOOST]),
-                vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(hours=1), max=timedelta(hours=24)),
-                ),
-            }
-        ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In(
-                    [
-                        SystemMode.AWAY,
-                        SystemMode.CUSTOM,
-                        SystemMode.DAY_OFF,
-                        SystemMode.DAY_OFF_ECO,
-                    ]
-                ),
-                vol.Optional(ATTR_PERIOD, default=timedelta(days=0)): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(days=0), max=timedelta(days=99)),
-                ),  # 0 means until the end of the day
-            }
-        ),
-    )
-)
-
-SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
-    {
-        vol.Optional(ATTR_MAX_TEMP, default=35): vol.All(
-            cv.positive_float, vol.Range(min=21, max=35)
-        ),
-        vol.Optional(ATTR_MIN_TEMP, default=5): vol.All(
-            cv.positive_float, vol.Range(min=5, max=21)
-        ),
-        vol.Optional(ATTR_LOCAL_OVERRIDE, default=True): cv.boolean,
-        vol.Optional(ATTR_OPENWINDOW, default=True): cv.boolean,
-        vol.Optional(ATTR_MULTIROOM, default=True): cv.boolean,
-    }
-)
-
-SCH_SET_ZONE_MODE = vol.Schema(
-    vol.Any(
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In([ZoneMode.SCHEDULE]),
-            }
-        ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In(
-                    [ZoneMode.PERMANENT, ZoneMode.ADVANCED]
-                ),
-                vol.Optional(ATTR_SETPOINT, default=21): vol.All(
-                    cv.positive_float, vol.Range(min=5, max=30)
-                ),
-            }
-        ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In([ZoneMode.TEMPORARY]),
-                vol.Optional(ATTR_SETPOINT, default=21): vol.All(
-                    cv.positive_float, vol.Range(min=5, max=30)
-                ),
-                vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
-                vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
-                ),
-            }
-        ),
-    )
-)
-
-SCH_SET_ZONE_SCHEDULE = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_SCHEDULE): cv.string,
-    }
-)
-
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -234,29 +118,11 @@ async def async_setup_entry(
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
     platform: EntityPlatform = async_get_current_platform()
 
-    platform.async_register_entity_service(
-        SVC_PUT_ROOM_TEMP, SCH_PUT_ROOM_TEMP, "fake_zone_temp"
-    )
-    platform.async_register_entity_service(SVC_RESET_SYSTEM_MODE, {}, "reset_tcs_mode")
-    platform.async_register_entity_service(
-        SVC_SET_SYSTEM_MODE, SCH_SET_SYSTEM_MODE, "set_tcs_mode"
-    )
-    platform.async_register_entity_service(
-        SVC_SET_ZONE_CONFIG, SCH_SET_ZONE_CONFIG, "set_zone_config"
-    )
-    platform.async_register_entity_service(
-        SVC_RESET_ZONE_CONFIG, {}, "reset_zone_config"
-    )
-    platform.async_register_entity_service(
-        SVC_SET_ZONE_MODE, SCH_SET_ZONE_MODE, "set_zone_mode"
-    )
-    platform.async_register_entity_service(SVC_RESET_ZONE_MODE, {}, "reset_zone_mode")
-    platform.async_register_entity_service(
-        SVC_GET_ZONE_SCHEDULE, {}, "async_get_zone_schedule"
-    )
-    platform.async_register_entity_service(
-        SVC_SET_ZONE_SCHEDULE, SCH_SET_ZONE_SCHEDULE, "async_set_zone_schedule"
-    )
+    for k, v in SVCS_CLIMATE.items():
+        platform.async_register_entity_service(k, v, k)
+
+    for k, v in SVCS_CLIMATE_ASYNC.items():
+        platform.async_register_entity_service(k, v, f"async_{k}")
 
     @callback
     def add_devices(devices: list[Evohome | Zone | HvacVentilator]) -> None:
@@ -375,21 +241,23 @@ class RamsesController(RamsesEntity, ClimateEntity):
     @callback
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set an operating mode for a Controller."""
-        self.async_set_system_mode(MODE_HA_TO_TCS.get(hvac_mode))
+        self.set_system_mode(MODE_HA_TO_TCS.get(hvac_mode))
 
     @callback
     def set_preset_mode(self, preset_mode: str | None) -> None:
         """Set the preset mode; if None, then revert to 'Auto' mode."""
-        self.async_set_system_mode(PRESET_HA_TO_TCS.get(preset_mode, SystemMode.AUTO))
+        self.set_system_mode(PRESET_HA_TO_TCS.get(preset_mode, SystemMode.AUTO))
+
+    # the following methods are integration-specific service calls
 
     @callback
-    def reset_tcs_mode(self) -> None:
+    def reset_system_mode(self) -> None:
         """Reset the (native) operating mode of the Controller."""
         self._device.reset_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def set_tcs_mode(self, mode, period=None, duration=None) -> None:
+    def set_system_mode(self, mode, period=None, duration=None) -> None:
         """Set the (native) operating mode of the Controller."""
         if period is not None:
             until = datetime.now() + period  # Period in days TODO: round down
@@ -528,16 +396,16 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set a Zone to one of its native operating modes."""
         if hvac_mode == HVACMode.AUTO:  # FollowSchedule
-            self.async_reset_zone_mode()
+            self.reset_zone_mode()
         elif hvac_mode == HVACMode.HEAT:  # TemporaryOverride
-            self.async_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)
+            self.set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)
         else:  # HVACMode.OFF, PermentOverride, temp = min
-            self.async_set_zone_mode(self._device.set_frost_mode)
+            self.set_zone_mode(self._device.set_frost_mode)
 
     @callback
     def set_preset_mode(self, preset_mode: str | None) -> None:
         """Set the preset mode; if None, then revert to following the schedule."""
-        self.async_set_zone_mode(
+        self.set_zone_mode(
             mode=PRESET_HA_TO_ZONE.get(preset_mode),
             setpoint=self.target_temperature if preset_mode == "permanent" else None,
         )
@@ -545,7 +413,9 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     @callback
     def set_temperature(self, temperature: float | None = None, **kwargs) -> None:
         """Set a new target temperature."""
-        self.async_set_zone_mode(setpoint=temperature)
+        self.set_zone_mode(setpoint=temperature)
+
+    # the following are integration-specific methods service calls
 
     @callback
     def fake_zone_temp(self, temperature: float) -> None:

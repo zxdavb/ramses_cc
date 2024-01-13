@@ -14,13 +14,12 @@ from ramses_tx.schemas import (
     SZ_FILE_NAME,
     SZ_KNOWN_LIST,
     SZ_PACKET_LOG,
-    SZ_PORT_CONFIG,
     SZ_PORT_NAME,
     SZ_ROTATE_BACKUPS,
     SZ_ROTATE_BYTES,
     SZ_SERIAL_PORT,
 )
-from serial.tools import list_ports
+from serial.tools import list_ports  # type: ignore[import-untyped]
 import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components import usb
@@ -177,7 +176,7 @@ class BaseRamsesFlow(FlowHandler):
                 },
             }
 
-        data_schema = {}
+        data_schema: dict[vol.Marker, Any] = {}
         if self._manual_serial_port:
             data_schema |= {
                 vol.Required(

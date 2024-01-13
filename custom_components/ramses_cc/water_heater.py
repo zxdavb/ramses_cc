@@ -10,7 +10,6 @@ from typing import Any, TypeAlias
 from ramses_rf.system.heat import StoredHw
 from ramses_rf.system.zones import DhwZone
 from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
-import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components.water_heater import (
     STATE_OFF,
@@ -22,7 +21,6 @@ from homeassistant.components.water_heater import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
     EntityPlatform,
@@ -31,28 +29,8 @@ from homeassistant.helpers.entity_platform import (
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
-from .const import (
-    ATTR_ACTIVE,
-    ATTR_DIFFERENTIAL,
-    ATTR_DURATION,
-    ATTR_MODE,
-    ATTR_OVERRUN,
-    ATTR_SCHEDULE,
-    ATTR_SETPOINT,
-    ATTR_UNTIL,
-    DOMAIN,
-    SVC_GET_DHW_SCHEDULE,
-    SVC_PUT_DHW_TEMP,
-    SVC_RESET_DHW_MODE,
-    SVC_RESET_DHW_PARAMS,
-    SVC_SET_DHW_BOOST,
-    SVC_SET_DHW_MODE,
-    SVC_SET_DHW_PARAMS,
-    SVC_SET_DHW_SCHEDULE,
-    SystemMode,
-    ZoneMode,
-)
-from .schemas import SCH_PUT_DHW_TEMP
+from .const import DOMAIN, SystemMode, ZoneMode
+from .schemas import SVCS_WATER_HEATER, SVCS_WATER_HEATER_ASYNC
 
 
 @dataclass(kw_only=True)
@@ -75,43 +53,6 @@ MODE_HA_TO_RAMSES = {
     STATE_ON: ZoneMode.PERMANENT,
 }
 
-SCH_SET_DHW_MODE = cv.make_entity_service_schema(
-    {
-        vol.Optional(ATTR_MODE): vol.In(
-            [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
-        ),
-        vol.Optional(ATTR_ACTIVE): cv.boolean,
-        vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
-        vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
-            cv.time_period,
-            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
-        ),
-    }
-)
-
-SCH_SET_DHW_PARAMS = cv.make_entity_service_schema(
-    {
-        vol.Optional(ATTR_SETPOINT, default=50): vol.All(
-            cv.positive_float,
-            vol.Range(min=30, max=85),
-        ),
-        vol.Optional(ATTR_OVERRUN, default=5): vol.All(
-            cv.positive_int,
-            vol.Range(max=10),
-        ),
-        vol.Optional(ATTR_DIFFERENTIAL, default=1): vol.All(
-            cv.positive_float,
-            vol.Range(max=10),
-        ),
-    }
-)
-
-SCH_SET_DHW_SCHEDULE = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_SCHEDULE): cv.string,
-    }
-)
-
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -120,24 +61,11 @@ async def async_setup_entry(
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
     platform: EntityPlatform = async_get_current_platform()
 
-    platform.async_register_entity_service(
-        SVC_PUT_DHW_TEMP, SCH_PUT_DHW_TEMP, "fake_dhw_temp"
-    )
-    platform.async_register_entity_service(SVC_SET_DHW_BOOST, {}, "set_dhw_boost")
-    platform.async_register_entity_service(
-        SVC_SET_DHW_MODE, SCH_SET_DHW_MODE, "set_dhw_mode"
-    )
-    platform.async_register_entity_service(SVC_RESET_DHW_MODE, {}, "reset_dhw_mode")
-    platform.async_register_entity_service(
-        SVC_SET_DHW_PARAMS, SCH_SET_DHW_PARAMS, "set_dhw_params"
-    )
-    platform.async_register_entity_service(SVC_RESET_DHW_PARAMS, {}, "reset_dhw_params")
-    platform.async_register_entity_service(
-        SVC_GET_DHW_SCHEDULE, {}, "async_get_dhw_schedule"
-    )
-    platform.async_register_entity_service(
-        SVC_SET_DHW_SCHEDULE, SCH_SET_DHW_SCHEDULE, "async_set_dhw_schedule"
-    )
+    for k, v in SVCS_WATER_HEATER.items():
+        platform.async_register_entity_service(k, v, k)
+
+    for k, v in SVCS_WATER_HEATER_ASYNC.items():
+        platform.async_register_entity_service(k, v, f"async_{k}")
 
     @callback
     def add_devices(devices: list[DhwZone]) -> None:
@@ -235,13 +163,15 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         elif operation_mode == STATE_ON:
             active = True
 
-        self.async_set_dhw_mode(
+        self.set_dhw_mode(
             mode=MODE_HA_TO_RAMSES[operation_mode], active=active, until=until
         )
 
     def set_temperature(self, temperature: float | None = None, **kwargs) -> None:
         """Set the target temperature of the water heater."""
-        self.async_set_dhw_params(setpoint=temperature)
+        self.set_dhw_params(setpoint=temperature)
+
+    # the following methods are integration-specific service calls
 
     @callback
     def fake_dhw_temp(self, temperature: float) -> None:

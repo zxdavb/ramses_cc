@@ -70,33 +70,6 @@ PRESET_CUSTOM = "custom"
 PRESET_TEMPORARY = "temporary"
 PRESET_PERMANENT = "permanent"
 
-# Services
-SVC_DELETE_COMMAND = "delete_command"
-SVC_BIND_DEVICE = "bind_device"
-SVC_FORCE_UPDATE = "force_update"
-SVC_GET_DHW_SCHEDULE = "get_dhw_schedule"
-SVC_GET_ZONE_SCHEDULE = "get_zone_schedule"
-SVC_LEARN_COMMAND = "learn_command"
-SVC_PUT_CO2_LEVEL = "put_co2_level"
-SVC_PUT_DHW_TEMP = "put_dhw_temp"
-SVC_PUT_INDOOR_HUMIDITY = "put_indoor_humidity"
-SVC_PUT_ROOM_TEMP = "put_room_temp"
-SVC_RESET_DHW_MODE = "reset_dhw_mode"
-SVC_RESET_DHW_PARAMS = "reset_dhw_params"
-SVC_RESET_SYSTEM_MODE = "reset_system_mode"
-SVC_RESET_ZONE_CONFIG = "reset_zone_config"
-SVC_RESET_ZONE_MODE = "reset_zone_mode"
-SVC_SEND_COMMAND = "send_command"
-SVC_SEND_PACKET = "send_packet"
-SVC_SET_DHW_BOOST = "set_dhw_boost"
-SVC_SET_DHW_MODE = "set_dhw_mode"
-SVC_SET_DHW_PARAMS = "set_dhw_params"
-SVC_SET_DHW_SCHEDULE = "set_dhw_schedule"
-SVC_SET_SYSTEM_MODE = "set_system_mode"
-SVC_SET_ZONE_CONFIG = "set_zone_config"
-SVC_SET_ZONE_MODE = "set_zone_mode"
-SVC_SET_ZONE_SCHEDULE = "set_zone_schedule"
-
 
 # Volume Flow Rate units, these specific unit are not defined in HA v2024.1
 class UnitOfVolumeFlowRate(StrEnum):

@@ -10,7 +10,6 @@ from typing import Any, TypeAlias
 
 from ramses_rf.device.hvac import HvacRemote
 from ramses_tx import Command, Priority
-import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.components.remote import (
     RemoteEntity,
@@ -19,7 +18,6 @@ from homeassistant.components.remote import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
     EntityPlatform,
@@ -28,16 +26,8 @@ from homeassistant.helpers.entity_platform import (
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
-from .const import (
-    ATTR_COMMAND,
-    ATTR_DELAY_SECS,
-    ATTR_NUM_REPEATS,
-    ATTR_TIMEOUT,
-    DOMAIN,
-    SVC_DELETE_COMMAND,
-    SVC_LEARN_COMMAND,
-    SVC_SEND_COMMAND,
-)
+from .const import DOMAIN
+from .schemas import SVCS_REMOTE_ASYNC
 
 
 @dataclass(kw_only=True)
@@ -47,29 +37,6 @@ class RamsesRemoteEntityDescription(RamsesEntityDescription, RemoteEntityDescrip
 
 _LOGGER = logging.getLogger(__name__)
 
-SVC_LEARN_COMMAND_SCHEMA = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_COMMAND): cv.string,
-        vol.Required(ATTR_TIMEOUT, default=60): vol.All(
-            cv.positive_int, vol.Range(min=30, max=300)
-        ),
-    }
-)
-
-SVC_SEND_COMMAND_SCHEMA = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_COMMAND): cv.string,
-        vol.Required(ATTR_NUM_REPEATS, default=3): cv.positive_int,
-        vol.Required(ATTR_DELAY_SECS, default=0.2): cv.positive_float,
-    },
-)
-
-SVC_DELETE_COMMAND_SCHEMA = cv.make_entity_service_schema(
-    {
-        vol.Required(ATTR_COMMAND): cv.string,
-    },
-)
-
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -78,15 +45,8 @@ async def async_setup_entry(
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
     platform: EntityPlatform = async_get_current_platform()
 
-    platform.async_register_entity_service(
-        SVC_LEARN_COMMAND, SVC_LEARN_COMMAND_SCHEMA, "async_learn_command"
-    )
-    platform.async_register_entity_service(
-        SVC_SEND_COMMAND, SVC_SEND_COMMAND_SCHEMA, "async_send_command"
-    )
-    platform.async_register_entity_service(
-        SVC_DELETE_COMMAND, SVC_DELETE_COMMAND_SCHEMA, "async_delete_command"
-    )
+    for k, v in SVCS_REMOTE_ASYNC.items():
+        platform.async_register_entity_service(k, v, f"async_{k}")
 
     @callback
     def add_devices(devices: list[HvacRemote]) -> None:
