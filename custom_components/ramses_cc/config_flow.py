@@ -120,11 +120,17 @@ class BaseRamsesFlow(FlowHandler):
         ports[CONF_MANUAL_PATH] = CONF_MANUAL_PATH
 
         port_name = self.options[SZ_SERIAL_PORT].get(SZ_PORT_NAME)
+        if port_name is None:
+            default_port = vol.UNDEFINED
+        elif port_name in ports:
+            default_port = port_name
+        else:
+            default_port = CONF_MANUAL_PATH
 
         data_schema = {
             vol.Required(
                 SZ_PORT_NAME,
-                default=port_name if port_name in ports else CONF_MANUAL_PATH,
+                default=default_port,
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=[
