@@ -15,15 +15,20 @@ from ramses_rf.schemas import (
     SZ_SYSTEM,
     SZ_ZONES,
 )
+from ramses_tx.schemas import sch_global_traits_dict_factory
 import voluptuous as vol  # type: ignore[import-untyped]
 
 from homeassistant.helpers import config_validation as cv
 
-from .const import ATTR_CO2_LEVEL, ATTR_INDOOR_HUMIDITY, ATTR_TEMPERATURE
+from .const import ATTR_CO2_LEVEL, ATTR_INDOOR_HUMIDITY, ATTR_TEMPERATURE, CONF_COMMANDS
 
 _SchemaT: TypeAlias = dict[str, Any]
 
 _LOGGER = logging.getLogger(__name__)
+
+SCH_GLOBAL_TRAITS_DICT, SCH_TRAITS = sch_global_traits_dict_factory(
+    hvac_traits={vol.Optional(CONF_COMMANDS): dict}
+)
 
 SCH_MINIMUM_TCS = vol.Schema(
     {

@@ -9,7 +9,6 @@ from typing import Any
 from ramses_rf.schemas import SCH_GATEWAY_DICT, SCH_GLOBAL_SCHEMAS, SZ_SCHEMA
 from ramses_tx.schemas import (
     SCH_ENGINE_DICT,
-    SCH_GLOBAL_TRAITS_DICT,
     SZ_BAUDRATE,
     SZ_ENFORCE_KNOWN_LIST,
     SZ_FILE_NAME,
@@ -47,6 +46,7 @@ from .const import (
     SZ_CLIENT_STATE,
     SZ_PACKETS,
 )
+from .schemas import SCH_GLOBAL_TRAITS_DICT
 
 _LOGGER = logging.getLogger(__name__)
 

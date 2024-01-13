@@ -38,6 +38,7 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.helpers.storage import Store
 
 from .const import (
+    CONF_COMMANDS,
     CONF_RAMSES_RF,
     CONF_SCHEMA,
     DOMAIN,
@@ -97,7 +98,13 @@ class RamsesBroker:
         storage = await self._store.async_load() or {}
         _LOGGER.debug("Storage = %s", storage)
 
-        self._remotes = storage.get(SZ_REMOTES, {})  # | self.config[SZ_REMOTES]
+        remote_commands = {
+            k: v.pop(CONF_COMMANDS)
+            for k, v in self.options.get(SZ_KNOWN_LIST, []).items()
+            if v.get(CONF_COMMANDS)
+        }
+        self._remotes = storage.get(SZ_REMOTES, {}) | remote_commands
+
         client_state: dict[str, Any] = storage.get(SZ_CLIENT_STATE, {})
 
         config_schema = self.options.get(CONF_SCHEMA, {})
