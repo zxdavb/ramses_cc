@@ -178,6 +178,8 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         """Set the target temperature of the water heater."""
         self.async_set_dhw_params(setpoint=temperature)
 
+    # the following methods are integration-specific service calls
+
     @callback
     def fake_dhw_temp(self, temperature: float) -> None:
         """Cast the temperature of this water heater (if faked)."""

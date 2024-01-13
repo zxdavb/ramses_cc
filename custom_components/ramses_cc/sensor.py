@@ -189,6 +189,8 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         )
         return f"{prefix} {super().name}"
 
+    # the following methods are integration-specific service calls
+
     @callback
     def put_co2_level(self, co2_level: int) -> None:
         """Cast the CO2 level (if faked)."""

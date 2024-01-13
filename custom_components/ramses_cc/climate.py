@@ -256,6 +256,8 @@ class RamsesController(RamsesEntity, ClimateEntity):
         """Set the preset mode; if None, then revert to 'Auto' mode."""
         self.async_set_system_mode(PRESET_HA_TO_TCS.get(preset_mode, SystemMode.AUTO))
 
+    # the following methods are integration-specific service calls
+
     @callback
     def reset_system_mode(self) -> None:
         """Reset the (native) operating mode of the Controller."""
@@ -420,6 +422,8 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     def set_temperature(self, temperature: float | None = None, **kwargs) -> None:
         """Set a new target temperature."""
         self.async_set_zone_mode(setpoint=temperature)
+
+    # the following are integration-specific methods service calls
 
     @callback
     def fake_zone_temp(self, temperature: float) -> None:
