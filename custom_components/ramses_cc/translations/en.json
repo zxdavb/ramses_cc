@@ -3,11 +3,24 @@
         "abort": {
             "single_instance_allowed": "Already configured. Only a single configuration possible."
         },
+        "error": {
+            "invalid_port_config": "Invalid serial port config: {error_detail}"
+        },
         "step": {
             "choose_serial_port": {
                 "title": "Choose serial port",
                 "data": {
-                    "port_name": "Port name"
+                    "port_name": "Serial device path"
+                }
+            },
+            "configure_serial_port": {
+                "title": "Serial port config",
+                "data": {
+                    "port_name": "Serial device path",
+                    "serial_port": "Advanced serial port config"
+                },
+                "data_description": {
+                    "serial_port": "Not required for typical use."
                 }
             }
         }
