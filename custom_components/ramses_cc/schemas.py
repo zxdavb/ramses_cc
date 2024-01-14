@@ -270,7 +270,8 @@ SCH_PUT_CO2_LEVEL = cv.make_entity_service_schema(
             cv.positive_int,
             vol.Range(min=MIN_CO2_LEVEL, max=MAX_CO2_LEVEL),
         ),
-    }
+    },
+    extra=vol.PREVENT_EXTRA,
 )
 
 MIN_DHW_TEMP = 0
@@ -283,7 +284,8 @@ SCH_PUT_DHW_TEMP = cv.make_entity_service_schema(
             vol.Coerce(float),
             vol.Range(min=MIN_DHW_TEMP, max=MAX_DHW_TEMP),
         ),
-    }
+    },
+    extra=vol.PREVENT_EXTRA,
 )
 
 MIN_INDOOR_HUMIDITY = 0
@@ -296,7 +298,8 @@ SCH_PUT_INDOOR_HUMIDITY = cv.make_entity_service_schema(
             cv.positive_float,
             vol.Range(min=MIN_INDOOR_HUMIDITY, max=MAX_INDOOR_HUMIDITY),
         ),
-    }
+    },
+    extra=vol.PREVENT_EXTRA,
 )
 
 MIN_ROOM_TEMP = -20
@@ -309,7 +312,8 @@ SCH_PUT_ROOM_TEMP = cv.make_entity_service_schema(
             vol.Coerce(float),
             vol.Range(min=MIN_ROOM_TEMP, max=MAX_ROOM_TEMP),
         ),
-    }
+    },
+    extra=vol.PREVENT_EXTRA,
 )
 
 SVCS_SENSOR = {
