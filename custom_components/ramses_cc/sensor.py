@@ -421,7 +421,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_INDOOR_HUMIDITY,
-        name="Indoor humidiity",
+        name="Indoor humidity",
         device_class=SensorDeviceClass.HUMIDITY,
         native_unit_of_measurement=PERCENTAGE,
         entity_category=None,
@@ -435,7 +435,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_OUTDOOR_HUMIDITY,
-        name="Outdoor humidiity",
+        name="Outdoor humidity",
         device_class=SensorDeviceClass.HUMIDITY,
         native_unit_of_measurement=PERCENTAGE,
     ),
