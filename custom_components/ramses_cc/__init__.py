@@ -138,7 +138,7 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
             list(call.data["offer"].keys()),
             confirm_code=list(call.data["confirm"].keys()),
             ratify_cmd=cmd,
-        )
+        )  # TODO: will need to re-discover schema
         hass.helpers.event.async_call_later(5, broker.async_update)
 
     @verify_domain_control(hass, DOMAIN)
