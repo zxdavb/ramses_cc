@@ -473,7 +473,7 @@ class RamsesConfigFlow(BaseRamsesFlow, ConfigFlow, domain=DOMAIN):  # type: igno
         if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
 
-        import_data.pop("restore_cache")
+        import_data.pop("restore_cache", None)
         if serial_port := import_data.pop(SZ_SERIAL_PORT, None):
             if isinstance(serial_port, str):
                 serial_port = {SZ_PORT_NAME: serial_port}
