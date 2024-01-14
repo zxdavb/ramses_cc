@@ -57,8 +57,8 @@
                     "enforce_known_list": "Accept packets from known devices IDs only"
                 },
                 "data_description": {
-                    "schema": "A mapping of system device IDs to their respective schemas. This should be kept minimal and only contain devices that are not automatically discovered. For example:\n```\n01:111111: # Temperature control system (e.g. evohome)\n  system:\n    appliance_control: 10:123446\n  zones:\n    \"07\": '{sensor: 01:111111}'\n\norphans_hvac: [30:111111, 32:333333, 32:555555, 32:666666]\n```",
-                    "known_list": "A mapping of known device IDs and optionally their device classes. For example:\n```\n18:123456: '{}' # Honeywell HGI80\n30:111111: '{class: FAN}' # Orcon HRU\n32:333333: '{class: REM, faked: true}' # an impersonatable remote\n32:555555: '{class: CO2, faked: true}' # a fully faked sensor\n32:666666: '{class: HUM}'\n```",
+                    "schema": "A mapping of system device IDs to their respective schemas. This should be kept minimal and only contain devices that are not automatically discovered.",
+                    "known_list": "A mapping of known device IDs and optionally their traits.",
                     "enforce_known_list": "Recommended once you have entered all your device IDs as the RAMSES II protocol does not include error correction and corrupt device IDs are common."
                 }
             },
@@ -144,8 +144,8 @@
                     "enforce_known_list": "Accept packets from known devices IDs only"
                 },
                 "data_description": {
-                    "schema": "A mapping of system device IDs to their respective schemas. This should be kept minimal and only contain devices that are not automatically discovered. For example:\n```\n01:111111: # Temperature control system (e.g. evohome)\n  system:\n    appliance_control: 10:123446\n  zones:\n    \"07\": '{sensor: 01:111111}'\n\norphans_hvac: [30:111111, 32:333333, 32:555555, 32:666666]\n```",
-                    "known_list": "A mapping of known device IDs and optionally their device classes. For example:\n```\n18:123456: '{}' # Honeywell HGI80\n30:111111: '{class: FAN}' # Orcon HRU\n32:333333: '{class: REM, faked: true}' # an impersonatable remote\n32:555555: '{class: CO2, faked: true}' # a fully faked sensor\n32:666666: '{class: HUM}'\n```",
+                    "schema": "A mapping of system device IDs to their respective schemas. This should be kept minimal and only contain devices that are not automatically discovered.",
+                    "known_list": "A mapping of known device IDs and optionally their traits.",
                     "enforce_known_list": "Recommended once you have entered all your device IDs as the RAMSES II protocol does not include error correction and corrupt device IDs are common."
                 }
             },
