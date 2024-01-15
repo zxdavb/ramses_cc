@@ -215,13 +215,11 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         if not self._device.is_faked:  # have to check here, as not using device method
             raise TypeError(f"{self._device.id} is not configured for faking")
 
+        cmd = Command(self._commands[command[0]])
         for x in range(num_repeats):  # TODO: use ramses_rf's QoS
             if x != 0:
                 await asyncio.sleep(delay_secs)
-            cmd = Command(self._commands[command[0]])
-            self._broker.client.send_cmd(
-                cmd, qos={"priority": Priority.HIGH, "retries": 0}
-            )
+            self._broker.client.send_cmd(cmd, priority=Priority.HIGH)
 
         await self._broker.async_update()
 
