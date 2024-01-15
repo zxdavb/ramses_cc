@@ -53,7 +53,13 @@ from ramses_rf.device.hvac import HvacCarbonDioxideSensor, HvacHumiditySensor
 from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.system.heat import SystemBase
 from ramses_rf.system.zones import ZoneBase
-from ramses_tx.const import SZ_HEAT_DEMAND, SZ_RELAY_DEMAND, SZ_SETPOINT, SZ_TEMPERATURE
+from ramses_tx.const import (
+    SZ_DEWPOINT_TEMP,
+    SZ_HEAT_DEMAND,
+    SZ_RELAY_DEMAND,
+    SZ_SETPOINT,
+    SZ_TEMPERATURE,
+)
 
 from homeassistant.components.binary_sensor import ENTITY_ID_FORMAT
 from homeassistant.components.sensor import (
@@ -257,13 +263,13 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     RamsesSensorEntityDescription(
         key=SZ_TEMPERATURE,
         device_class=SensorDeviceClass.TEMPERATURE,
-        ramses_class=TrvActuator,
+        ramses_class=HvacHumiditySensor | TrvActuator,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         extra_attributes={
             ATTR_SETPOINT: SZ_SETPOINT,
         },
     ),
-    RamsesSensorEntityDescription(  # not TrvActuator
+    RamsesSensorEntityDescription(
         key=SZ_TEMPERATURE,
         device_class=SensorDeviceClass.TEMPERATURE,
         ramses_class=DhwSensor | OutSensor | Thermostat,
@@ -272,6 +278,14 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         extra_attributes={
             ATTR_SETPOINT: SZ_SETPOINT,
         },
+    ),
+    RamsesSensorEntityDescription(
+        key=SZ_DEWPOINT_TEMP,
+        name="Dewpoint temperature",
+        icon="mdi:water-thermometer",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        ramses_class=HvacHumiditySensor,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_HEAT_DEMAND,
