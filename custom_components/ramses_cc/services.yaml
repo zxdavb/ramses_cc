@@ -734,7 +734,7 @@ learn_command:
     timeout:
       description: Timeout for the command to be learned.
       required: false
-      default: 60
+      default: 30
       example: 60
       selector:
         number:

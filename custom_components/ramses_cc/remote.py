@@ -30,7 +30,12 @@ from homeassistant.helpers.typing import DiscoveryInfoType
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import BROKER, DOMAIN
-from .schemas import SVCS_REMOTE_ASYNC
+from .schemas import (
+    DEFAULT_DELAY_SECS,
+    DEFAULT_NUM_REPEATS,
+    DEFAULT_TIMEOUT,
+    SVCS_REMOTE_ASYNC,
+)
 
 
 @dataclass(kw_only=True)
@@ -112,7 +117,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
           entity_id: remote.device_id
         """
 
-        # HACK to make it work as per HA service call
+        # HACK to make ramses_cc call work as per HA service call
         command = [command] if isinstance(command, str) else list(command)
         # if len(command) != 1:
         #     raise TypeError("must be exactly one command to delete")
@@ -124,7 +129,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
     async def async_learn_command(
         self,
         command: Iterable[str] | str,
-        timeout: float = 60,
+        timeout: int = DEFAULT_TIMEOUT,
         **kwargs: Any,
     ) -> None:
         """Learn a command from a device (remote) and add to the database.
@@ -137,13 +142,10 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
           entity_id: remote.device_id
         """
 
-        # HACK to make it work as per HA service call
+        # HACK to make ramses_cc call work as per HA service call
         command = [command] if isinstance(command, str) else list(command)
         if len(command) != 1:
             raise TypeError("must be exactly one command to learn")
-
-        if not isinstance(timeout, float) or not 30 <= timeout <= 300:
-            raise TypeError("timeout must be 30 to 300 (default 60)")
 
         assert not kwargs, kwargs  # TODO: remove me
 
@@ -181,8 +183,8 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
     async def async_send_command(
         self,
         command: Iterable[str] | str,
-        num_repeats: int = 3,
-        delay_secs: float = 0.05,
+        num_repeats: int = DEFAULT_NUM_REPEATS,
+        delay_secs: float = DEFAULT_DELAY_SECS,
         hold_seconds: None = None,
         **kwargs: Any,
     ) -> None:
@@ -197,15 +199,11 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
           entity_id: remote.device_id
         """
 
-        # HACK to make it work as per HA service call
+        # HACK to make ramses_cc call work as per HA service call
         command = [command] if isinstance(command, str) else list(command)
         if len(command) != 1:
             raise TypeError("must be exactly one command to send")
 
-        if not isinstance(num_repeats, int) or not 1 <= num_repeats <= 5:
-            raise TypeError("num_repeats must be 1 to 5 (default 3)")
-        if not isinstance(delay_secs, float | int) or not 0.02 <= delay_secs <= 1:
-            raise TypeError("delay_secs must be 0.02 to 1.0 (default 0.05)")
         if hold_seconds is not None:
             raise TypeError("hold_seconds is not supported")
 
