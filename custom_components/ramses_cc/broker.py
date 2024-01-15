@@ -232,7 +232,7 @@ class RamsesBroker:
         if hasattr(device, "name") and device.name:
             name = device.name
         elif isinstance(device, Evohome):
-            name = "Controller"
+            name = f"Controller {device.id}"
         elif device._SLUG:
             name = f"{device._SLUG} {device.id}"
         else:
