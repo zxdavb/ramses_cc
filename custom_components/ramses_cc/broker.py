@@ -4,12 +4,12 @@ from __future__ import annotations
 from datetime import datetime as dt, timedelta
 import logging
 from threading import Semaphore
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
-from ramses_rf import Gateway
 from ramses_rf.device.base import Device
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
 from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_rf.gateway import Gateway
 from ramses_rf.schemas import (
     SZ_CONFIG,
     SZ_RESTORE_CACHE,
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-SAVE_STATE_INTERVAL = timedelta(minutes=5)
+SAVE_STATE_INTERVAL: Final[timedelta] = timedelta(minutes=5)
 
 
 class RamsesBroker:
@@ -67,7 +67,7 @@ class RamsesBroker:
         self.client: Gateway = None
         self._remotes: dict[str, dict[str, str]] = {}
 
-        self._services: dict = {}
+        self._services: dict[str, bool] = {}
         self._entities: dict[str, RamsesEntity] = {}  # domain entities
 
         # Discovered client objects...
@@ -155,8 +155,9 @@ class RamsesBroker:
             self._ser_name, loop=self.hass.loop, **client_config, **config_schema
         )
 
-    async def async_save_client_state(self, *args, **kwargs) -> None:
+    async def async_save_client_state(self, *args: Any, **kwargs: Any) -> None:
         """Save the client state to the application store."""
+        # args = (dt, ), kwargs = {}
 
         _LOGGER.info("Saving the client state cache (packets, schema)")
 

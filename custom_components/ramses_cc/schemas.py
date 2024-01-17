@@ -6,7 +6,7 @@ from datetime import timedelta
 import logging
 from typing import Any, Final, TypeAlias
 
-from ramses_rf.helpers import deep_merge, shrink
+from ramses_rf.helpers import deep_merge, is_subset, shrink
 from ramses_rf.schemas import (
     SCH_GATEWAY_CONFIG,
     SCH_GLOBAL_SCHEMAS_DICT,
@@ -135,23 +135,8 @@ SCH_MINIMUM_TCS = vol.Schema(
 )
 
 
-def _is_subset(subset, superset) -> bool:  # TODO: move to ramses_rf?
-    """Return True is one dict (or list/set) is a subset of another."""
-    if isinstance(subset, dict):
-        return all(
-            key in superset and _is_subset(val, superset[key])
-            for key, val in subset.items()
-        )
-    if isinstance(subset, list | set):
-        return all(
-            any(_is_subset(subitem, superitem) for superitem in superset)
-            for subitem in subset
-        )
-    return subset == superset  # not dict, list nor set
-
-
 @callback
-def normalise_config(config: dict) -> tuple[str, dict, dict]:
+def normalise_config(config: _SchemaT) -> tuple[str, _SchemaT, _SchemaT]:
     """Return a port/client_config/broker_config for the library."""
 
     config = deepcopy(config)
@@ -180,13 +165,13 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
 def merge_schemas(config_schema: _SchemaT, cached_schema: _SchemaT) -> _SchemaT | None:
     """Return the config schema deep merged into the cached schema."""
 
-    if _is_subset(shrink(config_schema), shrink(cached_schema)):
+    if is_subset(shrink(config_schema), shrink(cached_schema)):
         _LOGGER.info("Using the cached schema")
         return cached_schema
 
-    merged_schema = deep_merge(config_schema, cached_schema)  # 1st takes precedence
+    merged_schema: _SchemaT = deep_merge(config_schema, cached_schema)  # 1st precedent
 
-    if _is_subset(shrink(config_schema), shrink(merged_schema)):
+    if is_subset(shrink(config_schema), shrink(merged_schema)):
         _LOGGER.info("Using a merged schema")
         return merged_schema
 
@@ -195,11 +180,11 @@ def merge_schemas(config_schema: _SchemaT, cached_schema: _SchemaT) -> _SchemaT 
 
 
 @callback
-def schema_is_minimal(schema: dict) -> bool:
+def schema_is_minimal(schema: _SchemaT) -> bool:
     """Return True if the schema is minimal (i.e. no optional keys)."""
 
     key: str
-    sch: dict
+    sch: _SchemaT
 
     for key, sch in schema.items():
         if key in (SZ_BLOCK_LIST, SZ_KNOWN_LIST, SZ_ORPHANS_HEAT, SZ_ORPHANS_HVAC):
@@ -250,11 +235,6 @@ SVC_BIND_DEVICE: Final[str] = "bind_device"
 SVC_FORCE_UPDATE: Final[str] = "force_update"
 SVC_SEND_PACKET: Final[str] = "send_packet"
 
-_SVCS_RAMSES_CC_ASYNC = {
-    SVC_BIND_DEVICE: SCH_BIND_DEVICE,
-    SVC_FORCE_UPDATE: {},
-    SVC_SEND_PACKET: SCH_SEND_PACKET,
-}
 
 # services for sensor platform
 
@@ -314,7 +294,7 @@ SCH_PUT_ROOM_TEMP = cv.make_entity_service_schema(
     extra=vol.PREVENT_EXTRA,
 )
 
-SVCS_SENSOR = {
+SVCS_RAMSES_SENSOR = {
     SVC_PUT_CO2_LEVEL: SCH_PUT_CO2_LEVEL,
     SVC_PUT_DHW_TEMP: SCH_PUT_DHW_TEMP,
     SVC_PUT_INDOOR_HUMIDITY: SCH_PUT_INDOOR_HUMIDITY,
@@ -435,7 +415,7 @@ SVC_RESET_SYSTEM_MODE: Final[str] = "reset_system_mode"
 SVC_RESET_ZONE_CONFIG: Final[str] = "reset_zone_config"
 SVC_RESET_ZONE_MODE: Final[str] = "reset_zone_mode"
 
-SVCS_CLIMATE = {
+SVCS_RAMSES_CLIMATE = {
     SVC_FAKE_ZONE_TEMP: SCH_PUT_ROOM_TEMP,  # a convenience for SVC_PUT_ROOM_TEMP
     SVC_SET_SYSTEM_MODE: SCH_SET_SYSTEM_MODE,
     SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
@@ -443,8 +423,6 @@ SVCS_CLIMATE = {
     SVC_RESET_SYSTEM_MODE: {},
     SVC_RESET_ZONE_CONFIG: {},
     SVC_RESET_ZONE_MODE: {},
-}
-SVCS_CLIMATE_ASYNC = {
     SVC_GET_ZONE_SCHEDULE: {},
     SVC_SET_ZONE_SCHEDULE: SCH_SET_ZONE_SCHEDULE,
 }
@@ -506,16 +484,13 @@ SVC_RESET_DHW_MODE: Final[str] = "reset_dhw_mode"
 SVC_RESET_DHW_PARAMS: Final[str] = "reset_dhw_params"
 SVC_SET_DHW_BOOST: Final[str] = "set_dhw_boost"
 
-SVCS_WATER_HEATER = {
+SVCS_RAMSES_WATER_HEATER = {
     SVC_FAKE_DHW_TEMP: SCH_PUT_DHW_TEMP,  # a convenience for SVC_PUT_DHW_TEMP
     SVC_RESET_DHW_MODE: {},
     SVC_RESET_DHW_PARAMS: {},
     SVC_SET_DHW_BOOST: {},
     SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,
     SVC_SET_DHW_PARAMS: SCH_SET_DHW_PARAMS,
-    SVC_SET_DHW_SCHEDULE: SCH_SET_DHW_SCHEDULE,
-}
-SVCS_WATER_HEATER_ASYNC = {
     SVC_GET_DHW_SCHEDULE: {},
     SVC_SET_DHW_SCHEDULE: SCH_SET_DHW_SCHEDULE,
 }
@@ -566,7 +541,7 @@ SCH_DELETE_COMMAND = cv.make_entity_service_schema(
     },
 )
 
-SVCS_REMOTE_ASYNC = {
+SVCS_RAMSES_REMOTE = {
     SVC_DELETE_COMMAND: SCH_DELETE_COMMAND,
     SVC_LEARN_COMMAND: SCH_LEARN_COMMAND,
     SVC_SEND_COMMAND: SCH_SEND_COMMAND,

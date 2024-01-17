@@ -6,11 +6,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 from ramses_rf.device import Fakeable
 from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_tx import Command
+from ramses_tx.command import Command
 from ramses_tx.exceptions import TransportSerialError
 import voluptuous as vol  # type: ignore[import-untyped]
 
@@ -41,7 +41,7 @@ from .schemas import (
 )
 
 if TYPE_CHECKING:
-    from ramses_tx import Message
+    from ramses_tx.message import Message
 
 
 @dataclass(kw_only=True)
@@ -57,13 +57,13 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = vol.Schema({DOMAIN: SCH_DOMAIN_CONFIG}, extra=vol.ALLOW_EXTRA)
 
-PLATFORMS = [
+PLATFORMS: Final[Platform] = (
     Platform.BINARY_SENSOR,
     Platform.CLIMATE,
     Platform.SENSOR,
     Platform.REMOTE,
     Platform.WATER_HEATER,
-]
+)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -89,7 +89,9 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
     """Set up the handlers for the system-wide events."""
 
     @callback
-    def process_msg(msg: Message, *args, **kwargs):  # process_msg(msg, prev_msg=None)
+    def async_process_msg(msg: Message, *args: Any, **kwargs: Any) -> None:
+        """Process a message from the event bus as pass it on."""
+
         if (
             regex := broker.config[CONF_ADVANCED_FEATURES][CONF_MESSAGE_EVENTS]
         ) and regex.match(f"{msg!r}"):
@@ -112,11 +114,11 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
             }
             hass.bus.async_fire(f"{DOMAIN}_learn", event_data)
 
-    broker.client.add_msg_handler(process_msg)
+    broker.client.add_msg_handler(async_process_msg)
 
 
 @callback
-def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
+def register_domain_services(hass: HomeAssistant, broker: RamsesBroker) -> None:
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)  # TODO: is a work in progress
@@ -218,6 +220,6 @@ class RamsesEntity(Entity):
         )
 
     @callback
-    def async_write_ha_state_delayed(self, delay=3) -> None:
+    def async_write_ha_state_delayed(self, delay: int = 3) -> None:
         """Write the state to the state machine after a short delay to allow system to quiesce."""
         async_call_later(self.hass, delay, self.async_write_ha_state)

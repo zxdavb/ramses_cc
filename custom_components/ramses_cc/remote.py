@@ -10,7 +10,8 @@ from typing import Any, TypeAlias
 
 from ramses_rf.device.hvac import HvacRemote
 from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_tx import Command, Priority
+from ramses_tx.command import Command
+from ramses_tx.const import Priority
 
 from homeassistant.components.remote import (
     DOMAIN as PLATFORM,
@@ -34,7 +35,7 @@ from .schemas import (
     DEFAULT_DELAY_SECS,
     DEFAULT_NUM_REPEATS,
     DEFAULT_TIMEOUT,
-    SVCS_REMOTE_ASYNC,
+    SVCS_RAMSES_REMOTE,
 )
 
 
@@ -63,7 +64,7 @@ async def async_setup_platform(
         broker._services[PLATFORM] = True
         platform: EntityPlatform = async_get_current_platform()
 
-        for k, v in SVCS_REMOTE_ASYNC.items():
+        for k, v in SVCS_RAMSES_REMOTE.items():
             platform.async_register_entity_service(k, v, f"async_{k}")
 
     entities = [

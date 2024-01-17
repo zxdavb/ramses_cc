@@ -7,7 +7,6 @@ import logging
 from types import UnionType
 from typing import Any, TypeAlias
 
-from ramses_rf import Gateway
 from ramses_rf.device.base import BatteryState, HgiGateway
 from ramses_rf.device.heat import (
     SZ_CH_ACTIVE,
@@ -26,6 +25,7 @@ from ramses_rf.device.heat import (
     TrvActuator,
 )
 from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_rf.gateway import Gateway
 from ramses_rf.schemas import SZ_BLOCK_LIST, SZ_CONFIG, SZ_KNOWN_LIST, SZ_SCHEMA
 from ramses_rf.system.heat import Logbook, System
 from ramses_tx.const import SZ_BYPASS_POSITION, SZ_IS_EVOFW3
@@ -66,7 +66,7 @@ class RamsesBinarySensorEntityDescription(
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
     icon_off: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Defaults entity attr to key."""
         self.attr = self.attr or self.key
         self.entity_class = self.entity_class or RamsesBinarySensor
@@ -189,7 +189,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
 
-        def shrink(device_hints) -> dict:
+        def shrink(device_hints: dict[str, bool | str]) -> dict[str, Any]:
             return {
                 k: v
                 for k, v in device_hints.items()
