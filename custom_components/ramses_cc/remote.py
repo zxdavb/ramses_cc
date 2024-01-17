@@ -9,7 +9,8 @@ import logging
 from typing import Any, TypeAlias
 
 from ramses_rf.device.hvac import HvacRemote
-from ramses_tx import Command, Priority
+from ramses_tx.command import Command
+from ramses_tx.const import Priority
 
 from homeassistant.components.remote import (
     RemoteEntity,
@@ -31,7 +32,7 @@ from .schemas import (
     DEFAULT_DELAY_SECS,
     DEFAULT_NUM_REPEATS,
     DEFAULT_TIMEOUT,
-    SVCS_REMOTE_ASYNC,
+    SVCS_RAMSES_REMOTE,
 )
 
 
@@ -50,7 +51,7 @@ async def async_setup_entry(
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
     platform: EntityPlatform = async_get_current_platform()
 
-    for k, v in SVCS_REMOTE_ASYNC.items():
+    for k, v in SVCS_RAMSES_REMOTE.items():
         platform.async_register_entity_service(k, v, f"async_{k}")
 
     @callback
@@ -208,13 +209,11 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         if not self._device.is_faked:  # have to check here, as not using device method
             raise TypeError(f"{self._device.id} is not configured for faking")
 
+        cmd = Command(self._commands[command[0]])
         for x in range(num_repeats):  # TODO: use ramses_rf's QoS
             if x != 0:
                 await asyncio.sleep(delay_secs)
-            cmd = Command(self._commands[command[0]])
-            self._broker.client.send_cmd(
-                cmd, qos={"priority": Priority.HIGH, "retries": 0}
-            )
+            self._broker.client.send_cmd(cmd, priority=Priority.HIGH)
 
         await self._broker.async_update()
 

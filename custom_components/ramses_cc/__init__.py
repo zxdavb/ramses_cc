@@ -7,11 +7,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 from ramses_rf.device import Fakeable
 from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_tx import Command
+from ramses_tx.command import Command
 from ramses_tx.exceptions import TransportSerialError
 
 from homeassistant import config_entries
@@ -44,7 +44,7 @@ from .schemas import (
 )
 
 if TYPE_CHECKING:
-    from ramses_tx import Message
+    from ramses_tx.message import Message
 
 
 @dataclass(kw_only=True)
@@ -60,13 +60,13 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.deprecated(DOMAIN, raise_if_present=False)
 
-PLATFORMS = [
+PLATFORMS: Final[Platform] = (
     Platform.BINARY_SENSOR,
     Platform.CLIMATE,
     Platform.SENSOR,
     Platform.REMOTE,
     Platform.WATER_HEATER,
-]
+)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -141,7 +141,9 @@ def async_register_domain_events(
         message_events_regex = None
 
     @callback
-    def process_msg(msg: Message, *args, **kwargs):  # process_msg(msg, prev_msg=None)
+    def async_process_msg(msg: Message, *args: Any, **kwargs: Any) -> None:
+        """Process a message from the event bus as pass it on."""
+
         if message_events_regex and message_events_regex.match(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
@@ -162,13 +164,13 @@ def async_register_domain_events(
             }
             hass.bus.async_fire(f"{DOMAIN}_learn", event_data)
 
-    broker.client.add_msg_handler(process_msg)
+    broker.client.add_msg_handler(async_process_msg)
 
 
 @callback
 def async_register_domain_services(
     hass: HomeAssistant, entry: ConfigEntry, broker: RamsesBroker
-):
+) -> None:
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)  # TODO: is a work in progress
@@ -271,6 +273,6 @@ class RamsesEntity(Entity):
         )
 
     @callback
-    def async_write_ha_state_delayed(self, delay=3) -> None:
+    def async_write_ha_state_delayed(self, delay: int = 3) -> None:
         """Write the state to the state machine after a short delay to allow system to quiesce."""
         async_call_later(self.hass, delay, self.async_write_ha_state)

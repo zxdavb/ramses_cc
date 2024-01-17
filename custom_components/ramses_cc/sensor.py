@@ -87,7 +87,7 @@ from homeassistant.helpers.entity_platform import (
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import ATTR_SETPOINT, DOMAIN, UnitOfVolumeFlowRate
-from .schemas import SVCS_SENSOR
+from .schemas import SVCS_RAMSES_SENSOR
 
 
 @dataclass(kw_only=True)
@@ -102,7 +102,7 @@ class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescrip
     icon_off: str | None = None
     has_entity_name = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Defaults entity attr to key."""
         self.attr = self.attr or self.key
         self.entity_class = self.entity_class or RamsesSensor
@@ -118,8 +118,8 @@ async def async_setup_entry(
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
     platform: EntityPlatform = async_get_current_platform()
 
-    for k, v in SVCS_SENSOR.items():
-        platform.async_register_entity_service(k, v, k)
+    for k, v in SVCS_RAMSES_SENSOR.items():
+        platform.async_register_entity_service(k, v, f"async_{k}")
 
     @callback
     def add_devices(devices: list[RamsesRFEntity]) -> None:
@@ -172,7 +172,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         return val
 
     @property
-    def icon(self) -> str:
+    def icon(self) -> str | None:
         """Return the icon to use in the frontend, if any."""
         if self.entity_description.icon_off and not self.native_value:
             return self.entity_description.icon_off
@@ -181,7 +181,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
     # the following methods are integration-specific service calls
 
     @callback
-    def put_co2_level(self, co2_level: int) -> None:
+    def async_put_co2_level(self, co2_level: int) -> None:
         """Cast the CO2 level (if faked)."""
 
         # TODO: Remove from here...
@@ -196,7 +196,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         self._device.co2_level = co2_level  # would accept None
 
     @callback
-    def put_dhw_temp(self, temperature: float) -> None:
+    def async_put_dhw_temp(self, temperature: float) -> None:
         """Cast the DHW cylinder temperature (if faked)."""
 
         # TODO: Remove from here...
@@ -211,7 +211,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         self._device.temperature = temperature  # would accept None
 
     @callback
-    def put_indoor_humidity(self, indoor_humidity: float) -> None:
+    def async_put_indoor_humidity(self, indoor_humidity: float) -> None:
         """Cast the indoor humidity level (if faked)."""
 
         # TODO: Remove from here...
@@ -226,7 +226,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         self._device.indoor_humidity = indoor_humidity / 100  # would accept None
 
     @callback
-    def put_room_temp(self, temperature: float) -> None:
+    def async_put_room_temp(self, temperature: float) -> None:
         """Cast the room temperature (if faked)."""
 
         # TODO: Remove from here...

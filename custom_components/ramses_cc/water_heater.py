@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import json
 import logging
-from typing import Any, TypeAlias
+from typing import Any, Final, TypeAlias
 
 from ramses_rf.system.heat import StoredHw
 from ramses_rf.system.zones import DhwZone
@@ -30,7 +30,7 @@ from homeassistant.helpers.entity_platform import (
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import DOMAIN, SystemMode, ZoneMode
-from .schemas import SVCS_WATER_HEATER, SVCS_WATER_HEATER_ASYNC
+from .schemas import SVCS_RAMSES_WATER_HEATER
 
 
 @dataclass(kw_only=True)
@@ -43,10 +43,10 @@ class RamsesWaterHeaterEntityDescription(
 _LOGGER = logging.getLogger(__name__)
 
 
-STATE_AUTO = "auto"
-STATE_BOOST = "boost"
+STATE_AUTO: Final[str] = "auto"
+STATE_BOOST: Final[str] = "boost"
 
-MODE_HA_TO_RAMSES = {
+MODE_HA_TO_RAMSES: Final[dict[str, str]] = {
     STATE_AUTO: ZoneMode.SCHEDULE,
     STATE_BOOST: ZoneMode.TEMPORARY,
     STATE_OFF: ZoneMode.PERMANENT,
@@ -61,10 +61,7 @@ async def async_setup_entry(
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
     platform: EntityPlatform = async_get_current_platform()
 
-    for k, v in SVCS_WATER_HEATER.items():
-        platform.async_register_entity_service(k, v, k)
-
-    for k, v in SVCS_WATER_HEATER_ASYNC.items():
+    for k, v in SVCS_RAMSES_WATER_HEATER.items():
         platform.async_register_entity_service(k, v, f"async_{k}")
 
     @callback
@@ -160,42 +157,42 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         elif operation_mode == STATE_ON:
             active = True
 
-        self.set_dhw_mode(
+        self.async_set_dhw_mode(
             mode=MODE_HA_TO_RAMSES[operation_mode], active=active, until=until
         )
 
-    def set_temperature(self, temperature: float | None = None, **kwargs) -> None:
+    def set_temperature(self, temperature: float | None = None, **kwargs: Any) -> None:
         """Set the target temperature of the water heater."""
-        self.set_dhw_params(setpoint=temperature)
+        self.async_set_dhw_params(setpoint=temperature)
 
     # the following methods are integration-specific service calls
 
     @callback
-    def fake_dhw_temp(self, temperature: float) -> None:
+    def async_fake_dhw_temp(self, temperature: float) -> None:
         """Cast the temperature of this water heater (if faked)."""
 
         self._device.sensor.temperature = temperature  # would accept None
 
     @callback
-    def reset_dhw_mode(self) -> None:
+    def async_reset_dhw_mode(self) -> None:
         """Reset the operating mode of the water heater."""
         self._device.reset_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def reset_dhw_params(self) -> None:
+    def async_reset_dhw_params(self) -> None:
         """Reset the configuration of the water heater."""
         self._device.reset_config()
         self.async_write_ha_state_delayed()
 
     @callback
-    def set_dhw_boost(self) -> None:
+    def async_set_dhw_boost(self) -> None:
         """Enable the water heater for an hour."""
         self._device.set_boost_mode()
         self.async_write_ha_state_delayed()
 
     @callback
-    def set_dhw_mode(
+    def async_set_dhw_mode(
         self,
         mode: str | None = None,
         active: bool | None = None,
@@ -209,7 +206,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         self.async_write_ha_state_delayed()
 
     @callback
-    def set_dhw_params(
+    def async_set_dhw_params(
         self,
         setpoint: float | None = None,
         overrun: int | None = None,
@@ -223,13 +220,13 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         )
         self.async_write_ha_state_delayed()
 
-    async def async_get_dhw_schedule(self, **kwargs) -> None:
+    async def async_get_dhw_schedule(self) -> None:
         """Get the latest weekly schedule of the DHW."""
         # {{ state_attr('water_heater.stored_hw', 'schedule') }}
         await self._device.get_schedule()
         self.async_write_ha_state()
 
-    async def async_set_dhw_schedule(self, schedule: str, **kwargs) -> None:
+    async def async_set_dhw_schedule(self, schedule: str) -> None:
         """Set the weekly schedule of the DHW."""
         await self._device.set_schedule(json.loads(schedule))
 

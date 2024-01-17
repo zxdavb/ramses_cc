@@ -2,17 +2,17 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from copy import deepcopy
 from datetime import datetime as dt, timedelta
 import logging
 from threading import Semaphore
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
-from ramses_rf import Gateway
 from ramses_rf.device.base import Device
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
 from ramses_rf.entity_base import Child, Entity as RamsesRFEntity
+from ramses_rf.gateway import Gateway
 from ramses_rf.schemas import SZ_SCHEMA
 from ramses_rf.system import Evohome, System, Zone
 from ramses_tx.const import Code
@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-SAVE_STATE_INTERVAL = timedelta(minutes=5)
+SAVE_STATE_INTERVAL: Final[timedelta] = timedelta(minutes=5)
 
 
 class RamsesBroker:
@@ -77,7 +77,7 @@ class RamsesBroker:
         self.client: Gateway = None
         self._remotes: dict[str, dict[str, str]] = {}
 
-        self._platform_setup_tasks: dict[str, asyncio.Task] = {}
+        self._platform_setup_tasks: dict[str, asyncio.Task[bool]] = {}
 
         self._entities: dict[str, RamsesEntity] = {}  # domain entities
 
@@ -174,8 +174,9 @@ class RamsesBroker:
             **schema,
         )
 
-    async def async_save_client_state(self, *args, **kwargs) -> None:
+    async def async_save_client_state(self, *args: Any, **kwargs: Any) -> None:
         """Save the client state to the application store."""
+        # args = (dt, ), kwargs = {}
 
         _LOGGER.info("Saving the client state cache (packets, schema)")
 
@@ -213,19 +214,11 @@ class RamsesBroker:
 
     async def async_unload_platforms(self) -> bool:
         """Unload platforms."""
-        tasks = []
-
-        for platform, task in self._platform_setup_tasks.items():
-            if task.done():
-                tasks.append(
-                    self.hass.config_entries.async_forward_entry_unload(
-                        self.entry, platform
-                    )
-                )
-            else:
-                task.cancel()
-                tasks.append(task)
-
+        tasks: list[Coroutine[Any, Any, bool]] = [
+            self.hass.config_entries.async_forward_entry_unload(self.entry, platform)
+            for platform, task in self._platform_setup_tasks.items()
+            if not task.cancel()
+        ]
         return all(await asyncio.gather(*tasks))
 
     def _update_device(self, device: RamsesRFEntity) -> None:
