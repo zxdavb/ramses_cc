@@ -150,8 +150,8 @@ class RamsesController(RamsesEntity, ClimateEntity):
 
     _attr_icon: str = "mdi:thermostat"
     _attr_hvac_modes: list[str] = list(MODE_HA_TO_TCS)
-    _attr_max_temp: float = None
-    _attr_min_temp: float = None
+    _attr_max_temp: None = None
+    _attr_min_temp: None = None
     _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_HA_TO_TCS)
     _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
