@@ -109,6 +109,8 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         _LOGGER.info("Found DHW %r", device)
         super().__init__(broker, device, entity_description)
 
+        self.entity_id = f"{PLATFORM}.{device.id}"
+
     @property
     def current_operation(self) -> str | None:
         """Return the current operating mode (Auto, On, or Off)."""

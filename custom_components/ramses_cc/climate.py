@@ -166,6 +166,8 @@ class RamsesController(RamsesEntity, ClimateEntity):
         _LOGGER.info("Found controller %r", device)
         super().__init__(broker, device, entity_description)
 
+        self.entity_id = f"{PLATFORM}.{device.id}"
+
     @property
     def current_temperature(self) -> float | None:
         """Return the average current temperature of the heating Zones.
@@ -303,6 +305,8 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         """Initialize a TCS zone."""
         _LOGGER.info("Found zone %r", device)
         super().__init__(broker, device, entity_description)
+
+        self.entity_id = f"{PLATFORM}.{device.id}"
 
     @property
     def current_temperature(self) -> float | None:
@@ -506,6 +510,8 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         """Initialize a HVAC system."""
         _LOGGER.info("Found HVAC %r", device)
         super().__init__(broker, device, entity_description)
+
+        self.entity_id = f"{PLATFORM}.{device.id}"
 
     @property
     def current_humidity(self) -> int | None:
