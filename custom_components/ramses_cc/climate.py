@@ -360,12 +360,16 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     @property
     def max_temp(self) -> float:
         """Return the maximum target temperature of a Zone."""
-        return self._device.config.get("max_temp", 35)
+        if not self._device.config:
+            return 35
+        return self._device.config["max_temp"]
 
     @property
     def min_temp(self) -> float:
         """Return the minimum target temperature of a Zone."""
-        return self._device.config.get("min_temp", 5)
+        if not self._device.config:
+            return 5
+        return self._device.config["min_temp"]
 
     @property
     def name(self) -> str | None:
