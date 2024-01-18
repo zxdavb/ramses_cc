@@ -13,6 +13,7 @@ from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
 
 from homeassistant.components.water_heater import (
     DOMAIN as PLATFORM,
+    ENTITY_ID_FORMAT,
     STATE_OFF,
     STATE_ON,
     WaterHeaterEntity,
@@ -109,7 +110,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         _LOGGER.info("Found DHW %r", device)
         super().__init__(broker, device, entity_description)
 
-        self.entity_id = f"{PLATFORM}.{device.id}"
+        self.entity_id = ENTITY_ID_FORMAT.format(device.id)
 
     @property
     def current_operation(self) -> str | None:

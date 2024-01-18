@@ -16,6 +16,7 @@ from ramses_tx.const import SZ_MODE, SZ_SETPOINT, SZ_SYSTEM_MODE
 
 from homeassistant.components.climate import (
     DOMAIN as PLATFORM,
+    ENTITY_ID_FORMAT,
     FAN_AUTO,
     FAN_HIGH,
     FAN_LOW,
@@ -166,7 +167,7 @@ class RamsesController(RamsesEntity, ClimateEntity):
         _LOGGER.info("Found controller %r", device)
         super().__init__(broker, device, entity_description)
 
-        self.entity_id = f"{PLATFORM}.{device.id}"
+        self.entity_id = ENTITY_ID_FORMAT.format(device.id)
 
     @property
     def current_temperature(self) -> float | None:
@@ -306,7 +307,7 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         _LOGGER.info("Found zone %r", device)
         super().__init__(broker, device, entity_description)
 
-        self.entity_id = f"{PLATFORM}.{device.id}"
+        self.entity_id = ENTITY_ID_FORMAT.format(device.id)
 
     @property
     def current_temperature(self) -> float | None:
@@ -511,7 +512,7 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         _LOGGER.info("Found HVAC %r", device)
         super().__init__(broker, device, entity_description)
 
-        self.entity_id = f"{PLATFORM}.{device.id}"
+        self.entity_id = ENTITY_ID_FORMAT.format(device.id)
 
     @property
     def current_humidity(self) -> int | None:

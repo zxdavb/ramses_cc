@@ -61,9 +61,9 @@ from ramses_tx.const import (
     SZ_TEMPERATURE,
 )
 
-from homeassistant.components.binary_sensor import ENTITY_ID_FORMAT
 from homeassistant.components.sensor import (
     DOMAIN as PLATFORM,
+    ENTITY_ID_FORMAT,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
