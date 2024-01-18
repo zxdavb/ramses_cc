@@ -601,7 +601,7 @@ put_dhw_temp:
       description: >-
         The entity_id of the sensor. Raises an exception if it is not faked.
         Does not raise an exception if not is not bound.
-      example: sensor.07_123456_dhw_temp
+      example: sensor.07_123456_temperature
       required: true
       selector:
         entity:
