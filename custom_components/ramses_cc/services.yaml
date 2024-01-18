@@ -190,7 +190,7 @@ get_zone_schedule:
 
 put_zone_temp:
   name: Fake the Sensor temperature of a Zone
-  description: Currently deprecated, use `put_room_temp` instead.
+  description: Currently deprecated, use `fake_zone_temp` or `put_room_temp` instead.
 
 
 reset_zone_config:
@@ -489,6 +489,7 @@ fake_zone_temp:
   name: Fake a Room temperature
   description: >-
     Set the current temperature (not setpoint) of an evohome zone.
+    This is a convenience wrapper for `put_zone_temp` service call.
 
   fields:
     entity_id:
@@ -520,6 +521,7 @@ fake_dhw_temp:
   name: Fake a DHW temperature
   description: >-
     Set the current temperature (not setpoint) of an evohome water heater.
+    This is a convenience wrapper for the `put_dhw_temp` service call.
 
   fields:
     entity_id:

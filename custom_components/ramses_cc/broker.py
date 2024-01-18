@@ -174,9 +174,8 @@ class RamsesBroker:
             **schema,
         )
 
-    async def async_save_client_state(self, *args: Any, **kwargs: Any) -> None:
+    async def async_save_client_state(self, _: dt | None = None) -> None:
         """Save the client state to the application store."""
-        # args = (dt, ), kwargs = {}
 
         _LOGGER.info("Saving the client state cache (packets, schema)")
 
