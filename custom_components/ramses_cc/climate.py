@@ -149,8 +149,8 @@ class RamsesController(RamsesEntity, ClimateEntity):
 
     _attr_icon: str = "mdi:thermostat"
     _attr_hvac_modes: list[str] = list(MODE_HA_TO_TCS)
-    _attr_max_temp: float | None = None
-    _attr_min_temp: float | None = None
+    _attr_max_temp: float = None
+    _attr_min_temp: float = None
     _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_HA_TO_TCS)
     _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
@@ -358,20 +358,14 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         return HVACMode.HEAT
 
     @property
-    def max_temp(self) -> float | None:
+    def max_temp(self) -> float:
         """Return the maximum target temperature of a Zone."""
-        try:
-            return self._device.config["max_temp"]
-        except TypeError:  # 'NoneType' object is not subscriptable
-            return None
+        return self._device.config.get("max_temp", 35)
 
     @property
-    def min_temp(self) -> float | None:
+    def min_temp(self) -> float:
         """Return the minimum target temperature of a Zone."""
-        try:
-            return self._device.config["min_temp"]
-        except TypeError:  # 'NoneType' object is not subscriptable
-            return None
+        return self._device.config.get("min_temp", 5)
 
     @property
     def name(self) -> str | None:
