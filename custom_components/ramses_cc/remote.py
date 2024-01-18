@@ -13,6 +13,7 @@ from ramses_tx.command import Command
 from ramses_tx.const import Priority
 
 from homeassistant.components.remote import (
+    ENTITY_ID_FORMAT,
     RemoteEntity,
     RemoteEntityDescription,
     RemoteEntityFeature,
@@ -87,7 +88,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         _LOGGER.info("Found %r", device)
         super().__init__(broker, device, entity_description)
 
-        self.entity_id = f"{DOMAIN}.{device.id}"
+        self.entity_id = ENTITY_ID_FORMAT.format(device.id)
 
         self._attr_is_on = True
         self._commands: dict[str, str] = broker._remotes.get(device.id, {})
