@@ -389,7 +389,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         name="Max relative modulation level",
         native_unit_of_measurement=PERCENTAGE,
     ),
-    # HVAC
+    # HVAC (mostly ventilation units)
     RamsesSensorEntityDescription(
         key=SZ_AIR_QUALITY,
         name="Air quality",
@@ -411,17 +411,20 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         key=SZ_EXHAUST_FAN_SPEED,
         name="Exhaust fan speed",
         native_unit_of_measurement=PERCENTAGE,
+        entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_EXHAUST_FLOW,
         name="Exhaust flow",
         native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_SECOND,
+        entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_EXHAUST_TEMP,
         name="Exhaust temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_FAN_INFO,
@@ -452,22 +455,26 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         name="Outdoor humidity",
         device_class=SensorDeviceClass.HUMIDITY,
         native_unit_of_measurement=PERCENTAGE,
+        entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_OUTDOOR_TEMP,
         name="Outdoor temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_POST_HEAT,
         name="Post heat",
         native_unit_of_measurement=PERCENTAGE,
+        entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_PRE_HEAT,
         name="Pre heat",
         native_unit_of_measurement=PERCENTAGE,
+        entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_REMAINING_MINS,
@@ -488,12 +495,14 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         key=SZ_SUPPLY_FLOW,
         name="Supply flow",
         native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_SECOND,
+        entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_SUPPLY_TEMP,
         name="Supply temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=None,
     ),
     # Special projects
     RamsesSensorEntityDescription(
