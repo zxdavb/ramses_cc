@@ -239,8 +239,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key=BdrSwitch.ACTIVE,
         name="Active",
-        icon="mdi:electric-switch",
-        icon_off="mdi:electric-switch-closed",
+        icon="mdi:electric-switch-closed",
+        icon_off="mdi:electric-switch",
         entity_category=None,
     ),
     RamsesBinarySensorEntityDescription(
