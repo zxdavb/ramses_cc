@@ -206,7 +206,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         if len(command) != 1:
             raise TypeError("must be exactly one command to send")
 
-        if hold_secs is not None:
+        if hold_secs:
             raise TypeError("hold_secs is not supported")
 
         assert not kwargs, kwargs  # TODO: remove me
