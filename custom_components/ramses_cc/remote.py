@@ -50,7 +50,7 @@ async def async_setup_entry(
         platform.async_register_entity_service(k, v, f"async_{k}")
 
     @callback
-    def add_devices(devices: list[HvacRemote]) -> None:
+    def add_devices(devices: set[HvacRemote]) -> None:
         entities = [
             RamsesRemoteEntityDescription.ramses_cc_class(
                 broker, device, RamsesRemoteEntityDescription()

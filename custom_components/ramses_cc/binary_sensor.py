@@ -64,7 +64,7 @@ async def async_setup_entry(
     platform = entity_platform.async_get_current_platform()
 
     @callback
-    def add_devices(devices: list[RamsesRFEntity]) -> None:
+    def add_devices(devices: set[RamsesRFEntity]) -> None:
         entities = [
             description.ramses_cc_class(broker, device, description)
             for device in devices

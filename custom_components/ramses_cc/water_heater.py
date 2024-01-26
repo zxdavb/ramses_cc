@@ -58,7 +58,7 @@ async def async_setup_entry(
         platform.async_register_entity_service(k, v, f"async_{k}")
 
     @callback
-    def add_devices(devices: list[DhwZone]) -> None:
+    def add_devices(devices: set[DhwZone]) -> None:
         entities = [
             RamsesWaterHeaterEntityDescription.ramses_cc_class(
                 broker, device, RamsesWaterHeaterEntityDescription()

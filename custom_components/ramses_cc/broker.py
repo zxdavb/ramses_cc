@@ -84,10 +84,10 @@ class RamsesBroker:
         self._device_info: dict[str, DeviceInfo] = {}
 
         # Discovered client objects...
-        self._devices: list[Device] = []
-        self._systems: list[System] = []
-        self._zones: list[Zone] = []
-        self._dhws: list[Zone] = []
+        self._devices: set[Device] = set()
+        self._systems: set[System] = set()
+        self._zones: set[Zone] = set()
+        self._dhws: set[Zone] = set()
 
         self._sem = Semaphore(value=1)
 
@@ -266,7 +266,7 @@ class RamsesBroker:
         gwy: Gateway = self.client
 
         async def async_add_entities(
-            platform: str, devices: list[RamsesRFEntity]
+            platform: str, devices: set[RamsesRFEntity]
         ) -> None:
             if not devices:
                 return None
@@ -276,37 +276,38 @@ class RamsesBroker:
             )
 
         def find_new_entities(
-            known: list[RamsesRFEntity], current: list[RamsesRFEntity]
-        ) -> tuple[list[RamsesRFEntity], list[RamsesRFEntity]]:
-            new = [x for x in current if x not in known]
-            return known + new, new
+            known: set[RamsesRFEntity], current: set[RamsesRFEntity]
+        ) -> set[RamsesRFEntity]:
+            new = current - known
+            known |= new
+            return new
 
-        self._systems, new_systems = find_new_entities(
+        new_systems = find_new_entities(
             self._systems,
-            [s for s in gwy.systems if isinstance(s, Evohome)],
+            {s for s in gwy.systems if isinstance(s, Evohome)},
         )
-        self._zones, new_zones = find_new_entities(
+        new_zones = find_new_entities(
             self._zones,
-            [z for s in gwy.systems for z in s.zones if isinstance(s, Evohome)],
+            {z for s in gwy.systems for z in s.zones if isinstance(s, Evohome)},
         )
-        self._dhws, new_dhws = find_new_entities(
+        new_dhws = find_new_entities(
             self._dhws,
-            [s.dhw for s in gwy.systems if s.dhw if isinstance(s, Evohome)],
+            {s.dhw for s in gwy.systems if s.dhw if isinstance(s, Evohome)},
         )
-        self._devices, new_devices = find_new_entities(self._devices, gwy.devices)
+        new_devices = find_new_entities(self._devices, set(gwy.devices))
 
-        for device in self._devices + self._systems + self._zones:
+        for device in self._devices | self._systems | self._zones:
             self._update_device(device)
 
-        new_entities = new_devices + new_systems + new_zones + new_dhws
+        new_entities = new_devices | new_systems | new_zones | new_dhws
         await async_add_entities(Platform.BINARY_SENSOR, new_entities)
         await async_add_entities(Platform.SENSOR, new_entities)
 
         await async_add_entities(
-            Platform.CLIMATE, [d for d in new_devices if isinstance(d, HvacVentilator)]
+            Platform.CLIMATE, {d for d in new_devices if isinstance(d, HvacVentilator)}
         )
         await async_add_entities(
-            Platform.REMOTE, [d for d in new_devices if isinstance(d, HvacRemoteBase)]
+            Platform.REMOTE, {d for d in new_devices if isinstance(d, HvacRemoteBase)}
         )
 
         await async_add_entities(Platform.CLIMATE, new_systems)
