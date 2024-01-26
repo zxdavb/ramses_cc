@@ -18,7 +18,6 @@ from homeassistant.const import ATTR_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityDescription
-from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType
 
@@ -221,5 +220,9 @@ class RamsesEntity(Entity):
 
     @callback
     def async_write_ha_state_delayed(self, delay: int = 3) -> None:
-        """Write the state to the state machine after a short delay to allow system to quiesce."""
-        async_call_later(self.hass, delay, self.async_write_ha_state)
+        """Write to the state machine after a short delay to allow system to quiesce."""
+
+        # FIXME: doesn't work, as injects `_now: dt``, where only self is expected
+        # async_call_later(self.hass, delay, self.async_write_ha_state)
+
+        self.hass.loop.call_later(delay, self.async_write_ha_state)
