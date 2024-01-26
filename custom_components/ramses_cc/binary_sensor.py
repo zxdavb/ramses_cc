@@ -215,7 +215,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
     def is_on(self) -> bool:
         """Return True if the gateway has received messages recently."""
         msg = self._device._gwy._this_msg
-        return msg and dt.now() - msg.dtm < timedelta(seconds=300)
+        return not bool(msg and dt.now() - msg.dtm < timedelta(seconds=300))
 
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
