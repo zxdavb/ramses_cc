@@ -317,8 +317,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_OTC_ACTIVE,
+        name="OTC active",
         icon="mdi:weather-snowy-heavy",
-        name="Outside temperature control active",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_SUMMER_MODE,
