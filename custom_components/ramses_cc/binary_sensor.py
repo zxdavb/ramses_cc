@@ -168,6 +168,11 @@ class RamsesSystemBinarySensor(RamsesBinarySensor):
             seconds=msg.payload["remaining_seconds"] * 3
         )
 
+    @property
+    def is_on(self) -> bool:
+        """Return True if the gateway has received messages recently."""
+        return not super().is_on  # TODO
+
 
 class RamsesGatewayBinarySensor(RamsesBinarySensor):
     """Representation of a gateway (a HGI80)."""
@@ -199,7 +204,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
     def is_on(self) -> bool:
         """Return True if the gateway has received messages recently."""
         msg = self._device._gwy._this_msg
-        return msg and dt.now() - msg.dtm < timedelta(seconds=300)
+        return not bool(msg and dt.now() - msg.dtm < timedelta(seconds=300))
 
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
@@ -209,6 +214,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         name="Gateway status",
         ramses_class=HgiGateway,
         entity_class=RamsesGatewayBinarySensor,
+        device_class=BinarySensorDeviceClass.PROBLEM,
     ),
     RamsesBinarySensorEntityDescription(
         key="status",
@@ -216,6 +222,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         name="System status",
         ramses_class=System,
         entity_class=RamsesSystemBinarySensor,
+        device_class=BinarySensorDeviceClass.PROBLEM,
         extra_attributes={
             ATTR_WORKING_SCHEMA: SZ_SCHEMA,
         },
@@ -228,8 +235,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key=BdrSwitch.ACTIVE,
         name="Active",
-        icon="mdi:electric-switch",
-        icon_off="mdi:electric-switch-closed",
+        icon="mdi:electric-switch-closed",
+        icon_off="mdi:electric-switch",
         entity_category=None,
     ),
     RamsesBinarySensorEntityDescription(
@@ -254,10 +261,14 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key=SZ_CH_ACTIVE,
         name="CH active",
+        icon="mdi:radiator",
+        icon_off="mdi:radiator-off",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_CH_ENABLED,
         name="CH enabled",
+        icon="mdi:radiator",
+        icon_off="mdi:radiator-off",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_COOLING_ACTIVE,
@@ -268,20 +279,26 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key=SZ_COOLING_ENABLED,
         name="Cooling enabled",
+        icon_off="mdi:snowflake-off",
+        icon="mdi:snowflake",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_DHW_ACTIVE,
         name="DHW active",
+        icon_off="mdi:water-off",
+        icon="mdi:water",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_DHW_ENABLED,
         name="DHW enabled",
+        icon_off="mdi:water-off",
+        icon="mdi:water",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_FLAME_ACTIVE,
         name="Flame active",
-        icon="mdi:circle-outline",
-        icon_off="mdi:fire-circle",
+        icon="mdi:fire",
+        icon_off="mdi:fire-off",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_DHW_BLOCKING,
@@ -289,14 +306,17 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_OTC_ACTIVE,
-        name="Outside temperature control active",
+        name="OTC active",
+        icon="mdi:weather-snowy-heavy",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_SUMMER_MODE,
         name="Summer mode",
+        icon="mdi:sun-clock",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_FAULT_PRESENT,
+        icon="mdi:alert",
         name="Fault present",
     ),
     RamsesBinarySensorEntityDescription(

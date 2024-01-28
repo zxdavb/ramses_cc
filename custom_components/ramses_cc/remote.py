@@ -180,7 +180,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         command: Iterable[str] | str,
         num_repeats: int = DEFAULT_NUM_REPEATS,
         delay_secs: float = DEFAULT_DELAY_SECS,
-        hold_seconds: None = None,
+        hold_secs: None = None,
         **kwargs: Any,
     ) -> None:
         """Send commands from a device (remote).
@@ -199,8 +199,8 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         if len(command) != 1:
             raise TypeError("must be exactly one command to send")
 
-        if hold_seconds is not None:
-            raise TypeError("hold_seconds is not supported")
+        if hold_secs:
+            raise TypeError("hold_secs is not supported")
 
         assert not kwargs, kwargs  # TODO: remove me
 

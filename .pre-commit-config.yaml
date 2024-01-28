@@ -1,12 +1,11 @@
 # .pre-commit-config.yaml file for https://github.com/zxdavb/ramses_cc
-# last updated 2024-01-10
+# last updated 2024-01-21
 
-#
 # exclude: (^.secrets/|^docs/|^misc)
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.11
+    rev: v0.1.8  # same as HA
     hooks:
       - id: ruff         # linter
       - id: ruff-format  # formatter

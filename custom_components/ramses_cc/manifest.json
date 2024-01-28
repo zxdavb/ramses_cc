@@ -5,10 +5,10 @@
     "documentation": "https://github.com/zxdavb/ramses_cc",
     "issue_tracker": "https://github.com/zxdavb/ramses_cc/issues",
     "requirements": [
-      "ramses-rf==0.31.2",
+      "ramses-rf==0.31.5",
       "pyserial-asyncio==0.6"
     ],
     "dependencies": [],
     "config_flow": true,
-    "version": "0.31.2"
+    "version": "0.31.5"
   }
