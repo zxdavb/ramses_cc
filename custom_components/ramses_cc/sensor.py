@@ -22,7 +22,7 @@ from ramses_rf.const import (
     SZ_POST_HEAT,
     SZ_PRE_HEAT,
     SZ_REMAINING_MINS,
-    SZ_SPEED_CAP,
+    SZ_SPEED_CAPABILITIES,
     SZ_SUPPLY_FAN_SPEED,
     SZ_SUPPLY_FLOW,
     SZ_SUPPLY_TEMP,
@@ -482,7 +482,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.MINUTES,
     ),
     RamsesSensorEntityDescription(
-        key=SZ_SPEED_CAP,
+        key=SZ_SPEED_CAPABILITIES,
         name="Speed cap",
         native_unit_of_measurement="units",
     ),
