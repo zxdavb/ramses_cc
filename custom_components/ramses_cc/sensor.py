@@ -105,8 +105,8 @@ class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescrip
 
     def __post_init__(self) -> None:
         """Defaults entity attr to key."""
-        self.attr = self.attr or self.key
-        self.entity_class = self.entity_class or RamsesSensor
+        object.__setattr__(self, "attr", self.attr or self.key)
+        object.__setattr__(self, "entity_class", self.entity_class or RamsesSensor)
 
 
 _LOGGER = logging.getLogger(__name__)
