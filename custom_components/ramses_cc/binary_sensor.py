@@ -54,7 +54,7 @@ from .const import (
 )
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesBinarySensorEntityDescription(
     RamsesEntityDescription, BinarySensorEntityDescription
 ):

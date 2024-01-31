@@ -91,7 +91,7 @@ from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
 from .schemas import SVCS_RAMSES_SENSOR
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescription):
     """Class describing Ramses binary sensor entities."""
 

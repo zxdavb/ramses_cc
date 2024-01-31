@@ -56,7 +56,7 @@ from .const import (
 from .schemas import SVCS_RAMSES_CLIMATE
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescription):
     """Class describing Ramses binary sensor entities."""
 

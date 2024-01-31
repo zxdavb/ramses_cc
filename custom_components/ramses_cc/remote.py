@@ -40,7 +40,7 @@ from .schemas import (
 )
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesRemoteEntityDescription(RamsesEntityDescription, RemoteEntityDescription):
     """Class describing Ramses remote entities."""
 

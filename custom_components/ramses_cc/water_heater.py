@@ -35,7 +35,7 @@ from .const import BROKER, DOMAIN, SystemMode, ZoneMode
 from .schemas import SVCS_RAMSES_WATER_HEATER
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesWaterHeaterEntityDescription(
     RamsesEntityDescription, WaterHeaterEntityEntityDescription
 ):

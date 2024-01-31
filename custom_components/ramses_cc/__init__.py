@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from ramses_tx.message import Message
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesEntityDescription(EntityDescription):
     """Class describing Ramses entities."""
 
