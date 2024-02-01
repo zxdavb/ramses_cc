@@ -199,7 +199,7 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
         return not bool(msg and dt.now() - msg.dtm < timedelta(seconds=300))
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesBinarySensorEntityDescription(
     RamsesEntityDescription, BinarySensorEntityDescription
 ):
@@ -214,9 +214,16 @@ class RamsesBinarySensorEntityDescription(
     ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
 
     def __post_init__(self) -> None:
-        """Defaults entity attr to key."""
-        self.ramses_rf_attr = self.ramses_rf_attr or self.key
-        self.ramses_cc_class = self.ramses_cc_class or RamsesBinarySensor
+        """Default values for descriptor attrs.
+
+        Is a convenience to avoid having to specify the values in the DESCRIPTOR table.
+        """
+
+        # HACK: may not be acceptible to HA core devs (should just complete the table)
+        object.__setattr__(self, "ramses_rf_attr", self.ramses_rf_attr or self.key)
+        object.__setattr__(
+            self, "ramses_cc_class", self.ramses_cc_class or RamsesBinarySensor
+        )
 
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (

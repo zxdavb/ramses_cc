@@ -240,7 +240,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         self._device.temperature = temperature  # would accept None
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescription):
     """Class describing Ramses binary sensor entities."""
 
@@ -248,15 +248,22 @@ class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescrip
     state_class: SensorStateClass | None = SensorStateClass.MEASUREMENT
 
     # integration-specific attributes
-    ramses_cc_icon_off: str | None = None  # no SensorEntityDescription.icon_off attr
     ramses_cc_class: type[RamsesSensor] = RamsesSensor
+    ramses_cc_icon_off: str | None = None  # no SensorEntityDescription.icon_off attr
     ramses_rf_attr: str = None  # type: ignore[assignment]
     ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
 
     def __post_init__(self) -> None:
-        """Defaults entity attr to key."""
-        self.ramses_rf_attr = self.ramses_rf_attr or self.key
-        self.ramses_cc_class = self.ramses_cc_class or RamsesSensor
+        """Default values for descriptor attrs.
+
+        Is a convenience to avoid having to specify the values in the DESCRIPTOR table.
+        """
+
+        # HACK: may not be acceptible to HA core devs (should just complete the table)
+        object.__setattr__(self, "ramses_rf_attr", self.ramses_rf_attr or self.key)
+        object.__setattr__(
+            self, "ramses_cc_class", self.ramses_cc_class or RamsesSensor
+        )
 
 
 SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (

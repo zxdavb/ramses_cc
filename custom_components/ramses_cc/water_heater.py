@@ -236,7 +236,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         await self._device.set_schedule(json.loads(schedule))
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesWaterHeaterEntityDescription(
     RamsesEntityDescription, WaterHeaterEntityEntityDescription
 ):

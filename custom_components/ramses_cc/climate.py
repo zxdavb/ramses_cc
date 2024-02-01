@@ -548,7 +548,7 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         return PRESET_NONE
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescription):
     """Class describing Ramses binary sensor entities."""
 

@@ -220,7 +220,7 @@ class RamsesEntity(Entity):
         self.hass.loop.call_later(delay, self.async_write_ha_state)
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesEntityDescription(EntityDescription):
     """Class describing Ramses entities."""
 

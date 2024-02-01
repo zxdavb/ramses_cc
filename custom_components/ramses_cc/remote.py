@@ -222,7 +222,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         await self._broker.async_update()
 
 
-@dataclass(kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class RamsesRemoteEntityDescription(RamsesEntityDescription, RemoteEntityDescription):
     """Class describing Ramses remote entities."""
 
