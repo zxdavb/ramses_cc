@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import logging
 from types import UnionType
-from typing import Any, TypeAlias
+from typing import Any
 
 from ramses_rf.device.base import BatteryState, HgiGateway
 from ramses_rf.device.heat import (
@@ -53,25 +53,6 @@ from .const import (
     DOMAIN,
 )
 
-
-@dataclass(kw_only=True)
-class RamsesBinarySensorEntityDescription(
-    RamsesEntityDescription, BinarySensorEntityDescription
-):
-    """Class describing Ramses binary sensor entities."""
-
-    attr: str = None  # type: ignore[assignment]
-    entity_class: _BinarySensorEntityT = None  # type: ignore[assignment]
-    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
-    entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
-    icon_off: str | None = None
-
-    def __post_init__(self) -> None:
-        """Defaults entity attr to key."""
-        self.attr = self.attr or self.key
-        self.entity_class = self.entity_class or RamsesBinarySensor
-
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -89,10 +70,10 @@ async def async_setup_platform(
     broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
     entities = [
-        description.entity_class(broker, device, description)
+        description.ramses_cc_class(broker, device, description)
         for device in discovery_info["devices"]
         for description in BINARY_SENSOR_DESCRIPTIONS
-        if isinstance(device, description.ramses_class)
+        if isinstance(device, description.ramses_rf_class)
         and hasattr(device, description.key)
     ]
     async_add_entities(entities)
@@ -126,7 +107,7 @@ class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return the state of the binary sensor."""
-        return getattr(self._device, self.entity_description.attr)
+        return getattr(self._device, self.entity_description.ramses_rf_attr)
 
     @property
     def icon(self) -> str:
@@ -218,23 +199,43 @@ class RamsesGatewayBinarySensor(RamsesBinarySensor):
         return not bool(msg and dt.now() - msg.dtm < timedelta(seconds=300))
 
 
+@dataclass(kw_only=True)
+class RamsesBinarySensorEntityDescription(
+    RamsesEntityDescription, BinarySensorEntityDescription
+):
+    """Class describing Ramses binary sensor entities."""
+
+    entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
+    icon_off: str | None = None
+
+    # integration-specific attributes
+    ramses_cc_class: type[RamsesBinarySensor] = None  # type: ignore[assignment]
+    ramses_rf_attr: str = None  # type: ignore[assignment]
+    ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
+
+    def __post_init__(self) -> None:
+        """Defaults entity attr to key."""
+        self.ramses_rf_attr = self.ramses_rf_attr or self.key
+        self.ramses_cc_class = self.ramses_cc_class or RamsesBinarySensor
+
+
 BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key="status",
-        attr="id",
+        ramses_rf_attr="id",
         name="Gateway status",
-        ramses_class=HgiGateway,
-        entity_class=RamsesGatewayBinarySensor,
+        ramses_rf_class=HgiGateway,
+        ramses_cc_class=RamsesGatewayBinarySensor,
         device_class=BinarySensorDeviceClass.PROBLEM,
     ),
     RamsesBinarySensorEntityDescription(
         key="status",
-        attr="id",
+        ramses_rf_attr="id",
         name="System status",
-        ramses_class=System,
-        entity_class=RamsesSystemBinarySensor,
+        ramses_rf_class=System,
+        ramses_cc_class=RamsesSystemBinarySensor,
         device_class=BinarySensorDeviceClass.PROBLEM,
-        extra_attributes={
+        ramses_cc_extra_attributes={
             ATTR_WORKING_SCHEMA: SZ_SCHEMA,
         },
     ),
@@ -253,17 +254,17 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key=BatteryState.BATTERY_LOW,
         device_class=BinarySensorDeviceClass.BATTERY,
-        extra_attributes={
+        ramses_cc_extra_attributes={
             ATTR_BATTERY_LEVEL: BatteryState.BATTERY_STATE,
         },
     ),
     RamsesBinarySensorEntityDescription(
         key="active_fault",
         name="Active fault",
-        ramses_class=Logbook,
-        entity_class=RamsesLogbookBinarySensor,
+        ramses_rf_class=Logbook,
+        ramses_cc_class=RamsesLogbookBinarySensor,
         device_class=BinarySensorDeviceClass.PROBLEM,
-        extra_attributes={
+        ramses_cc_extra_attributes={
             ATTR_ACTIVE_FAULT: "active_fault",
             ATTR_LATEST_EVENT: "latest_event",
             ATTR_LATEST_FAULT: "latest_fault",
@@ -338,39 +339,37 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key="bit_2_4",
         name="Bit 2/4",
-        ramses_class=OtbGateway,
+        ramses_rf_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_2_5",
         name="Bit 2/5",
-        ramses_class=OtbGateway,
+        ramses_rf_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_2_6",
         name="Bit 2/6",
-        ramses_class=OtbGateway,
+        ramses_rf_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_2_7",
         name="Bit 2/7",
-        ramses_class=OtbGateway,
+        ramses_rf_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_3_7",
         name="Bit 3/7",
-        ramses_class=OtbGateway,
+        ramses_rf_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_6_6",
         name="Bit 6/6",
-        ramses_class=OtbGateway,
+        ramses_rf_class=OtbGateway,
         entity_registry_enabled_default=False,
     ),
 )
-
-_BinarySensorEntityT: TypeAlias = type[RamsesBinarySensor]

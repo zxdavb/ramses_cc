@@ -43,14 +43,6 @@ if TYPE_CHECKING:
     from ramses_tx.message import Message
 
 
-@dataclass(kw_only=True)
-class RamsesEntityDescription(EntityDescription):
-    """Class describing Ramses entities."""
-
-    has_entity_name: bool = True
-    extra_attributes: dict[str, str] | None = None  # TODO: may not ever be None?
-
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -201,10 +193,10 @@ class RamsesEntity(Entity):
         attrs = {
             ATTR_ID: self._device.id,
         }
-        if self.entity_description.extra_attributes:
+        if self.entity_description.ramses_cc_extra_attributes:
             attrs |= {
                 k: getattr(self._device, v)
-                for k, v in self.entity_description.extra_attributes.items()
+                for k, v in self.entity_description.ramses_cc_extra_attributes.items()
                 if hasattr(self._device, v)
             }
         return attrs
@@ -226,3 +218,13 @@ class RamsesEntity(Entity):
         # async_call_later(self.hass, delay, self.async_write_ha_state)
 
         self.hass.loop.call_later(delay, self.async_write_ha_state)
+
+
+@dataclass(kw_only=True)
+class RamsesEntityDescription(EntityDescription):
+    """Class describing Ramses entities."""
+
+    has_entity_name: bool = True
+
+    # integration-specific attributes
+    ramses_cc_extra_attributes: dict[str, str] | None = None  # TODO: may not be None?

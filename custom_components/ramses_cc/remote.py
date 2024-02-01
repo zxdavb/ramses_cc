@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import logging
-from typing import Any, TypeAlias
+from typing import Any
 
 from ramses_rf.device.hvac import HvacRemote
 from ramses_rf.entity_base import Entity as RamsesRFEntity
@@ -39,12 +39,6 @@ from .schemas import (
     SVCS_RAMSES_REMOTE,
 )
 
-
-@dataclass(kw_only=True)
-class RamsesRemoteEntityDescription(RamsesEntityDescription, RemoteEntityDescription):
-    """Class describing Ramses remote entities."""
-
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -69,7 +63,9 @@ async def async_setup_platform(
             platform.async_register_entity_service(k, v, f"async_{k}")
 
     entities = [
-        RamsesRemote(broker, device, RamsesRemoteEntityDescription(key="remote"))
+        RamsesRemoteEntityDescription.ramses_cc_class(
+            broker, device, RamsesRemoteEntityDescription()
+        )
         for device in discovery_info["devices"]
     ]
     async_add_entities(entities)
@@ -226,4 +222,11 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         await self._broker.async_update()
 
 
-_RemoteEntityT: TypeAlias = type[RamsesRemote]
+@dataclass(kw_only=True)
+class RamsesRemoteEntityDescription(RamsesEntityDescription, RemoteEntityDescription):
+    """Class describing Ramses remote entities."""
+
+    key = "remote"
+
+    # integration-specific attributes
+    ramses_cc_class: type[RamsesRemote] = RamsesRemote

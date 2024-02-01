@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 from types import UnionType
-from typing import Any, TypeAlias
+from typing import Any
 
 from ramses_rf.const import (
     SZ_AIR_QUALITY,
@@ -90,25 +90,6 @@ from .broker import RamsesBroker
 from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
 from .schemas import SVCS_RAMSES_SENSOR
 
-
-@dataclass(kw_only=True)
-class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescription):
-    """Class describing Ramses binary sensor entities."""
-
-    attr: str = None  # type: ignore[assignment]
-    entity_class: _SensorEntityT = None  # type: ignore[assignment]
-    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
-    state_class: SensorStateClass | None = SensorStateClass.MEASUREMENT
-    entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
-    icon_off: str | None = None
-    has_entity_name = True
-
-    def __post_init__(self) -> None:
-        """Defaults entity attr to key."""
-        self.attr = self.attr or self.key
-        self.entity_class = self.entity_class or RamsesSensor
-
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -133,11 +114,11 @@ async def async_setup_platform(
             platform.async_register_entity_service(k, v, f"async_{k}")
 
     entities = [
-        description.entity_class(broker, device, description)
+        description.ramses_cc_class(broker, device, description)
         for device in discovery_info["devices"]
         for description in SENSOR_DESCRIPTIONS
-        if isinstance(device, description.ramses_class)
-        and hasattr(device, description.attr)
+        if isinstance(device, description.ramses_rf_class)
+        and hasattr(device, description.ramses_rf_attr)
     ]
     async_add_entities(entities)
 
@@ -173,7 +154,7 @@ class RamsesSensor(RamsesEntity, SensorEntity):
     @property
     def native_value(self) -> Any | None:
         """Return the native value of the sensor."""
-        val = getattr(self._device, self.entity_description.attr)
+        val = getattr(self._device, self.entity_description.ramses_rf_attr)
         if self.native_unit_of_measurement == PERCENTAGE:
             return None if val is None else val * 100
         return val
@@ -181,8 +162,8 @@ class RamsesSensor(RamsesEntity, SensorEntity):
     @property
     def icon(self) -> str | None:
         """Return the icon to use in the frontend, if any."""
-        if self.entity_description.icon_off and not self.native_value:
-            return self.entity_description.icon_off
+        if self.entity_description.ramses_cc_icon_off and not self.native_value:
+            return self.entity_description.ramses_cc_icon_off
         return super().icon
 
     # TODO: Remove this when we have config entries and devices.
@@ -259,23 +240,42 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         self._device.temperature = temperature  # would accept None
 
 
+@dataclass(kw_only=True)
+class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescription):
+    """Class describing Ramses binary sensor entities."""
+
+    entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
+    state_class: SensorStateClass | None = SensorStateClass.MEASUREMENT
+
+    # integration-specific attributes
+    ramses_cc_icon_off: str | None = None  # no SensorEntityDescription.icon_off attr
+    ramses_cc_class: type[RamsesSensor] = RamsesSensor
+    ramses_rf_attr: str = None  # type: ignore[assignment]
+    ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
+
+    def __post_init__(self) -> None:
+        """Defaults entity attr to key."""
+        self.ramses_rf_attr = self.ramses_rf_attr or self.key
+        self.ramses_cc_class = self.ramses_cc_class or RamsesSensor
+
+
 SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     RamsesSensorEntityDescription(
         key=SZ_TEMPERATURE,
         device_class=SensorDeviceClass.TEMPERATURE,
-        ramses_class=HvacHumiditySensor | TrvActuator,
+        ramses_rf_class=HvacHumiditySensor | TrvActuator,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        extra_attributes={
+        ramses_cc_extra_attributes={
             ATTR_SETPOINT: SZ_SETPOINT,
         },
     ),
     RamsesSensorEntityDescription(
         key=SZ_TEMPERATURE,
         device_class=SensorDeviceClass.TEMPERATURE,
-        ramses_class=DhwSensor | OutSensor | Thermostat,
+        ramses_rf_class=DhwSensor | OutSensor | Thermostat,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         entity_category=None,
-        extra_attributes={
+        ramses_cc_extra_attributes={
             ATTR_SETPOINT: SZ_SETPOINT,
         },
     ),
@@ -284,23 +284,23 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         name="Dewpoint temperature",
         icon="mdi:water-thermometer",
         device_class=SensorDeviceClass.TEMPERATURE,
-        ramses_class=HvacHumiditySensor,
+        ramses_rf_class=HvacHumiditySensor,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_HEAT_DEMAND,
         name="Heat demand",
         icon="mdi:radiator",
-        icon_off="mdi:radiator-off",
-        ramses_class=OtbGateway,
+        ramses_cc_icon_off="mdi:radiator-off",
+        ramses_rf_class=OtbGateway,
         native_unit_of_measurement=PERCENTAGE,
     ),
     RamsesSensorEntityDescription(  # not OtbGateway
         key=SZ_HEAT_DEMAND,
         name="Heat demand",
         icon="mdi:radiator",
-        icon_off="mdi:radiator-off",
-        ramses_class=SystemBase | TrvActuator | UfhController | ZoneBase,
+        ramses_cc_icon_off="mdi:radiator-off",
+        ramses_rf_class=SystemBase | TrvActuator | UfhController | ZoneBase,
         native_unit_of_measurement=PERCENTAGE,
         entity_category=None,
     ),
@@ -308,14 +308,14 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
         key=SZ_RELAY_DEMAND,
         name="Relay demand",
         icon="mdi:power-plug",
-        icon_off="mdi:power-plug-off",
+        ramses_cc_icon_off="mdi:power-plug-off",
         native_unit_of_measurement=PERCENTAGE,
     ),
     RamsesSensorEntityDescription(
         key=f"{SZ_RELAY_DEMAND}_fa",
         name="Relay demand (FA)",
         icon="mdi:power-plug",
-        icon_off="mdi:power-plug-off",
+        ramses_cc_icon_off="mdi:power-plug-off",
         native_unit_of_measurement=PERCENTAGE,
         entity_registry_enabled_default=False,
     ),
@@ -508,26 +508,24 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     RamsesSensorEntityDescription(
         key=SZ_OEM_CODE,
         name="OEM code",
-        ramses_class=OtbGateway,
+        ramses_rf_class=OtbGateway,
         state_class=None,
         entity_registry_enabled_default=False,
     ),
     RamsesSensorEntityDescription(
         key="percent",
         name="Percent",
-        ramses_class=OtbGateway,
+        ramses_rf_class=OtbGateway,
         icon="mdi:power-plug",
-        icon_off="mdi:power-plug-off",
+        ramses_cc_icon_off="mdi:power-plug-off",
         native_unit_of_measurement=PERCENTAGE,
         entity_registry_enabled_default=False,
     ),
     RamsesSensorEntityDescription(
         key="value",
         name="Value",
-        ramses_class=OtbGateway,
+        ramses_rf_class=OtbGateway,
         native_unit_of_measurement="units",
         entity_registry_enabled_default=False,
     ),
 )
-
-_SensorEntityT: TypeAlias = type[RamsesSensor]

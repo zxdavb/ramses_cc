@@ -5,11 +5,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import json
 import logging
-from types import UnionType
-from typing import Any, Final, TypeAlias
+from typing import Any, Final
 
 from ramses_rf.device.hvac import HvacVentilator
-from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_rf.system.heat import Evohome
 from ramses_rf.system.zones import Zone
 from ramses_tx.const import SZ_MODE, SZ_SETPOINT, SZ_SYSTEM_MODE
@@ -54,15 +52,6 @@ from .const import (
     ZoneMode,
 )
 from .schemas import SVCS_RAMSES_CLIMATE
-
-
-@dataclass(kw_only=True)
-class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescription):
-    """Class describing Ramses binary sensor entities."""
-
-    entity_class: _ClimateEntityT = None  # type: ignore[assignment]
-    ramses_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -135,10 +124,10 @@ async def async_setup_platform(
             platform.async_register_entity_service(k, v, f"async_{k}")
 
     entities = [
-        description.entity_class(broker, device, description)
+        description.ramses_cc_class(broker, device, description)
         for device in discovery_info["devices"]
         for description in CLIMATE_DESCRIPTIONS
-        if isinstance(device, description.ramses_class)
+        if isinstance(device, description.ramses_rf_class)
     ]
     async_add_entities(entities)
 
@@ -559,19 +548,23 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         return PRESET_NONE
 
 
+@dataclass(kw_only=True)
+class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescription):
+    """Class describing Ramses binary sensor entities."""
+
+    # integration-specific attributes
+    ramses_cc_class: type[Evohome] | type[Zone] | type[HvacVentilator]
+    ramses_rf_class: type[RamsesController] | type[RamsesZone] | type[RamsesHvac]
+
+
 CLIMATE_DESCRIPTIONS: tuple[RamsesClimateEntityDescription, ...] = (
     RamsesClimateEntityDescription(
-        key="controller", ramses_class=Evohome, entity_class=RamsesController
+        key="controller", ramses_cc_class=RamsesController, ramses_rf_class=Evohome
     ),
     RamsesClimateEntityDescription(
-        key="zone", ramses_class=Zone, entity_class=RamsesZone
+        key="zone", ramses_cc_class=RamsesZone, ramses_rf_class=Zone
     ),
     RamsesClimateEntityDescription(
-        key="hvac", ramses_class=HvacVentilator, entity_class=RamsesHvac
+        key="hvac", ramses_cc_class=RamsesHvac, ramses_rf_class=HvacVentilator
     ),
-)
-
-
-_ClimateEntityT: TypeAlias = (
-    type[RamsesController] | type[RamsesZone] | type[RamsesHvac]
 )

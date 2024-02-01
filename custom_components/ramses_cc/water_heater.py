@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import json
 import logging
-from typing import Any, Final, TypeAlias
+from typing import Any, Final
 
 from ramses_rf.system.heat import StoredHw
 from ramses_rf.system.zones import DhwZone
@@ -33,14 +33,6 @@ from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import BROKER, DOMAIN, SystemMode, ZoneMode
 from .schemas import SVCS_RAMSES_WATER_HEATER
-
-
-@dataclass(kw_only=True)
-class RamsesWaterHeaterEntityDescription(
-    RamsesEntityDescription, WaterHeaterEntityEntityDescription
-):
-    """Class describing Ramses water heater entities."""
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,8 +69,8 @@ async def async_setup_platform(
             platform.async_register_entity_service(k, v, f"async_{k}")
 
     entites = [
-        RamsesWaterHeater(
-            broker, device, RamsesWaterHeaterEntityDescription(key="dhwzone")
+        RamsesWaterHeaterEntityDescription.ramses_cc_class(
+            broker, device, RamsesWaterHeaterEntityDescription()
         )
         for device in discovery_info["devices"]
     ]
@@ -244,4 +236,13 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
         await self._device.set_schedule(json.loads(schedule))
 
 
-_WaterHeaterEntityT: TypeAlias = type[RamsesWaterHeater]
+@dataclass(kw_only=True)
+class RamsesWaterHeaterEntityDescription(
+    RamsesEntityDescription, WaterHeaterEntityEntityDescription
+):
+    """Class describing Ramses water heater entities."""
+
+    key = "dhwzone"
+
+    # integration-specific attributes
+    ramses_cc_class: type[RamsesWaterHeater] = RamsesWaterHeater
