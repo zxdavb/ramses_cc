@@ -1,12 +1,11 @@
-"""Tests for RAMSES_CC integration."""
+"""Tests for the RAMSES II custom component."""
 
-from pathlib import Path
+import os
 import sys
 
-try:
-    from custom_components.ramses_cc.const import DOMAIN
+# ModuleNotFoundError: No module named 'custom_components'
+_dir = os.path.dirname(os.path.abspath(__file__))
+_dir = os.path.normpath(os.path.join(_dir, "..", "..", ".."))
 
-except ModuleNotFoundError:
-    sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-
-    from custom_components.ramses_cc.const import DOMAIN  # noqa: F401
+if _dir not in sys.path:
+    sys.path.append(_dir)

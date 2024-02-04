@@ -1,13 +1,20 @@
 """Support for RAMSES climate entities."""
 from __future__ import annotations
 
-from datetime import datetime as dt
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 import json
 import logging
-from typing import Any
+from typing import Any, Final
+
+from ramses_rf.device.hvac import HvacVentilator
+from ramses_rf.system.heat import Evohome
+from ramses_rf.system.zones import Zone
+from ramses_tx.const import SZ_MODE, SZ_SETPOINT, SZ_SYSTEM_MODE
 
 from homeassistant.components.climate import (
     DOMAIN as PLATFORM,
+    ENTITY_ID_FORMAT,
     FAN_AUTO,
     FAN_HIGH,
     FAN_LOW,
@@ -19,88 +26,81 @@ from homeassistant.components.climate import (
     PRESET_HOME,
     PRESET_NONE,
     ClimateEntity,
+    ClimateEntityDescription,
     ClimateEntityFeature,
     HVACAction,
     HVACMode,
 )
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_platform
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    EntityPlatform,
+    async_get_current_platform,
+)
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import RamsesEntity, RamsesZoneBase
+from . import RamsesEntity, RamsesEntityDescription
+from .broker import RamsesBroker
 from .const import (
-    ATTR_SETPOINT,
     BROKER,
-    DATA,
     DOMAIN,
-    SERVICE,
-    UNIQUE_ID,
+    PRESET_CUSTOM,
+    PRESET_PERMANENT,
+    PRESET_TEMPORARY,
     SystemMode,
     ZoneMode,
 )
-from .coordinator import RamsesBroker
-from .schemas import (
-    CONF_MODE,
-    CONF_SYSTEM_MODE,
-    SVC_RESET_SYSTEM_MODE,
-    SVC_SET_SYSTEM_MODE,
-    SVCS_CLIMATE_EVO_TCS,
-    SVCS_CLIMATE_EVO_ZONE,
-)
+from .schemas import SVCS_RAMSES_CLIMATE
 
 _LOGGER = logging.getLogger(__name__)
 
-MODE_TCS_TO_HA = {
-    SystemMode.AUTO: HVACMode.HEAT,  # NOTE: don't use _AUTO
+MODE_TCS_TO_HA: Final[dict[str, str]] = {
+    SystemMode.AUTO: HVACMode.HEAT,  # NOTE: don't use AUTO
     SystemMode.HEAT_OFF: HVACMode.OFF,
+    SystemMode.RESET: HVACMode.HEAT,
 }
-MODE_TCS_TO_HA[SystemMode.RESET] = MODE_TCS_TO_HA[SystemMode.AUTO]
-
-MODE_TO_TCS = {
+MODE_HA_TO_TCS: Final[dict[str, str]] = {
     HVACMode.HEAT: SystemMode.AUTO,
     HVACMode.OFF: SystemMode.HEAT_OFF,
     HVACMode.AUTO: SystemMode.RESET,  # not all systems support this
 }
 
-PRESET_CUSTOM = "custom"  # NOTE: not an offical PRESET
-
-PRESET_TCS_TO_HA = {
+PRESET_TCS_TO_HA: Final[dict[str, str]] = {
     SystemMode.AUTO: PRESET_NONE,
     SystemMode.AWAY: PRESET_AWAY,
     SystemMode.CUSTOM: PRESET_CUSTOM,
     SystemMode.DAY_OFF: PRESET_HOME,
-    SystemMode.ECO_BOOST: PRESET_ECO,  # or: PRESET_BOOST
+    SystemMode.DAY_OFF_ECO: PRESET_HOME,
+    SystemMode.ECO_BOOST: PRESET_ECO,
     SystemMode.HEAT_OFF: PRESET_NONE,
+    SystemMode.RESET: PRESET_NONE,
 }
-PRESET_TCS_TO_HA[SystemMode.DAY_OFF_ECO] = PRESET_TCS_TO_HA[SystemMode.DAY_OFF]
-PRESET_TCS_TO_HA[SystemMode.RESET] = PRESET_TCS_TO_HA[SystemMode.AUTO]
+PRESET_HA_TO_TCS: Final[dict[str, str]] = {
+    PRESET_NONE: SystemMode.AUTO,
+    PRESET_AWAY: SystemMode.AWAY,
+    PRESET_CUSTOM: SystemMode.CUSTOM,
+    PRESET_HOME: SystemMode.DAY_OFF,
+    PRESET_ECO: SystemMode.ECO_BOOST,
+}
 
-PRESET_TO_TCS = (
-    SystemMode.AUTO,
-    SystemMode.AWAY,
-    SystemMode.CUSTOM,
-    SystemMode.DAY_OFF,
-    SystemMode.ECO_BOOST,
-)
-PRESET_TO_TCS = {v: k for k, v in PRESET_TCS_TO_HA.items() if k in PRESET_TO_TCS}
-
-MODE_ZONE_TO_HA = {
+MODE_ZONE_TO_HA: Final[dict[str, str]] = {
     ZoneMode.ADVANCED: HVACMode.HEAT,
     ZoneMode.SCHEDULE: HVACMode.AUTO,
+    ZoneMode.PERMANENT: HVACMode.HEAT,
+    ZoneMode.TEMPORARY: HVACMode.HEAT,
 }
-MODE_ZONE_TO_HA[ZoneMode.PERMANENT] = MODE_ZONE_TO_HA[ZoneMode.ADVANCED]
-MODE_ZONE_TO_HA[ZoneMode.TEMPORARY] = MODE_ZONE_TO_HA[ZoneMode.ADVANCED]
+MODE_HA_TO_ZONE: Final[dict[str, str]] = {
+    HVACMode.HEAT: ZoneMode.PERMANENT,
+    HVACMode.AUTO: ZoneMode.SCHEDULE,
+}
 
-MODE_TO_ZONE = (ZoneMode.SCHEDULE, ZoneMode.PERMANENT)
-MODE_TO_ZONE = {v: k for k, v in MODE_ZONE_TO_HA.items() if k in MODE_TO_ZONE}
-PRESET_ZONE_TO_HA = {
+PRESET_ZONE_TO_HA: Final[dict[str, str]] = {
     ZoneMode.SCHEDULE: PRESET_NONE,
-    ZoneMode.TEMPORARY: "temporary",
-    ZoneMode.PERMANENT: "permanent",
+    ZoneMode.TEMPORARY: PRESET_TEMPORARY,
+    ZoneMode.PERMANENT: PRESET_PERMANENT,
 }
-PRESET_TO_ZONE = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
+PRESET_HA_TO_ZONE: Final[dict[str, str]] = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
 
 
 async def async_setup_platform(
@@ -111,58 +111,52 @@ async def async_setup_platform(
 ) -> None:
     """Create climate entities for CH/DHW (heat) & HVAC."""
 
-    def entity_factory(entity_class, broker, device):  # TODO: deprecate
-        return entity_class(broker, device)
-
     if discovery_info is None:
         return
 
-    platform = entity_platform.async_get_current_platform()
+    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
-    broker = hass.data[DOMAIN][BROKER]
-    new_entities = []
+    if not broker._services.get(PLATFORM):
+        broker._services[PLATFORM] = True
+        platform: EntityPlatform = async_get_current_platform()
 
-    if discovery_info.get("fans"):
-        if not broker._services.get(f"{PLATFORM}_hvac"):
-            broker._services[f"{PLATFORM}_hvac"] = True
-            # for name, schema in SVCS_CLIMATE_HVAC.items():
-            #     platform.async_register_entity_service(name, schema, f"svc_{name}")
+        for k, v in SVCS_RAMSES_CLIMATE.items():
+            platform.async_register_entity_service(k, v, f"async_{k}")
 
-        for fan in discovery_info["fans"]:
-            new_entities.append(RamsesHvac(broker, fan))
-
-    if discovery_info.get("ctls") or discovery_info.get("zons"):
-        if not broker._services.get(f"{PLATFORM}_heat"):
-            broker._services[f"{PLATFORM}_heat"] = True
-            for name, schema in SVCS_CLIMATE_EVO_TCS.items():
-                platform.async_register_entity_service(name, schema, f"svc_{name}")
-            for name, schema in SVCS_CLIMATE_EVO_ZONE.items():
-                platform.async_register_entity_service(name, schema, f"svc_{name}")
-
-        for tcs in discovery_info.get("ctls", []):
-            new_entities.append(entity_factory(RamsesController, broker, tcs))
-
-        for zone in discovery_info.get("zons", []):
-            new_entities.append(entity_factory(RamsesZone, broker, zone))
-
-    if new_entities:
-        async_add_entities(new_entities)
+    entities = [
+        description.ramses_cc_class(broker, device, description)
+        for device in discovery_info["devices"]
+        for description in CLIMATE_DESCRIPTIONS
+        if isinstance(device, description.ramses_rf_class)
+    ]
+    async_add_entities(entities)
 
 
-class RamsesController(RamsesZoneBase, ClimateEntity):
-    """Base for a Honeywell Controller/Location."""
+class RamsesController(RamsesEntity, ClimateEntity):
+    """Representation of a Ramses controller."""
+
+    _device: Evohome
 
     _attr_icon: str = "mdi:thermostat"
-    _attr_hvac_modes: list[str] = list(MODE_TO_TCS)
-    _attr_preset_modes: list[str] = list(PRESET_TO_TCS)
+    _attr_hvac_modes: list[str] = list(MODE_HA_TO_TCS)
+    _attr_max_temp: None = None
+    _attr_min_temp: None = None
+    _attr_precision: float = PRECISION_TENTHS
+    _attr_preset_modes: list[str] = list(PRESET_HA_TO_TCS)
     _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
-    _attr_max_temp: float | None = None
-    _attr_min_temp: float | None = None
+    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
-        """Initialize a TCS Controller."""
-        _LOGGER.info("Found a Controller: %r", device)
-        super().__init__(broker, device)
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: Evohome,
+        entity_description: RamsesClimateEntityDescription,
+    ) -> None:
+        """Initialize a TCS controller."""
+        _LOGGER.info("Found controller %r", device)
+        super().__init__(broker, device, entity_description)
+
+        self.entity_id = ENTITY_ID_FORMAT.format(device.id)
 
     @property
     def current_temperature(self) -> float | None:
@@ -181,13 +175,12 @@ class RamsesController(RamsesZoneBase, ClimateEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
+        return super().extra_state_attributes | {
             "heat_demand": self._device.heat_demand,
             "heat_demands": self._device.heat_demands,
             "relay_demands": self._device.relay_demands,
             "system_mode": self._device.system_mode,
             "tpi_params": self._device.tpi_params,
-            # "faults": self._device.faultlog,
         }
 
     @property
@@ -195,8 +188,8 @@ class RamsesController(RamsesZoneBase, ClimateEntity):
         """Return the Controller's current running hvac operation."""
 
         if self._device.system_mode is None:
-            return  # unable to determine
-        if self._device.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+            return None  # unable to determine
+        if self._device.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACAction.OFF
 
         if self._device.heat_demand:
@@ -211,10 +204,10 @@ class RamsesController(RamsesZoneBase, ClimateEntity):
         """Return the Controller's current operating mode of a Controller."""
 
         if self._device.system_mode is None:
-            return  # unable to determine
-        if self._device.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+            return None  # unable to determine
+        if self._device.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACMode.OFF
-        if self._device.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY:
+        if self._device.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY:
             return HVACMode.AUTO  # users can't adjust setpoints in away mode
         return HVACMode.HEAT
 
@@ -228,8 +221,8 @@ class RamsesController(RamsesZoneBase, ClimateEntity):
         """Return the Controller's current preset mode, e.g., home, away, temp."""
 
         if self._device.system_mode is None:
-            return  # unable to determine
-        return PRESET_TCS_TO_HA[self._device.system_mode[CONF_SYSTEM_MODE]]
+            return None  # unable to determine
+        return PRESET_TCS_TO_HA[self._device.system_mode[SZ_SYSTEM_MODE]]
 
     @property
     def target_temperature(self) -> float | None:
@@ -245,74 +238,80 @@ class RamsesController(RamsesZoneBase, ClimateEntity):
     @callback
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set an operating mode for a Controller."""
-        self.svc_set_system_mode(MODE_TO_TCS.get(hvac_mode))
+        self.async_set_system_mode(MODE_HA_TO_TCS.get(hvac_mode))
 
     @callback
-    def set_preset_mode(self, preset_mode: str | None) -> None:
-        """Set the preset mode; if None, then revert to 'Auto' mode."""
-        self.svc_set_system_mode(PRESET_TO_TCS.get(preset_mode, SystemMode.AUTO))
+    def set_preset_mode(self, preset_mode: str) -> None:
+        """Set the preset mode; if 'none', then revert to 'Auto' mode."""
+        self.async_set_system_mode(PRESET_HA_TO_TCS[preset_mode])
+
+    # the following methods are integration-specific service calls
 
     @callback
-    def async_handle_dispatch(self, *args) -> None:
-        """Process a service request (system mode) for a controller."""
-        if not args:
-            self.update_ha_state()
-            return
-
-        payload = args[0]
-        if payload.get(UNIQUE_ID) != self.unique_id:
-            return
-        elif payload[SERVICE] == SVC_RESET_SYSTEM_MODE:
-            self._call_client_api(self._device.reset_mode)
-        elif payload[SERVICE] == SVC_SET_SYSTEM_MODE:
-            kwargs = dict(payload[DATA])
-            kwargs["system_mode"] = kwargs.pop("mode", None)
-            until = kwargs.pop("duration", None) or kwargs.pop("period", None)
-            kwargs["until"] = (dt.now() + until) if until else None
-            self._call_client_api(self._device.set_mode, **kwargs)
-
-    @callback
-    def svc_reset_system_mode(self) -> None:
+    def async_reset_system_mode(self) -> None:
         """Reset the (native) operating mode of the Controller."""
-        self._call_client_api(self._device.reset_mode)
+        self._device.reset_mode()
+        self.async_write_ha_state_delayed()
 
     @callback
-    def svc_set_system_mode(self, mode, period=None, duration=None) -> None:
+    def async_set_system_mode(
+        self,
+        mode: str,
+        period: timedelta | None = None,
+        duration: timedelta | None = None,
+    ) -> None:
         """Set the (native) operating mode of the Controller."""
         if period is not None:
-            until = dt.now() + period  # Period in days TODO: round down
+            until = datetime.now() + period  # Period in days TODO: round down
         elif duration is not None:
-            until = dt.now() + duration  # Duration in hours/minutes for eco_boost
+            until = datetime.now() + duration  # Duration in hours/minutes for eco_boost
         else:
             until = None
-        self._call_client_api(self._device.set_mode, system_mode=mode, until=until)
+        self._device.set_mode(system_mode=mode, until=until)
+        self.async_write_ha_state_delayed()
 
 
-class RamsesZone(RamsesZoneBase, ClimateEntity):
-    """Base for a Honeywell TCS Zone."""
+class RamsesZone(RamsesEntity, ClimateEntity):
+    """Representation of a Ramses zone."""
+
+    _device: Zone
 
     _attr_icon: str = "mdi:radiator"
-    _attr_hvac_modes: list[str] = list(MODE_TO_ZONE)
-    _attr_preset_modes: list[str] = list(PRESET_TO_ZONE)
+    _attr_hvac_modes: list[str] = list(MODE_HA_TO_ZONE)
+    _attr_precision: float = PRECISION_TENTHS
+    _attr_preset_modes: list[str] = list(PRESET_HA_TO_ZONE)
     _attr_supported_features: int = (
         ClimateEntityFeature.PRESET_MODE | ClimateEntityFeature.TARGET_TEMPERATURE
     )
     _attr_target_temperature_step: float = PRECISION_TENTHS
+    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
-        """Initialize a TCS Zone."""
-        _LOGGER.info("Found a Zone: %r", device)
-        super().__init__(broker, device)
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: Zone,
+        entity_description: RamsesClimateEntityDescription,
+    ) -> None:
+        """Initialize a TCS zone."""
+        _LOGGER.info("Found zone %r", device)
+        super().__init__(broker, device, entity_description)
+
+        self.entity_id = ENTITY_ID_FORMAT.format(device.id)
+
+    @property
+    def current_temperature(self) -> float | None:
+        """Return the current temperature."""
+        return self._device.temperature
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
-        return {
+        return super().extra_state_attributes | {
+            "params": self._device.params,
             "zone_idx": self._device.idx,
             "heating_type": self._device.heating_type,
             "mode": self._device.mode,
             "config": self._device.config,
-            **super().extra_state_attributes,
             "schedule": self._device.schedule,
             "schedule_version": self._device.schedule_version,
         }
@@ -323,7 +322,7 @@ class RamsesZone(RamsesZoneBase, ClimateEntity):
 
         if self._device.tcs.system_mode is None:
             return None  # unable to determine
-        if self._device.tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+        if self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACAction.OFF
 
         if self._device.heat_demand:
@@ -337,36 +336,39 @@ class RamsesZone(RamsesZoneBase, ClimateEntity):
         """Return the Zone's hvac operation ie. heat, cool mode."""
 
         if self._device.tcs.system_mode is None:
-            return  # unable to determine
-        if self._device.tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.AWAY:
+            return None  # unable to determine
+        if self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY:
             return HVACMode.AUTO
-        if self._device.tcs.system_mode[CONF_SYSTEM_MODE] == SystemMode.HEAT_OFF:
+        if self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.HEAT_OFF:
             return HVACMode.OFF
 
-        if self._device.mode is None or self._device.mode[ATTR_SETPOINT] is None:
-            return  # unable to determine
+        if self._device.mode is None or self._device.mode[SZ_SETPOINT] is None:
+            return None  # unable to determine
         if (
             self._device.config
-            and self._device.mode[ATTR_SETPOINT] <= self._device.config["min_temp"]
+            and self._device.mode[SZ_SETPOINT] <= self._device.config["min_temp"]
         ):
             return HVACMode.OFF
         return HVACMode.HEAT
 
     @property
-    def max_temp(self) -> float | None:
+    def max_temp(self) -> float:
         """Return the maximum target temperature of a Zone."""
-        try:
-            return self._device.config["max_temp"]
-        except TypeError:  # 'NoneType' object is not subscriptable
-            return None
+        if not self._device.config:
+            return 35
+        return self._device.config["max_temp"]
 
     @property
-    def min_temp(self) -> float | None:
+    def min_temp(self) -> float:
         """Return the minimum target temperature of a Zone."""
-        try:
-            return self._device.config["min_temp"]
-        except TypeError:  # 'NoneType' object is not subscriptable
-            return None
+        if not self._device.config:
+            return 5
+        return self._device.config["min_temp"]
+
+    @property
+    def name(self) -> str | None:
+        """Return the name of the zone."""
+        return self._device.name
 
     @property
     def preset_mode(self) -> str | None:
@@ -374,93 +376,97 @@ class RamsesZone(RamsesZoneBase, ClimateEntity):
 
         if self._device.tcs.system_mode is None:
             return None  # unable to determine
-        # if self._device.tcs.system_mode[CONF_SYSTEM_MODE] in MODE_TCS_TO_HA:
-        if self._device.tcs.system_mode[CONF_SYSTEM_MODE] in (
+        # if self._device.tcs.system_mode[SZ_SYSTEM_MODE] in MODE_TCS_TO_HA:
+        if self._device.tcs.system_mode[SZ_SYSTEM_MODE] in (
             SystemMode.AWAY,
             SystemMode.HEAT_OFF,
         ):
-            return PRESET_TCS_TO_HA[self._device.tcs.system_mode[CONF_SYSTEM_MODE]]
+            return PRESET_TCS_TO_HA[self._device.tcs.system_mode[SZ_SYSTEM_MODE]]
 
         if self._device.mode is None:
             return None  # unable to determine
-        if self._device.mode[CONF_MODE] == ZoneMode.SCHEDULE:
-            return PRESET_TCS_TO_HA[self._device.tcs.system_mode[CONF_SYSTEM_MODE]]
-        return PRESET_ZONE_TO_HA.get(self._device.mode[CONF_MODE])
+        if self._device.mode[SZ_MODE] == ZoneMode.SCHEDULE:
+            return PRESET_TCS_TO_HA[self._device.tcs.system_mode[SZ_SYSTEM_MODE]]
+        return PRESET_ZONE_TO_HA.get(self._device.mode[SZ_MODE])
 
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self._device.setpoint
 
-    @callback
+    @callback  # TODO: a bit of a mess - why 25, why frost mode?
     def set_hvac_mode(self, hvac_mode: str) -> None:
         """Set a Zone to one of its native operating modes."""
         if hvac_mode == HVACMode.AUTO:  # FollowSchedule
-            self.svc_reset_zone_mode()
+            self.async_reset_zone_mode()
         elif hvac_mode == HVACMode.HEAT:  # TemporaryOverride
-            self.svc_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)  # TODO:
+            self.async_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)
         else:  # HVACMode.OFF, PermentOverride, temp = min
-            self.svc_set_zone_mode(self._device.set_frost_mode)  # TODO:
+            self.async_set_zone_mode(self._device.set_frost_mode)
 
     @callback
-    def set_preset_mode(self, preset_mode: str | None) -> None:
-        """Set the preset mode; if None, then revert to following the schedule."""
-        self.svc_set_zone_mode(
-            mode=PRESET_TO_ZONE.get(preset_mode),
+    def set_preset_mode(self, preset_mode: str) -> None:
+        """Set the preset mode; if 'none', then revert to following the schedule."""
+        self.async_set_zone_mode(
+            mode=PRESET_HA_TO_ZONE[preset_mode],
             setpoint=self.target_temperature if preset_mode == "permanent" else None,
         )
 
     @callback
-    def set_temperature(self, temperature: float = None, **kwargs) -> None:
+    def set_temperature(self, temperature: float | None = None, **kwargs: Any) -> None:
         """Set a new target temperature."""
-        self.svc_set_zone_mode(setpoint=temperature)
+        self.async_set_zone_mode(setpoint=temperature)
+
+    # the following are integration-specific methods service calls
 
     @callback
-    def svc_put_zone_temp(
-        self, temperature: float, **kwargs
-    ) -> None:  # set_current_temp
-        """Fake the measured temperature of the Zone sensor.
+    def async_fake_zone_temp(self, temperature: float) -> None:
+        """Cast the room temperature of this zone (if faked)."""
 
-        This is not the setpoint (see: set_temperature), but the measured temperature.
-        """
-        self._device.sensor._make_fake()
-        self._device.sensor.temperature = temperature
-        self._device._get_temp()
-        self.update_ha_state()
+        if self._device.sensor is None:
+            raise  # TODO
+
+        self._device.sensor.temperature = temperature  # would accept None
 
     @callback
-    def svc_reset_zone_config(self) -> None:
+    def async_reset_zone_config(self) -> None:
         """Reset the configuration of the Zone."""
-        self._call_client_api(self._device.reset_config)
+        self._device.reset_config()
+        self.async_write_ha_state_delayed()
 
     @callback
-    def svc_reset_zone_mode(self) -> None:
+    def async_reset_zone_mode(self) -> None:
         """Reset the (native) operating mode of the Zone."""
-        self._call_client_api(self._device.reset_mode)
+        self._device.reset_mode()
+        self.async_write_ha_state_delayed()
 
     @callback
-    def svc_set_zone_config(self, **kwargs) -> None:
+    def async_set_zone_config(self, **kwargs: Any) -> None:
         """Set the configuration of the Zone (min/max temp, etc.)."""
-        self._call_client_api(self._device.set_config, **kwargs)
+        self._device.set_config(**kwargs)
+        self.async_write_ha_state_delayed()
 
     @callback
-    def svc_set_zone_mode(
-        self, mode=None, setpoint=None, duration=None, until=None
+    def async_set_zone_mode(
+        self,
+        mode: str | None = None,
+        setpoint: float | None = None,
+        duration: timedelta | None = None,
+        until: datetime | None = None,
     ) -> None:
         """Set the (native) operating mode of the Zone."""
         if until is None and duration is not None:
-            until = dt.now() + duration
-        self._call_client_api(
-            self._device.set_mode, mode=mode, setpoint=setpoint, until=until
-        )
+            until = datetime.now() + duration
+        self._device.set_mode(mode=mode, setpoint=setpoint, until=until)
+        self.async_write_ha_state_delayed()
 
-    async def svc_get_zone_schedule(self, **kwargs) -> None:
+    async def async_get_zone_schedule(self) -> None:
         """Get the latest weekly schedule of the Zone."""
         # {{ state_attr('climate.ramses_cc_01_145038_04', 'schedule') }}
         await self._device.get_schedule()
-        self.update_ha_state()
+        self.async_write_ha_state()
 
-    async def svc_set_zone_schedule(self, schedule: str, **kwargs) -> None:
+    async def async_set_zone_schedule(self, schedule: str) -> None:
         """Set the weekly schedule of the Zone."""
         await self._device.set_schedule(json.loads(schedule))
 
@@ -468,14 +474,8 @@ class RamsesZone(RamsesZoneBase, ClimateEntity):
 class RamsesHvac(RamsesEntity, ClimateEntity):
     """Base for a Honeywell HVAC unit (Fan, HRU, MVHR, PIV, etc)."""
 
-    # PRESET_AWAY = away
-    # PRESET_BOOST (timed), 15, 30, 60, other mins
-    # PRESET_COMFORT: auto with lower CO2
-    # PRESET_NONE: off, low/med/high or auto
+    _device: HvacVentilator
 
-    # Climate attrs....
-    _attr_precision: float = PRECISION_TENTHS
-    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
     _attr_fan_modes: list[str] | None = [
         FAN_OFF,
         FAN_AUTO,
@@ -484,20 +484,24 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         FAN_HIGH,
     ]
     _attr_hvac_modes: list[HVACMode] | list[str] = [HVACMode.AUTO, HVACMode.OFF]
+    _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] | None = None
     _attr_supported_features: int = (
         ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.PRESET_MODE
     )
+    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: HvacVentilator,
+        entity_description: RamsesClimateEntityDescription,
+    ) -> None:
         """Initialize a HVAC system."""
-        _LOGGER.info("Found a HVAC system: %r", device)
+        _LOGGER.info("Found HVAC %r", device)
+        super().__init__(broker, device, entity_description)
 
-        super().__init__(broker, device)
-
-        self._attr_unique_id = (
-            device.id
-        )  # dont include domain (ramses_cc) / platform (climate)
+        self.entity_id = ENTITY_ID_FORMAT.format(device.id)
 
     @property
     def current_humidity(self) -> int | None:
@@ -512,28 +516,21 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         return self._device.indoor_temp
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        return {
-            **super().extra_state_attributes,
-        }
-
-    @property
     def fan_mode(self) -> str | None:
         """Return the fan setting."""
-        return None
+        return self._device.fan_info
 
     @property
     def hvac_action(self) -> HVACAction | str | None:
         """Return the current running hvac operation if supported."""
-        if self._device.fan_info is not None:
-            return self._device.fan_info
+        return self._device.fan_info
 
     @property
     def hvac_mode(self) -> HVACMode | str | None:
         """Return hvac operation ie. heat, cool mode."""
-        if self._device.fan_info is not None:
-            return HVACMode.OFF if self._device.fan_info == "off" else HVACMode.AUTO
+        if self._device.fan_info is None:
+            return None
+        return HVACMode.OFF if self._device.fan_info == "off" else HVACMode.AUTO
 
     @property
     def icon(self) -> str | None:
@@ -549,3 +546,25 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     def preset_mode(self) -> str | None:
         """Return the current preset mode, e.g., home, away, temp."""
         return PRESET_NONE
+
+
+@dataclass(frozen=True, kw_only=True)
+class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescription):
+    """Class describing Ramses binary sensor entities."""
+
+    # integration-specific attributes
+    ramses_cc_class: type[Evohome] | type[Zone] | type[HvacVentilator]
+    ramses_rf_class: type[RamsesController] | type[RamsesZone] | type[RamsesHvac]
+
+
+CLIMATE_DESCRIPTIONS: tuple[RamsesClimateEntityDescription, ...] = (
+    RamsesClimateEntityDescription(
+        key="controller", ramses_cc_class=RamsesController, ramses_rf_class=Evohome
+    ),
+    RamsesClimateEntityDescription(
+        key="zone", ramses_cc_class=RamsesZone, ramses_rf_class=Zone
+    ),
+    RamsesClimateEntityDescription(
+        key="hvac", ramses_cc_class=RamsesHvac, ramses_rf_class=HvacVentilator
+    ),
+)

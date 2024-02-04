@@ -4,56 +4,61 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 from __future__ import annotations
 
-from functools import partial
+from dataclasses import dataclass
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any, Final
 
+from ramses_rf.device import Fakeable
+from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_tx.command import Command
 from ramses_tx.exceptions import TransportSerialError
-import voluptuous as vol
+import voluptuous as vol  # type: ignore[import-untyped]
 
-from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import (
-    CONF_SCAN_INTERVAL,
-    EVENT_HOMEASSISTANT_START,
-    PRECISION_TENTHS,
-    Platform,
-    UnitOfTemperature,
-)
+from homeassistant.const import ATTR_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import BROKER, DOMAIN
-from .coordinator import RamsesBroker
-from .schemas import (
-    SCH_DOMAIN_CONFIG,
-    SVC_SEND_PACKET,
-    SVCS_DOMAIN,
-    SZ_ADVANCED_FEATURES,
-    SZ_MESSAGE_EVENTS,
+from .broker import RamsesBroker
+from .const import (
+    BROKER,
+    CONF_ADVANCED_FEATURES,
+    CONF_MESSAGE_EVENTS,
+    CONF_SEND_PACKET,
+    DOMAIN,
+    SIGNAL_UPDATE,
 )
+from .schemas import (
+    SCH_BIND_DEVICE,
+    SCH_DOMAIN_CONFIG,
+    SCH_SEND_PACKET,
+    SVC_BIND_DEVICE,
+    SVC_FORCE_UPDATE,
+    SVC_SEND_PACKET,
+)
+
+if TYPE_CHECKING:
+    from ramses_tx.message import Message
+
 
 _LOGGER = logging.getLogger(__name__)
 
 
 CONFIG_SCHEMA = vol.Schema({DOMAIN: SCH_DOMAIN_CONFIG}, extra=vol.ALLOW_EXTRA)
 
-PLATFORMS = [
+PLATFORMS: Final[Platform] = (
     Platform.BINARY_SENSOR,
     Platform.CLIMATE,
     Platform.SENSOR,
     Platform.REMOTE,
     Platform.WATER_HEATER,
-]
+)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
-
-    _LOGGER.debug("\r\n\nConfig = %s\r\n", config[DOMAIN])
 
     broker = RamsesBroker(hass, config)
     try:
@@ -64,39 +69,23 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[BROKER] = broker
 
-    coordinator: DataUpdateCoordinator = DataUpdateCoordinator(
-        hass,
-        _LOGGER,
-        name=DOMAIN,
-        update_interval=config[DOMAIN][CONF_SCAN_INTERVAL],
-    )
-    coordinator.update_method = broker.async_update
-
-    if _LOGGER.isEnabledFor(logging.DEBUG):  # TODO: remove
-        app_storage = await broker._async_load_storage()
-        _LOGGER.debug("\r\n\nStore = %s\r\n", app_storage)
-
-    # NOTE: .async_listen_once(EVENT_HOMEASSISTANT_START, awaitable_coro)
-    # NOTE: will be passed event, as: async def awaitable_coro(_event: Event):
-    await coordinator.async_config_entry_first_refresh()  # will save access tokens too
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, broker.async_update)
-
     register_domain_services(hass, broker)
     register_domain_events(hass, broker)
 
     return True
 
 
-# TODO: add async_ to routines where required to do so
 @callback  # TODO: the following is a mess - to add register/deregister of clients
 def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
     """Set up the handlers for the system-wide events."""
 
     @callback
-    def process_msg(msg, *args, **kwargs):  # process_msg(msg, prev_msg=None)
+    def async_process_msg(msg: Message, *args: Any, **kwargs: Any) -> None:
+        """Process a message from the event bus as pass it on."""
+
         if (
-            regex := broker.config[SZ_ADVANCED_FEATURES][SZ_MESSAGE_EVENTS]
-        ) and regex.match(f"{msg!r}"):
+            regex := broker.config[CONF_ADVANCED_FEATURES][CONF_MESSAGE_EVENTS]
+        ) and regex.search(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
                 "src": msg.src.id,
@@ -116,28 +105,41 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
             }
             hass.bus.async_fire(f"{DOMAIN}_learn", event_data)
 
-    broker.client.add_msg_handler(process_msg)
+    broker.client.add_msg_handler(async_process_msg)
 
 
-@callback  # TODO: add async_ to routines where required to do so
-def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
+@callback
+def register_domain_services(hass: HomeAssistant, broker: RamsesBroker) -> None:
     """Set up the handlers for the domain-wide services."""
 
-    @verify_domain_control(hass, DOMAIN)
-    async def svc_fake_device(call: ServiceCall) -> None:
+    @verify_domain_control(hass, DOMAIN)  # TODO: is a work in progress
+    async def async_bind_device(call: ServiceCall) -> None:
+        device: Fakeable
+
         try:
-            broker.client.fake_device(**call.data)
+            device = broker.client.fake_device(call.data["device_id"])
         except LookupError as exc:
             _LOGGER.error("%s", exc)
             return
+
+        if call.data["device_info"]:
+            cmd = Command(call.data["device_info"])
+        else:
+            cmd = None
+
+        await device._initiate_binding_process(  # may: BindingFlowFailed
+            list(call.data["offer"].keys()),
+            confirm_code=list(call.data["confirm"].keys()),
+            ratify_cmd=cmd,
+        )  # TODO: will need to re-discover schema
         hass.helpers.event.async_call_later(5, broker.async_update)
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_force_update(_: ServiceCall) -> None:
+    async def async_force_update(_: ServiceCall) -> None:
         await broker.async_update()
 
     @verify_domain_control(hass, DOMAIN)
-    async def svc_send_packet(call: ServiceCall) -> None:
+    async def async_send_packet(call: ServiceCall) -> None:
         kwargs = dict(call.data.items())  # is ReadOnlyDict
         if (
             call.data["device_id"] == "18:000730"
@@ -148,161 +150,81 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker):
         broker.client.send_cmd(broker.client.create_cmd(**kwargs))
         hass.helpers.event.async_call_later(5, broker.async_update)
 
-    domain_service = SVCS_DOMAIN
-    if not broker.config[SZ_ADVANCED_FEATURES].get(SVC_SEND_PACKET):
-        del domain_service[SVC_SEND_PACKET]
+    hass.services.async_register(
+        DOMAIN, SVC_BIND_DEVICE, async_bind_device, schema=SCH_BIND_DEVICE
+    )
+    hass.services.async_register(
+        DOMAIN, SVC_FORCE_UPDATE, async_force_update, schema={}
+    )
 
-    services = {k: v for k, v in locals().items() if k.startswith("svc")}
-    for name, schema in SVCS_DOMAIN.items():
-        if f"svc_{name}" in services:
-            hass.services.async_register(
-                DOMAIN, name, services[f"svc_{name}"], schema=schema
-            )
+    if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
+        hass.services.async_register(
+            DOMAIN, SVC_SEND_PACKET, async_send_packet, schema=SCH_SEND_PACKET
+        )
 
 
 class RamsesEntity(Entity):
     """Base for any RAMSES II-compatible entity (e.g. Climate, Sensor)."""
 
-    entity_id: str = None  # type: ignore[assignment]
-    # _attr_assumed_state: bool = False
-    # _attr_attribution: str | None = None
-    # _attr_context_recent_time: timedelta = timedelta(seconds=5)
-    # _attr_device_info: DeviceInfo | None = None
-    # _attr_entity_category: EntityCategory | None
-    # _attr_has_entity_name: bool
-    # _attr_entity_picture: str | None = None
-    # _attr_entity_registry_enabled_default: bool
-    # _attr_entity_registry_visible_default: bool
-    # _attr_extra_state_attributes: MutableMapping[str, Any]
-    # _attr_force_update: bool
-    _attr_icon: str | None
-    _attr_name: str | None
-    _attr_should_poll: bool = True
-    _attr_unique_id: str | None = None
-    # _attr_unit_of_measurement: str | None
+    _broker: RamsesBroker
+    _device: RamsesRFEntity
 
-    def __init__(self, broker: RamsesBroker, device) -> None:
+    _attr_should_poll = False
+
+    entity_description: RamsesEntityDescription
+
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: RamsesRFEntity,
+        entity_description: RamsesEntityDescription,
+    ) -> None:
         """Initialize the entity."""
         self.hass = broker.hass
         self._broker = broker
         self._device = device
+        self.entity_description = entity_description
 
-        self._attr_should_poll = False
-
-        self._entity_state_attrs = ()
-
-        # NOTE: this is bad: self.update_ha_state(delay=5)
+        self._attr_unique_id = device.id
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
         attrs = {
-            a: getattr(self._device, a)
-            for a in self._entity_state_attrs
-            if hasattr(self._device, a)
+            ATTR_ID: self._device.id,
         }
-        # TODO: use self._device._parent?
-        # attrs["controller_id"] = self._device.ctl.id if self._device.ctl else None
+        if self.entity_description.ramses_cc_extra_attributes:
+            attrs |= {
+                k: getattr(self._device, v)
+                for k, v in self.entity_description.ramses_cc_extra_attributes.items()
+                if hasattr(self._device, v)
+            }
         return attrs
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
         self._broker._entities[self.unique_id] = self
-        async_dispatcher_connect(self.hass, DOMAIN, self.async_handle_dispatch)
-
-    # @callback  # TODO: WIP
-    def _call_client_api(self, func, *args, **kwargs) -> None:
-        """Wrap client APIs to make them threadsafe."""
-
-        self.hass.loop.call_soon_threadsafe(
-            partial(func, *args, **kwargs)
-        )  # HACK: call_soon_threadsafe should not be needed, but is!
-
-        self.update_ha_state()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, SIGNAL_UPDATE, self.async_write_ha_state
+            )
+        )
 
     @callback
-    def async_handle_dispatch(self, *args) -> None:  # TODO: remove as unneeded?
-        """Process a dispatched message.
+    def async_write_ha_state_delayed(self, delay: int = 3) -> None:
+        """Write to the state machine after a short delay to allow system to quiesce."""
 
-        Data validation is not required, it will have been done upstream.
-        This routine is threadsafe.
-        """
-        if not args:
-            self.update_ha_state()
+        # FIXME: doesn't work, as injects `_now: dt``, where only self is expected
+        # async_call_later(self.hass, delay, self.async_write_ha_state)
 
-    @callback
-    def update_ha_state(self, delay=3) -> None:
-        """Update HA state after a short delay to allow system to quiesce.
-
-        This routine is threadsafe.
-        """
-        args = (delay, self.async_schedule_update_ha_state)
-        self.hass.loop.call_soon_threadsafe(
-            self.hass.helpers.event.async_call_later, *args
-        )  # HACK: call_soon_threadsafe should not be needed
+        self.hass.loop.call_later(delay, self.async_write_ha_state)
 
 
-class RamsesDeviceBase(RamsesEntity):  # for: binary_sensor & sensor
-    """Base for any RAMSES II-compatible entity (e.g. BinarySensor, Sensor)."""
+@dataclass(frozen=True, kw_only=True)
+class RamsesEntityDescription(EntityDescription):
+    """Class describing Ramses entities."""
 
-    def __init__(
-        self,
-        broker,
-        device,
-        state_attr,
-        device_class: SensorDeviceClass | None = None,
-        unique_id_attr: str | None = None,
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__(broker, device)
+    has_entity_name: bool = True
 
-        self.entity_id = f"{DOMAIN}.{device.id}-{state_attr}"
-
-        self._attr_device_class = device_class
-        self._attr_unique_id = f"{device.id}-{unique_id_attr or state_attr}"
-        self._state_attr = state_attr
-
-    @property
-    def available(self) -> bool:
-        """Return True if the sensor is available."""
-        return getattr(self._device, self._state_attr) is not None
-
-    @property
-    def name(self) -> str:
-        """Return the name of the binary_sensor/sensor."""
-        if not hasattr(self._device, "name") or not self._device.name:
-            return f"{self._device.id} {self._state_attr}"
-        return f"{self._device.name} {self._state_attr}"
-
-
-class RamsesZoneBase(RamsesEntity):  # for: climate & water_heater
-    """Base for any RAMSES RF-compatible entity (e.g. Controller, DHW, Zones)."""
-
-    _attr_precision: float = PRECISION_TENTHS
-    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
-
-    def __init__(self, broker: RamsesBroker, device) -> None:
-        """Initialize the sensor."""
-        super().__init__(broker, device)
-
-        # dont include platform/domain (climate.ramses_cc)
-        self._attr_unique_id = device.id
-
-    @property
-    def current_temperature(self) -> float | None:
-        """Return the current temperature."""
-        return self._device.temperature
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        return {
-            **super().extra_state_attributes,
-            "schema": self._device.schema,
-            "params": self._device.params,
-        }
-
-    @property
-    def name(self) -> str | None:
-        """Return the name of the climate/water_heater entity."""
-        return self._device.name
+    # integration-specific attributes
+    ramses_cc_extra_attributes: dict[str, str] | None = None  # TODO: may not be None?
