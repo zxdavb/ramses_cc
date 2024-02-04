@@ -1,3 +1,101 @@
-[tool.isort]
-  profile = "black"
-  multi_line_output = 3
+#
+### project ##########################################################################
+# ramses_cc, updated: 2023-11-11
+#
+
+#
+### pytest ###########################################################################
+
+[tool.pytest.ini_options]
+  asyncio_mode = "auto"
+
+
+#
+### mypy ############################################################################
+
+[tool.mypy]
+  # exclude = "tests"
+  files = ["custom_components"]
+  follow_imports = "skip"  # TODO: don't use this feature
+
+  # Start off with these
+  warn_unused_configs = true
+  warn_redundant_casts = true  # this is not per-module
+  warn_unused_ignores = true
+
+  # Strongly recommend enabling this one as soon as you can
+  check_untyped_defs = true
+
+  # These shouldn't be too much additional work, but may be tricky to
+  # get passing if you use a lot of untyped libraries
+  # disallow_subclassing_any = true                                                    # excl. for HA
+  # disallow_untyped_decorators = true                                                 # excl. for HA
+  disallow_any_generics = true
+
+  # These next few are various gradations of forcing use of type annotations
+  disallow_untyped_calls = true
+  disallow_incomplete_defs = true
+  disallow_untyped_defs = true
+
+  # # This one isn't too hard to get passing, but return on investment is lower
+  no_implicit_reexport = true
+
+  # This one can be tricky to get passing if you use a lot of untyped libraries
+  # warn_return_any = true                                                             # excl. for HA: lots of decorators
+
+  # disallow_any_unimported = true
+  warn_no_return = true
+  warn_unreachable = true
+
+
+[[tool.mypy.overrides]]
+  module = ["homeassistant.*", "ramses_rf.*"]
+
+  ignore_missing_imports = true
+
+
+#
+## ruff ##############################################################################
+
+[tool.ruff]
+  # exclude = ["tests/deprecated/*.py"]
+  src = ["custom_components"]
+  target-version = "py311"  # Assume Python 3.11
+
+
+[tool.ruff.lint]
+  select = [
+    "B",  # flake8-bugbear
+    "E",  # pycodestyle
+    "F",  # Pyflakes
+    "I",  # isort
+    # "SIM",  # flake8-simplify
+    "UP",  # pyupgrade
+  ]
+  ignore = ["E501"]
+  # E501  - Line too long
+
+[tool.ruff.flake8-import-conventions.extend-aliases]
+  voluptuous = "vol"
+  "homeassistant.helpers.area_registry" = "ar"
+  "homeassistant.helpers.config_validation" = "cv"
+  "homeassistant.helpers.device_registry" = "dr"
+  "homeassistant.helpers.entity_registry" = "er"
+  "homeassistant.helpers.issue_registry" = "ir"
+  "homeassistant.util.dt" = "dt_util"
+
+[tool.ruff.flake8-pytest-style]
+  fixture-parentheses = false
+
+[tool.ruff.flake8-tidy-imports.banned-api]
+  "async_timeout".msg = "use asyncio.timeout instead"
+  "pytz".msg = "use zoneinfo instead"
+
+[tool.ruff.isort]
+  force-sort-within-sections = true
+  known-first-party = ["homeassistant"]
+  combine-as-imports = true
+  split-on-trailing-comma = false
+
+[tool.ruff.mccabe]
+  max-complexity = 25

@@ -1,27 +1,58 @@
-# .pre-commit-config.yaml file for https://github.com/zxdavb
+# .pre-commit-config.yaml file for https://github.com/zxdavb/ramses_cc
+# last updated 2024-01-21
+
+# exclude: (^.secrets/|^docs/|^misc)
 
 repos:
-  - repo: https://github.com/psf/black
-    rev: 22.6.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.8  # same as HA
     hooks:
-      - id: black
-        args:
-          - --safe
-          - --quiet
-        files: ^(custom.*/.+)?[^/]+\.py$
+      - id: ruff         # linter
+      - id: ruff-format  # formatter
 
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.2
-    hooks:
-      - id: flake8
-        additional_dependencies:
-          - flake8-docstrings==1.5.0
-          - pydocstyle==5.1.1
-        files: ^custom.*/.+\.py$
-        exclude: ^xxx.*/tests\.py$
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.8.0
+  #   hooks:
+  #   - id: mypy
+  #     additional_dependencies: [voluptuous==0.14.1]
 
-  - repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
     hooks:
-      - id: isort
-        args: ["--profile", "black", "--filter-files"]
+    - id: python-check-blanket-noqa
+    - id: python-check-blanket-type-ignore
+    - id: python-no-log-warn
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+    # id: check-json  # don't enable this one
+    - id: check-toml
+    - id: check-yaml
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+
+  - repo: local
+    hooks:
+      # entry: '[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'  # email address
+
+    - id: debugs
+      name: check DEBUG flags
+      entry: '_DBG_.*=.*True'
+      language: pygrep
+      args: [-i]
+      exclude: (.pre-commit-config.yaml|^tests/.*\.py$)  # avoid false +ve
+
+    # - id: fixme
+    #   name: check FIXME flags
+    #   entry: '#.*(FIXME)'  # |TODO)'
+    #   language: pygrep
+    #   args: [-i]
+    #   exclude: (.pre-commit-config.yaml|^tests/.*\.py$)  # avoid false +ve
+
+    - id: secrets
+      name: check secrets
+      entry: '#.*(secret|password|pwd)'
+      language: pygrep
+      args: [-i]
+      exclude: .pre-commit-config.yaml  # avoid false +ve

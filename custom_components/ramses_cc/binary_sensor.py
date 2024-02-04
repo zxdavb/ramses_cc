@@ -1,43 +1,57 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC.
-
-Provides support for binary sensors.
-"""
+"""Support for RAMSES binary sensors."""
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime as dt, timedelta
 import logging
-from datetime import datetime as dt
-from datetime import timedelta as td
+from types import UnionType
 from typing import Any
 
-from homeassistant.components.binary_sensor import DOMAIN as PLATFORM
-from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
-    BinarySensorEntity,
-)
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback, current_platform
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-
-#
+from ramses_rf.device.base import BatteryState, HgiGateway
 from ramses_rf.device.heat import (
     SZ_CH_ACTIVE,
     SZ_CH_ENABLED,
     SZ_COOLING_ACTIVE,
     SZ_COOLING_ENABLED,
     SZ_DHW_ACTIVE,
+    SZ_DHW_BLOCKING,
     SZ_DHW_ENABLED,
     SZ_FAULT_PRESENT,
     SZ_FLAME_ACTIVE,
+    SZ_OTC_ACTIVE,
+    SZ_SUMMER_MODE,
+    BdrSwitch,
+    OtbGateway,
+    TrvActuator,
 )
-from ramses_rf.protocol.const import SZ_BYPASS_POSITION
+from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_rf.gateway import Gateway
+from ramses_rf.schemas import SZ_BLOCK_LIST, SZ_CONFIG, SZ_KNOWN_LIST, SZ_SCHEMA
+from ramses_rf.system.heat import Logbook, System
+from ramses_tx.const import SZ_BYPASS_POSITION, SZ_IS_EVOFW3
 
-from . import RamsesDeviceBase
-from .const import ATTR_BATTERY_LEVEL, BROKER, DOMAIN
-from .helpers import migrate_to_ramses_rf
-from .schemas import SVCS_BINARY_SENSOR
+from homeassistant.components.binary_sensor import (
+    ENTITY_ID_FORMAT,
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+    BinarySensorEntityDescription,
+)
+from homeassistant.const import EntityCategory
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+
+from . import RamsesEntity, RamsesEntityDescription
+from .broker import RamsesBroker
+from .const import (
+    ATTR_ACTIVE_FAULT,
+    ATTR_BATTERY_LEVEL,
+    ATTR_LATEST_EVENT,
+    ATTR_LATEST_FAULT,
+    ATTR_WORKING_SCHEMA,
+    BROKER,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,260 +62,321 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
-    """Set up the binary sensor entities.
-
-    discovery_info keys:
-      gateway: is the ramses_rf protocol stack (gateway/protocol/transport/serial)
-      devices: heat (e.g. CTL, OTB, BDR, TRV) or hvac (e.g. FAN, CO2, SWI)
-      domains: TCS, DHW and Zones
-    """
-
-    def entity_factory(broker, device, attr, *, entity_class=None, **kwargs):
-        migrate_to_ramses_rf(hass, "binary_sensor", f"{device.id}-{attr}")
-        return (entity_class or RamsesBinarySensor)(broker, device, attr, **kwargs)
+    """Create binary sensors for CH/DHW (heat) & HVAC."""
 
     if discovery_info is None:
         return
 
-    broker = hass.data[DOMAIN][BROKER]
+    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
-    new_sensors = [
-        entity_factory(broker, dev, k, **v)
-        for k, v in BINARY_SENSOR_ATTRS["gateway"].items()
-        if (dev := discovery_info.get("gateway"))
-    ]  # 18:xxxxxx - status
-    new_sensors += [
-        entity_factory(broker, dev, k, **v)
-        for key in ("devices", "domains")
-        for dev in discovery_info.get(key, [])
-        for k, v in BINARY_SENSOR_ATTRS[key].items()
-        if dev and hasattr(dev, k)
+    entities = [
+        description.ramses_cc_class(broker, device, description)
+        for device in discovery_info["devices"]
+        for description in BINARY_SENSOR_DESCRIPTIONS
+        if isinstance(device, description.ramses_rf_class)
+        and hasattr(device, description.key)
     ]
-    # TODO: has a bug:
-    # Traceback (most recent call last):
-    # File "/usr/src/homeassistant/homeassistant/helpers/entity_platform.py", line 249, in _async_setup_platform
-    #     await asyncio.shield(task)
-    # File "/config/custom_components/ramses_cc/binary_sensor.py", line 64, in async_setup_platform
-    #     new_sensors += [
-    # File "/config/custom_components/ramses_cc/binary_sensor.py", line 68, in <listcomp>
-    #     if getattr(tcs, "tcs") is tcs
-    # AttributeError: 'NoneType' object has no attribute 'tcs'
-    new_sensors += [
-        entity_factory(broker, dev, k, **v)
-        for dev in discovery_info.get("domains", [])  # not "devices"
-        for k, v in BINARY_SENSOR_ATTRS["systems"].items()
-        if dev and getattr(dev, "tcs") is dev  # HACK
-    ]  # 01:xxxxxx - active_fault, schema
-
-    async_add_entities(new_sensors)
-
-    if not broker._services.get(PLATFORM) and new_sensors:
-        broker._services[PLATFORM] = True
-
-        register_svc = current_platform.get().async_register_entity_service
-        [register_svc(k, v, f"svc_{k}") for k, v in SVCS_BINARY_SENSOR.items()]
+    async_add_entities(entities)
 
 
-class RamsesBinarySensor(RamsesDeviceBase, BinarySensorEntity):
+class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
     """Representation of a generic binary sensor."""
+
+    entity_description: RamsesBinarySensorEntityDescription
 
     def __init__(
         self,
-        broker,  # ramses_cc broker
-        device,  # ramses_rf device
-        state_attr,  # key of attr_dict +/- _ot suffix
-        device_class=None,  # attr_dict value
-        **kwargs,  # leftover attr_dict values
+        broker: RamsesBroker,
+        device: RamsesRFEntity,
+        entity_description: RamsesEntityDescription,
     ) -> None:
-        """Initialize a binary sensor."""
+        """Initialize the sensor."""
+        _LOGGER.info("Found %r: %s", device, entity_description.key)
+        super().__init__(broker, device, entity_description)
 
-        _LOGGER.info("Found a Binary Sensor for %s: %s", device.id, state_attr)
-
-        super().__init__(
-            broker,
-            device,
-            state_attr,
-            device_class=device_class,
+        self.entity_id = ENTITY_ID_FORMAT.format(
+            f"{device.id}_{entity_description.key}"
         )
+        self._attr_unique_id = f"{device.id}-{entity_description.key}"
 
     @property
-    def is_on(self) -> bool:
+    def available(self) -> bool:
+        """Return True if the entity is available."""
+        return self.state is not None
+
+    @property
+    def is_on(self) -> bool | None:
         """Return the state of the binary sensor."""
-        return getattr(self._device, self._state_attr)
-
-
-class RamsesActuator(RamsesBinarySensor):
-    """Representation of an actuator sensor; on means active."""
+        return getattr(self._device, self.entity_description.ramses_rf_attr)
 
     @property
     def icon(self) -> str:
         """Return the icon to use in the frontend, if any."""
-        return "mdi:electric-switch-closed" if self.is_on else "mdi:electric-switch"
+        return (
+            self.entity_description.icon
+            if self.is_on
+            else self.entity_description.icon_off
+        )
 
-
-class RamsesBattery(RamsesBinarySensor):
-    """Representation of a low battery sensor; on means low."""
-
+    # TODO: Remove this when we have config entries and devices.
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        state = self._device.battery_state
-        return {
-            **super().extra_state_attributes,
-            ATTR_BATTERY_LEVEL: state and state.get(ATTR_BATTERY_LEVEL),
-        }
+    def name(self) -> str:
+        """Return name temporarily prefixed with device name/id."""
+        prefix = (
+            self._device.name
+            if hasattr(self._device, "name") and self._device.name
+            else self._device.id
+        )
+        return f"{prefix} {super().name}"
 
 
-class RamsesFaultLog(RamsesBinarySensor):
-    """Representation of a system (a controller)."""
+class RamsesLogbookBinarySensor(RamsesBinarySensor):
+    """Representation of a fault log."""
 
-    @property
-    def available(self) -> bool:
-        """Return True if the device has been seen recently."""
-        if msg := self._device._msgs.get("0418"):
-            return dt.now() - msg.dtm < td(seconds=1200)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        return {
-            "active_fault": self._device.tcs.active_fault,
-            "latest_event": self._device.tcs.latest_event,
-            "latest_fault": self._device.tcs.latest_fault,
-        }
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return True if the controller has a fault."""
-        return bool(self._device.tcs.active_fault)
-
-
-class RamsesSystem(RamsesBinarySensor):
-    """Representation of a system (a controller)."""
+    _device: Logbook
 
     @property
     def available(self) -> bool:
         """Return True if the device has been seen recently."""
-        if msg := self._device._msgs.get("1F09"):
-            return dt.now() - msg.dtm < td(seconds=msg.payload["remaining_seconds"] * 3)
+        msg = self._device._msgs.get("0418")
+        return msg and dt.now() - msg.dtm < timedelta(seconds=1200)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the integration-specific state attributes."""
-        return {
-            "schema": self._device.tcs.schema,
-        }
+    def is_on(self) -> bool:
+        """Return the state of the binary sensor."""
+        return self._device.active_fault is not None
+
+
+class RamsesSystemBinarySensor(RamsesBinarySensor):
+    """Representation of a system (a controller)."""
+
+    _device: System
 
     @property
-    def is_on(self) -> bool | None:
-        """Return True if the controller has been seen recently."""
-        return self.available
+    def available(self) -> bool:
+        """Return True if the last system sync message is recent."""
+        msg = self._device._msgs.get("1F09")
+        return msg and dt.now() - msg.dtm < timedelta(
+            seconds=msg.payload["remaining_seconds"] * 3
+        )
+
+    @property
+    def is_on(self) -> bool:
+        """Return True if the gateway has received messages recently."""
+        return not super().is_on  # TODO
 
 
-class RamsesGateway(RamsesBinarySensor):
+class RamsesGatewayBinarySensor(RamsesBinarySensor):
     """Representation of a gateway (a HGI80)."""
 
-    @property
-    def available(self) -> bool:
-        """Return True if the device is available."""
-        return bool(self._device._gwy.pkt_protocol._hgi80.get("device_id"))
+    _device: HgiGateway
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the integration-specific state attributes."""
 
-        # {% set device_id = state_attr("binary_sensor.01_145038_active_fault", "active_fault")[5] %}
-        # {% for state in state_attr("binary_sensor.18_140805_gateway", "known_list") %}
-        #   {%- if device_id in state %}{{ state[device_id].get('class') }}{% endif %}
-        # {%- endfor -%}
-
-        def shrink(device_hints) -> dict:
+        def shrink(device_hints: dict[str, bool | str]) -> dict[str, Any]:
             return {
                 k: v
                 for k, v in device_hints.items()
                 if k in ("alias", "class", "faked") and v not in (None, False)
             }
 
-        gwy = self._device._gwy
-        return {
-            "schema": {gwy.tcs.id: gwy.tcs._schema_min} if gwy.tcs else {},
-            "config": {"enforce_known_list": gwy.config.enforce_known_list},
-            "known_list": [{k: shrink(v)} for k, v in gwy.known_list.items()],
-            "block_list": [{k: shrink(v)} for k, v in gwy._exclude.items()],
-            "other_list": sorted(
-                d for d in gwy.pkt_protocol._unwanted if d not in gwy._exclude
-            ),
-            "_is_evofw3": gwy.pkt_protocol._hgi80["is_evofw3"],
+        gwy: Gateway = self._device._gwy
+
+        return super().extra_state_attributes | {
+            SZ_SCHEMA: {gwy.tcs.id: gwy.tcs._schema_min} if gwy.tcs else {},
+            SZ_CONFIG: {"enforce_known_list": gwy._enforce_known_list},
+            SZ_KNOWN_LIST: [{k: shrink(v)} for k, v in gwy.known_list.items()],
+            SZ_BLOCK_LIST: [{k: shrink(v)} for k, v in gwy._exclude.items()],
+            SZ_IS_EVOFW3: gwy._transport.get_extra_info(SZ_IS_EVOFW3),
         }
 
     @property
-    def is_on(self) -> bool | None:
-        """Return True if the controller has been seen recently."""
-        if msg := self._device._gwy.msg_protocol._this_msg:
-            return dt.now() - msg.dtm > td(seconds=300)
+    def is_on(self) -> bool:
+        """Return True if the gateway has received messages recently."""
+        msg = self._device._gwy._this_msg
+        return not bool(msg and dt.now() - msg.dtm < timedelta(seconds=300))
 
 
-DEVICE_CLASS = "device_class"
-ENTITY_CLASS = "entity_class"
-STATE_ICONS = "state_icons"  # TBA
+@dataclass(frozen=True, kw_only=True)
+class RamsesBinarySensorEntityDescription(
+    RamsesEntityDescription, BinarySensorEntityDescription
+):
+    """Class describing Ramses binary sensor entities."""
 
-BINARY_SENSOR_ATTRS = {
-    "devices": {  # the devices
-        # Special projects
-        "bit_2_4": {},
-        "bit_2_5": {},
-        "bit_2_6": {},
-        "bit_2_7": {},
-        "bit_3_7": {},
-        "bit_6_6": {},
-        SZ_FAULT_PRESENT: {
-            DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
-        },  # OTB
-        # Standard sensors
-        "battery_low": {
-            DEVICE_CLASS: BinarySensorDeviceClass.BATTERY,
-            ENTITY_CLASS: RamsesBattery,
+    entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
+    icon_off: str | None = None
+
+    # integration-specific attributes
+    ramses_cc_class: type[RamsesBinarySensor] = None  # type: ignore[assignment]
+    ramses_rf_attr: str = None  # type: ignore[assignment]
+    ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
+
+    def __post_init__(self) -> None:
+        """Default values for descriptor attrs.
+
+        Is a convenience to avoid having to specify the values in the DESCRIPTOR table.
+        """
+
+        # HACK: may not be acceptible to HA core devs (should just complete the table)
+        object.__setattr__(self, "ramses_rf_attr", self.ramses_rf_attr or self.key)
+        object.__setattr__(
+            self, "ramses_cc_class", self.ramses_cc_class or RamsesBinarySensor
+        )
+
+
+BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
+    RamsesBinarySensorEntityDescription(
+        key="status",
+        ramses_rf_attr="id",
+        name="Gateway status",
+        ramses_rf_class=HgiGateway,
+        ramses_cc_class=RamsesGatewayBinarySensor,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="status",
+        ramses_rf_attr="id",
+        name="System status",
+        ramses_rf_class=System,
+        ramses_cc_class=RamsesSystemBinarySensor,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        ramses_cc_extra_attributes={
+            ATTR_WORKING_SCHEMA: SZ_SCHEMA,
         },
-        "active": {
-            ENTITY_CLASS: RamsesActuator,
-            STATE_ICONS: ("mdi:electric-switch-closed", "mdi:electric-switch"),
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=TrvActuator.WINDOW_OPEN,
+        name="Window open",
+        device_class=BinarySensorDeviceClass.WINDOW,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=BdrSwitch.ACTIVE,
+        name="Active",
+        icon="mdi:electric-switch-closed",
+        icon_off="mdi:electric-switch",
+        entity_category=None,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=BatteryState.BATTERY_LOW,
+        device_class=BinarySensorDeviceClass.BATTERY,
+        ramses_cc_extra_attributes={
+            ATTR_BATTERY_LEVEL: BatteryState.BATTERY_STATE,
         },
-        SZ_CH_ACTIVE: {
-            STATE_ICONS: ("mdi:circle-outline", "mdi:fire-circle"),
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="active_fault",
+        name="Active fault",
+        ramses_rf_class=Logbook,
+        ramses_cc_class=RamsesLogbookBinarySensor,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        ramses_cc_extra_attributes={
+            ATTR_ACTIVE_FAULT: "active_fault",
+            ATTR_LATEST_EVENT: "latest_event",
+            ATTR_LATEST_FAULT: "latest_fault",
         },
-        SZ_CH_ENABLED: {},
-        SZ_COOLING_ACTIVE: {
-            STATE_ICONS: ("mdi:snowflake", "mdi:snowflake-off"),
-        },
-        SZ_COOLING_ENABLED: {},
-        SZ_DHW_ACTIVE: {},
-        SZ_DHW_ENABLED: {},
-        SZ_FLAME_ACTIVE: {
-            STATE_ICONS: ("mdi:circle-outline", "mdi:fire-circle"),
-        },
-        "window_open": {
-            DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
-        },
-        SZ_BYPASS_POSITION: {},
-    },
-    "domains": {  # the non-devices: TCS, DHW, & Zones
-        "window_open": {
-            DEVICE_CLASS: BinarySensorDeviceClass.WINDOW,
-        },
-    },
-    "systems": {  # the TCS specials (faults, schedule & schema)
-        "active_fault": {
-            ENTITY_CLASS: RamsesFaultLog,
-            DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
-        },
-        "schema": {
-            ENTITY_CLASS: RamsesSystem,
-        },
-    },
-    "gateway": {  # the gateway (not the HGI, which is a device)
-        "status": {
-            ENTITY_CLASS: RamsesGateway,
-            DEVICE_CLASS: BinarySensorDeviceClass.PROBLEM,
-        },
-    },
-}
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_CH_ACTIVE,
+        name="CH active",
+        icon="mdi:radiator",
+        icon_off="mdi:radiator-off",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_CH_ENABLED,
+        name="CH enabled",
+        icon="mdi:radiator",
+        icon_off="mdi:radiator-off",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_COOLING_ACTIVE,
+        name="Cooling active",
+        icon="mdi:snowflake",
+        icon_off="mdi:snowflake-off",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_COOLING_ENABLED,
+        name="Cooling enabled",
+        icon_off="mdi:snowflake-off",
+        icon="mdi:snowflake",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_DHW_ACTIVE,
+        name="DHW active",
+        icon_off="mdi:water-off",
+        icon="mdi:water",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_DHW_ENABLED,
+        name="DHW enabled",
+        icon_off="mdi:water-off",
+        icon="mdi:water",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_FLAME_ACTIVE,
+        name="Flame active",
+        icon="mdi:fire",
+        icon_off="mdi:fire-off",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_DHW_BLOCKING,
+        name="DHW blocking",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_OTC_ACTIVE,
+        name="OTC active",
+        icon="mdi:weather-snowy-heavy",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_SUMMER_MODE,
+        name="Summer mode",
+        icon="mdi:sun-clock",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_FAULT_PRESENT,
+        icon="mdi:alert",
+        name="Fault present",
+    ),
+    RamsesBinarySensorEntityDescription(
+        key=SZ_BYPASS_POSITION,
+        name="Bypass position",
+    ),
+    # Special projects
+    RamsesBinarySensorEntityDescription(
+        key="bit_2_4",
+        name="Bit 2/4",
+        ramses_rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="bit_2_5",
+        name="Bit 2/5",
+        ramses_rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="bit_2_6",
+        name="Bit 2/6",
+        ramses_rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="bit_2_7",
+        name="Bit 2/7",
+        ramses_rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="bit_3_7",
+        name="Bit 3/7",
+        ramses_rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+    RamsesBinarySensorEntityDescription(
+        key="bit_6_6",
+        name="Bit 6/6",
+        ramses_rf_class=OtbGateway,
+        entity_registry_enabled_default=False,
+    ),
+)

@@ -1,21 +1,30 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC."""
+"""Schemas for RAMSES integration."""
 from __future__ import annotations
 
-import logging
 from copy import deepcopy
-from datetime import timedelta as td
+from datetime import timedelta
+import logging
+from typing import Any, Final, TypeAlias
 
-import voluptuous as vol
-from homeassistant.const import ATTR_ENTITY_ID as CONF_ENTITY_ID
-from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import callback
-from homeassistant.helpers import config_validation as cv
-from ramses_rf.const import SZ_DEVICE_ID
-from ramses_rf.helpers import merge, shrink
-from ramses_rf.protocol.schemas import (
+from ramses_rf.helpers import deep_merge, is_subset, shrink
+from ramses_rf.schemas import (
+    SCH_GATEWAY_CONFIG,
+    SCH_GLOBAL_SCHEMAS_DICT,
+    SCH_RESTORE_CACHE_DICT,
+    SZ_APPLIANCE_CONTROL,
+    SZ_BLOCK_LIST,
+    SZ_CONFIG,
+    SZ_KNOWN_LIST,
+    SZ_ORPHANS_HEAT,
+    SZ_ORPHANS_HVAC,
+    SZ_RESTORE_CACHE,
+    SZ_SENSOR,
+    SZ_SYSTEM,
+    SZ_ZONES,
+)
+from ramses_tx.const import COMMAND_REGEX
+from ramses_tx.schemas import (
+    SCH_ENGINE_DICT,
     SZ_PORT_CONFIG,
     SZ_SERIAL_PORT,
     extract_serial_port,
@@ -23,329 +32,82 @@ from ramses_rf.protocol.schemas import (
     sch_packet_log_dict_factory,
     sch_serial_port_dict_factory,
 )
-from ramses_rf.schemas import (
-    SCH_DEVICE_ID_ANY,
-    SCH_GATEWAY_DICT,
-    SCH_GLOBAL_SCHEMAS_DICT,
-    SCH_RESTORE_CACHE_DICT,
-    SZ_CONFIG,
-    SZ_RESTORE_CACHE,
-    SZ_RESTORE_SCHEMA,
+import voluptuous as vol  # type: ignore[import-untyped]
+
+from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import callback
+from homeassistant.helpers import config_validation as cv
+
+from .const import (
+    ATTR_ACTIVE,
+    ATTR_CO2_LEVEL,
+    ATTR_COMMAND,
+    ATTR_DELAY_SECS,
+    ATTR_DEVICE_ID,
+    ATTR_DIFFERENTIAL,
+    ATTR_DURATION,
+    ATTR_INDOOR_HUMIDITY,
+    ATTR_LOCAL_OVERRIDE,
+    ATTR_MAX_TEMP,
+    ATTR_MIN_TEMP,
+    ATTR_MODE,
+    ATTR_MULTIROOM,
+    ATTR_NUM_REPEATS,
+    ATTR_OPENWINDOW,
+    ATTR_OVERRUN,
+    ATTR_PERIOD,
+    ATTR_SCHEDULE,
+    ATTR_SETPOINT,
+    ATTR_TEMPERATURE,
+    ATTR_TIMEOUT,
+    ATTR_UNTIL,
+    CONF_ADVANCED_FEATURES,
+    CONF_COMMANDS,
+    CONF_DEV_MODE,
+    CONF_MESSAGE_EVENTS,
+    CONF_RAMSES_RF,
+    CONF_SEND_PACKET,
+    CONF_UNKNOWN_CODES,
+    SystemMode,
+    ZoneMode,
 )
 
-from .const import SYSTEM_MODE_LOOKUP, SystemMode, ZoneMode
+_SchemaT: TypeAlias = dict[str, Any]
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_MODE = "mode"
-CONF_SYSTEM_MODE = "system_mode"
-CONF_DURATION_DAYS = "period"
-CONF_DURATION_HOURS = "hours"
-
-CONF_DURATION = "duration"
-CONF_LOCAL_OVERRIDE = "local_override"
-CONF_MAX_TEMP = "max_temp"
-CONF_MIN_TEMP = "min_temp"
-CONF_MULTIROOM = "multiroom_mode"
-CONF_OPENWINDOW = "openwindow_function"
-CONF_SETPOINT = "setpoint"
-CONF_TEMPERATURE = "temperature"
-CONF_UNTIL = "until"
-
-CONF_ACTIVE = "active"
-CONF_DIFFERENTIAL = "differential"
-CONF_OVERRUN = "overrun"
-
 #
-# Integration/domain generic services
-SVC_FAKE_DEVICE = "fake_device"
-SVC_REFRESH_SYSTEM = "refresh_system"
-SVC_SEND_PACKET = "send_packet"
+# Configuration schema for Integration/domain
+SCAN_INTERVAL_DEFAULT = timedelta(seconds=60)
+SCAN_INTERVAL_MINIMUM = timedelta(seconds=3)
 
-SCH_FAKE_DEVICE = vol.Schema(
-    {
-        vol.Required(SZ_DEVICE_ID): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
-        vol.Optional("create_device", default=False): vol.Any(None, bool),
-        vol.Optional("start_binding", default=False): vol.Any(None, bool),
-    }
-)
-SCH_SEND_PACKET = vol.Schema(
-    {
-        vol.Required(SZ_DEVICE_ID): vol.Match(r"^[0-9]{2}:[0-9]{6}$"),
-        vol.Required("verb"): vol.In((" I", "I", "RQ", "RP", " W", "W")),
-        vol.Required("code"): vol.Match(r"^[0-9A-F]{4}$"),
-        vol.Required("payload"): vol.Match(r"^[0-9A-F]{1,48}$"),
-    }
-)
-
-SVCS_DOMAIN = {
-    SVC_FAKE_DEVICE: SCH_FAKE_DEVICE,
-    SVC_REFRESH_SYSTEM: None,
-    SVC_SEND_PACKET: SCH_SEND_PACKET,
-}
-
-#
-# Integration/domain services for TCS
-SVC_RESET_SYSTEM_MODE = "reset_system_mode"
-SVC_SET_SYSTEM_MODE = "set_system_mode"
-
-SCH_SYSTEM_MODE = vol.Schema(
-    {
-        vol.Required(CONF_MODE): vol.In(SYSTEM_MODE_LOOKUP),  # incl. DAY_OFF_ECO
-    }
-)
-SCH_SYSTEM_MODE_HOURS = vol.Schema(
-    {
-        vol.Required(CONF_MODE): vol.In([SystemMode.ECO_BOOST]),
-        vol.Optional(CONF_DURATION, default=td(hours=1)): vol.All(
-            cv.time_period, vol.Range(min=td(hours=1), max=td(hours=24))
-        ),
-    }
-)
-SCH_SYSTEM_MODE_DAYS = vol.Schema(
-    {
-        vol.Required(CONF_MODE): vol.In(
-            [SystemMode.AWAY, SystemMode.CUSTOM, SystemMode.DAY_OFF]
-        ),
-        vol.Optional(CONF_DURATION_DAYS, default=td(days=0)): vol.All(
-            cv.time_period, vol.Range(min=td(days=0), max=td(days=99))
-        ),  # 0 means until the end of the day
-    }
-)
-SCH_SYSTEM_MODE = vol.Any(SCH_SYSTEM_MODE, SCH_SYSTEM_MODE_HOURS, SCH_SYSTEM_MODE_DAYS)
-
-SVCS_DOMAIN_EVOHOME = {
-    SVC_RESET_SYSTEM_MODE: None,
-    SVC_SET_SYSTEM_MODE: SCH_SYSTEM_MODE,
-}
-
-#
-# Climate platform services for Zone
-SVC_PUT_ZONE_TEMP = "put_zone_temp"
-SVC_RESET_ZONE_CONFIG = "reset_zone_config"
-SVC_RESET_ZONE_MODE = "reset_zone_mode"
-SVC_SET_ZONE_CONFIG = "set_zone_config"
-SVC_SET_ZONE_MODE = "set_zone_mode"
-
-CONF_ZONE_MODES = (
-    ZoneMode.SCHEDULE,
-    ZoneMode.PERMANENT,
-    ZoneMode.ADVANCED,
-    ZoneMode.TEMPORARY,
-)
-
-SCH_SET_ZONE_BASE = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
-
-SCH_SET_ZONE_CONFIG = SCH_SET_ZONE_BASE.extend(
-    {
-        vol.Optional(CONF_MAX_TEMP, default=35): vol.All(
-            cv.positive_float,
-            vol.Range(min=21, max=35),
-        ),
-        vol.Optional(CONF_MIN_TEMP, default=5): vol.All(
-            cv.positive_float,
-            vol.Range(min=5, max=21),
-        ),
-        vol.Optional(CONF_LOCAL_OVERRIDE, default=True): cv.boolean,
-        vol.Optional(CONF_OPENWINDOW, default=True): cv.boolean,
-        vol.Optional(CONF_MULTIROOM, default=True): cv.boolean,
-    }
-)
-
-SCH_SET_ZONE_MODE = SCH_SET_ZONE_BASE.extend(
-    {
-        vol.Optional(CONF_MODE): vol.In([ZoneMode.SCHEDULE]),
-    }
-)
-SCH_SET_ZONE_MODE_SETPOINT = SCH_SET_ZONE_BASE.extend(
-    {
-        vol.Optional(CONF_MODE): vol.In([ZoneMode.PERMANENT, ZoneMode.ADVANCED]),
-        vol.Optional(CONF_SETPOINT, default=21): vol.All(
-            cv.positive_float,
-            vol.Range(min=5, max=30),
-        ),
-    }
-)
-SCH_SET_ZONE_MODE_UNTIL = SCH_SET_ZONE_BASE.extend(
-    {
-        vol.Optional(CONF_MODE): vol.In([ZoneMode.TEMPORARY]),
-        vol.Optional(CONF_SETPOINT, default=21): vol.All(
-            cv.positive_float,
-            vol.Range(min=5, max=30),
-        ),
-        vol.Exclusive(CONF_UNTIL, CONF_UNTIL): cv.datetime,
-        vol.Exclusive(CONF_DURATION, CONF_UNTIL): vol.All(
-            cv.time_period,
-            vol.Range(min=td(minutes=5), max=td(days=1)),
-        ),
-    }
-)
-SCH_SET_ZONE_MODE = vol.Any(
-    SCH_SET_ZONE_MODE,
-    SCH_SET_ZONE_MODE_SETPOINT,
-    SCH_SET_ZONE_MODE_UNTIL,
-)
-
-SCH_PUT_ZONE_TEMP = SCH_SET_ZONE_BASE.extend(
-    {
-        vol.Required(CONF_TEMPERATURE): vol.All(
-            vol.Coerce(float), vol.Range(min=-20, max=99)
-        ),
-    }
-)
-
-SVCS_CLIMATE_EVOHOME = {
-    SVC_RESET_ZONE_CONFIG: SCH_SET_ZONE_BASE,
-    SVC_RESET_ZONE_MODE: SCH_SET_ZONE_BASE,
-    SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
-    SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,
-    SVC_PUT_ZONE_TEMP: SCH_PUT_ZONE_TEMP,
-}
-
-#
-# WaterHeater platform services for DHW
-SVC_PUT_DHW_TEMP = "put_dhw_temp"
-SVC_RESET_DHW_MODE = "reset_dhw_mode"
-SVC_RESET_DHW_PARAMS = "reset_dhw_params"
-SVC_SET_DHW_BOOST = "set_dhw_boost"
-SVC_SET_DHW_MODE = "set_dhw_mode"
-SVC_SET_DHW_PARAMS = "set_dhw_params"
-
-# CONF_DHW_MODES = (
-#     ZoneMode.PERMANENT,
-#     ZoneMode.ADVANCED,
-#     ZoneMode.TEMPORARY,
-# )
-
-SCH_SET_DHW_BASE = vol.Schema({})
-
-SCH_SET_DHW_MODE = SCH_SET_DHW_BASE.extend(
-    {
-        vol.Optional(CONF_MODE): vol.In(
-            [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
-        ),
-        vol.Optional(CONF_ACTIVE): cv.boolean,
-        vol.Exclusive(CONF_UNTIL, CONF_UNTIL): cv.datetime,
-        vol.Exclusive(CONF_DURATION, CONF_UNTIL): vol.All(
-            cv.time_period,
-            vol.Range(min=td(minutes=5), max=td(days=1)),
-        ),
-    }
-)
-
-SCH_SET_DHW_CONFIG = SCH_SET_DHW_BASE.extend(
-    {
-        vol.Optional(CONF_SETPOINT, default=50): vol.All(
-            cv.positive_float,
-            vol.Range(min=30, max=85),
-        ),
-        vol.Optional(CONF_OVERRUN, default=5): vol.All(
-            cv.positive_int,
-            vol.Range(max=10),
-        ),
-        vol.Optional(CONF_DIFFERENTIAL, default=1): vol.All(
-            cv.positive_float,
-            vol.Range(max=10),
-        ),
-    }
-)
-
-SCH_PUT_DHW_TEMP = SCH_SET_ZONE_BASE.extend(
-    {
-        vol.Required(CONF_TEMPERATURE): vol.All(
-            vol.Coerce(float), vol.Range(min=-20, max=99)  # TODO: check limits
-        ),
-    }
-)
-
-SVCS_WATER_HEATER_EVOHOME = {
-    SVC_RESET_DHW_MODE: SCH_SET_DHW_BASE,
-    SVC_RESET_DHW_PARAMS: SCH_SET_DHW_BASE,
-    SVC_SET_DHW_BOOST: SCH_SET_DHW_BASE,
-    SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,
-    SVC_SET_DHW_PARAMS: SCH_SET_DHW_CONFIG,
-    SVC_PUT_DHW_TEMP: SCH_PUT_DHW_TEMP,
-}
-
-#
-# WaterHeater platform services for HVAC sensors
-SZ_CO2_LEVEL = "co2_level"
-SZ_INDOOR_HUMIDITY = "indoor_humidity"
-SZ_PRESENCE_DETECTED = "presence_detected"
-SVC_PUT_CO2_LEVEL = f"put_{SZ_CO2_LEVEL}"
-SVC_PUT_INDOOR_HUMIDITY = f"put_{SZ_INDOOR_HUMIDITY}"
-SVC_PUT_PRESENCE_DETECT = f"put_{SZ_PRESENCE_DETECTED}"
-
-SCH_PUT_SENSOR_BASE = vol.Schema({vol.Required(CONF_ENTITY_ID): cv.entity_id})
-
-SCH_PUT_CO2_LEVEL = SCH_PUT_SENSOR_BASE.extend(
-    {
-        vol.Required(SZ_CO2_LEVEL): vol.All(
-            cv.positive_int,
-            vol.Range(min=0, max=16384),
-        ),
-    }
-)
-
-SCH_PUT_INDOOR_HUMIDITY = SCH_PUT_SENSOR_BASE.extend(
-    {
-        vol.Required(SZ_INDOOR_HUMIDITY): vol.All(
-            cv.positive_float,
-            vol.Range(min=0, max=100),
-        ),
-    }
-)
-
-SCH_PUT_PRESENCE_DETECT = SCH_PUT_SENSOR_BASE.extend(
-    {
-        vol.Required(SZ_PRESENCE_DETECTED): cv.boolean,
-    }
-)
-
-SVCS_BINARY_SENSOR = {
-    SVC_PUT_PRESENCE_DETECT: SCH_PUT_PRESENCE_DETECT,
-}
-
-SVCS_SENSOR = {
-    SVC_PUT_CO2_LEVEL: SCH_PUT_CO2_LEVEL,
-    SVC_PUT_INDOOR_HUMIDITY: SCH_PUT_INDOOR_HUMIDITY,
-}
-
-#
-# Configuration schema
-SCAN_INTERVAL_DEFAULT = td(seconds=60)
-SCAN_INTERVAL_MINIMUM = td(seconds=3)
-
-SZ_ADVANCED_FEATURES = "advanced_features"
-SZ_MESSAGE_EVENTS = "message_events"
-SZ_DEV_MODE = "dev_mode"
-SZ_UNKNOWN_CODES = "unknown_codes"
 
 SCH_ADVANCED_FEATURES = vol.Schema(
     {
-        vol.Optional(SVC_SEND_PACKET, default=False): bool,
-        vol.Optional(SZ_MESSAGE_EVENTS, default=False): bool,
-        vol.Optional(SZ_DEV_MODE): bool,
-        vol.Optional(SZ_UNKNOWN_CODES): bool,
+        vol.Optional(CONF_SEND_PACKET, default=False): cv.boolean,
+        vol.Optional(CONF_MESSAGE_EVENTS, default=None): vol.Any(None, cv.is_regex),
+        vol.Optional(CONF_DEV_MODE): cv.boolean,
+        vol.Optional(CONF_UNKNOWN_CODES): cv.boolean,
     }
 )
 
 SCH_GLOBAL_TRAITS_DICT, SCH_TRAITS = sch_global_traits_dict_factory(
-    hvac_traits={vol.Optional("commands"): dict}
+    hvac_traits={vol.Optional(CONF_COMMANDS): {str: cv.matches_regex(COMMAND_REGEX)}}
 )
-SCH_DEVICE_LIST = vol.Schema(
-    [{vol.Optional(SCH_DEVICE_ID_ANY): SCH_TRAITS}],  # vol.Length(min=0)
+
+SCH_GATEWAY_CONFIG = SCH_GATEWAY_CONFIG.extend(
+    SCH_ENGINE_DICT,
     extra=vol.PREVENT_EXTRA,
-)  # TODO: what is this for?
+)
 
 SCH_DOMAIN_CONFIG = (
     vol.Schema(
         {
-            vol.Optional("ramses_rf", default={}): SCH_GATEWAY_DICT,
+            vol.Optional(CONF_RAMSES_RF, default={}): SCH_GATEWAY_CONFIG,
             vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT): vol.All(
                 cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)
             ),
-            vol.Optional(SZ_ADVANCED_FEATURES, default={}): SCH_ADVANCED_FEATURES,
+            vol.Optional(CONF_ADVANCED_FEATURES, default={}): SCH_ADVANCED_FEATURES,
         },
         extra=vol.PREVENT_EXTRA,  # will be system, orphan schemas for ramses_rf
     )
@@ -356,39 +118,40 @@ SCH_DOMAIN_CONFIG = (
     .extend(sch_serial_port_dict_factory())
 )
 
-
-def _is_subset(subset, superset) -> bool:  # TODO: move to ramses_rf?
-    """Return True is one dict (or list/set) is a subset of another."""
-    if isinstance(subset, dict):
-        return all(
-            key in superset and _is_subset(val, superset[key])
-            for key, val in subset.items()
-        )
-    if isinstance(subset, list) or isinstance(subset, set):
-        return all(
-            any(_is_subset(subitem, superitem) for superitem in superset)
-            for subitem in subset
-        )
-    return subset == superset  # not dict, list nor set
+SCH_MINIMUM_TCS = vol.Schema(
+    {
+        vol.Optional(SZ_SYSTEM): vol.Schema(
+            {vol.Required(SZ_APPLIANCE_CONTROL): vol.Match(r"^10:[0-9]{6}$")}
+        ),
+        vol.Optional(SZ_ZONES, default={}): vol.Schema(
+            {
+                vol.Required(str): vol.Schema(
+                    {vol.Required(SZ_SENSOR): vol.Match(r"^01:[0-9]{6}$")}
+                )
+            }
+        ),
+    },
+    extra=vol.PREVENT_EXTRA,
+)
 
 
 @callback
-def normalise_config(config: dict) -> tuple[str, dict, dict]:
+def normalise_config(config: _SchemaT) -> tuple[str, _SchemaT, _SchemaT]:
     """Return a port/client_config/broker_config for the library."""
 
     config = deepcopy(config)
 
-    config[SZ_CONFIG] = config.pop("ramses_rf")
+    config[SZ_CONFIG] = config.pop(CONF_RAMSES_RF)
 
     port_name, port_config = extract_serial_port(config.pop(SZ_SERIAL_PORT))
 
     remote_commands = {
-        k: v.pop("commands")
-        for k, v in config["known_list"].items()
-        if v.get("commands")
+        k: v.pop(CONF_COMMANDS)
+        for k, v in config[SZ_KNOWN_LIST].items()
+        if v.get(CONF_COMMANDS)
     }
 
-    broker_keys = (CONF_SCAN_INTERVAL, SZ_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
+    broker_keys = (CONF_SCAN_INTERVAL, CONF_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
     return (
         port_name,
         {k: v for k, v in config.items() if k not in broker_keys}
@@ -399,51 +162,387 @@ def normalise_config(config: dict) -> tuple[str, dict, dict]:
 
 
 @callback
-def merge_schemas(merge_cache: bool, config_schema: dict, cached_schema: dict) -> dict:
-    """Return a hierarchy of schema to try (merged/cached, config)."""
+def merge_schemas(config_schema: _SchemaT, cached_schema: _SchemaT) -> _SchemaT | None:
+    """Return the config schema deep merged into the cached schema."""
 
-    if not merge_cache:
-        _LOGGER.debug("A cached schema was not enabled (not recommended)")
-        # cached_schema = {}  # in case is None
-    else:
-        _LOGGER.debug("Loaded a cached schema: %s", cached_schema)
+    if is_subset(shrink(config_schema), shrink(cached_schema)):
+        _LOGGER.info("Using the cached schema")
+        return cached_schema
 
-    if not config_schema:  # could be None
-        _LOGGER.debug("A config schema was not provided")
-        config_schema = {}  # in case is None
-    else:  # normalise config_schema
-        _LOGGER.debug("Loaded a config schema: %s", config_schema)
+    merged_schema: _SchemaT = deep_merge(config_schema, cached_schema)  # 1st precedent
 
-    if not merge_cache or not cached_schema:
-        _LOGGER.info(
-            "Using the config schema (cached schema is not enabled / is invalid)"
-            f", consider using '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: true'"
-        )
-        return {"the config": config_schema}  # maybe config = {}
+    if is_subset(shrink(config_schema), shrink(merged_schema)):
+        _LOGGER.info("Using a merged schema")
+        return merged_schema
 
-    if _is_subset(shrink(config_schema), shrink(cached_schema)):
-        _LOGGER.info(
-            "Using the cached schema (cached schema is a superset of config schema)"
-        )
-        return {
-            "the cached": cached_schema,
-            "the config": config_schema,
-        }  # maybe cached = config
+    _LOGGER.info("Cached schema is a subset of config schema")
+    return None
 
-    merged_schema = merge(config_schema, cached_schema)  # config takes precidence
-    _LOGGER.debug("Created a merged schema: %s", merged_schema)
 
-    if not _is_subset(shrink(config_schema), shrink(merged_schema)):
-        _LOGGER.info(
-            "Using the config schema (merged schema not a superset of config schema)"
-        )  # something went wrong!
-        return {"the config": config_schema}  # maybe config = {}
+@callback
+def schema_is_minimal(schema: _SchemaT) -> bool:
+    """Return True if the schema is minimal (i.e. no optional keys)."""
 
-    _LOGGER.warning(
-        "Using a merged schema (cached schema is not a superset of config schema)"
-        f", if required, use '{SZ_RESTORE_CACHE}: {SZ_RESTORE_SCHEMA}: false'"
+    key: str
+    sch: _SchemaT
+
+    for key, sch in schema.items():
+        if key in (SZ_BLOCK_LIST, SZ_KNOWN_LIST, SZ_ORPHANS_HEAT, SZ_ORPHANS_HVAC):
+            continue
+
+        try:
+            _ = SCH_MINIMUM_TCS(shrink(sch))
+        except vol.Invalid:
+            return False
+
+        if SZ_ZONES in sch and list(sch[SZ_ZONES].values())[0][SZ_SENSOR] != key:
+            return False
+
+    return True
+
+
+# services for ramses_cc integration
+
+_SCH_DEVICE_ID = cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$")
+_SCH_CMD_CODE = cv.matches_regex(r"^[0-9A-F]{4}$")
+_SCH_DOM_IDX = cv.matches_regex(r"^[0-9A-F]{2}$")
+_SCH_COMMAND = cv.matches_regex(COMMAND_REGEX)
+
+_SCH_BINDING = vol.Schema({vol.Required(_SCH_CMD_CODE): vol.Any(None, _SCH_DOM_IDX)})
+
+SCH_BIND_DEVICE = vol.Schema(
+    {
+        vol.Required("device_id"): _SCH_DEVICE_ID,
+        vol.Required("offer"): vol.All(_SCH_BINDING, vol.Length(min=1)),
+        vol.Optional("confirm", default={}): vol.Any(
+            {}, vol.All(_SCH_BINDING, vol.Length(min=1))
+        ),
+        vol.Optional("device_info", default=None): vol.Any(None, _SCH_COMMAND),
+    },
+    extra=vol.PREVENT_EXTRA,
+)
+
+SCH_SEND_PACKET = vol.Schema(
+    {
+        vol.Required(ATTR_DEVICE_ID): cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$"),
+        vol.Required("verb"): vol.In((" I", "I", "RQ", "RP", " W", "W")),
+        vol.Required("code"): cv.matches_regex(r"^[0-9A-F]{4}$"),
+        vol.Required("payload"): cv.matches_regex(r"^([0-9A-F][0-9A-F]){1,48}$"),
+    }
+)
+
+SVC_BIND_DEVICE: Final[str] = "bind_device"
+SVC_FORCE_UPDATE: Final[str] = "force_update"
+SVC_SEND_PACKET: Final[str] = "send_packet"
+
+
+# services for sensor platform
+
+MIN_CO2_LEVEL: Final[int] = 300
+MAX_CO2_LEVEL: Final[int] = 9999
+
+SVC_PUT_CO2_LEVEL: Final[str] = "put_co2_level"
+SCH_PUT_CO2_LEVEL = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_CO2_LEVEL): vol.All(
+            cv.positive_int,
+            vol.Range(min=MIN_CO2_LEVEL, max=MAX_CO2_LEVEL),
+        ),
+    },
+    extra=vol.PREVENT_EXTRA,
+)
+
+MIN_DHW_TEMP: Final[float] = 0
+MAX_DHW_TEMP: Final[float] = 99
+
+SVC_PUT_DHW_TEMP: Final[str] = "put_dhw_temp"
+SCH_PUT_DHW_TEMP = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_TEMPERATURE): vol.All(
+            vol.Coerce(float),
+            vol.Range(min=MIN_DHW_TEMP, max=MAX_DHW_TEMP),
+        ),
+    },
+    extra=vol.PREVENT_EXTRA,
+)
+
+MIN_INDOOR_HUMIDITY: Final[float] = 0
+MAX_INDOOR_HUMIDITY: Final[float] = 100
+
+SVC_PUT_INDOOR_HUMIDITY: Final[str] = "put_indoor_humidity"
+SCH_PUT_INDOOR_HUMIDITY = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_INDOOR_HUMIDITY): vol.All(
+            cv.positive_float,
+            vol.Range(min=MIN_INDOOR_HUMIDITY, max=MAX_INDOOR_HUMIDITY),
+        ),
+    },
+    extra=vol.PREVENT_EXTRA,
+)
+
+MIN_ROOM_TEMP: Final[float] = -20
+MAX_ROOM_TEMP: Final[float] = 60
+
+SVC_PUT_ROOM_TEMP: Final[str] = "put_room_temp"
+SCH_PUT_ROOM_TEMP = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_TEMPERATURE): vol.All(
+            vol.Coerce(float),
+            vol.Range(min=MIN_ROOM_TEMP, max=MAX_ROOM_TEMP),
+        ),
+    },
+    extra=vol.PREVENT_EXTRA,
+)
+
+SVCS_RAMSES_SENSOR = {
+    SVC_PUT_CO2_LEVEL: SCH_PUT_CO2_LEVEL,
+    SVC_PUT_DHW_TEMP: SCH_PUT_DHW_TEMP,
+    SVC_PUT_INDOOR_HUMIDITY: SCH_PUT_INDOOR_HUMIDITY,
+    SVC_PUT_ROOM_TEMP: SCH_PUT_ROOM_TEMP,
+}
+
+# services for climate platform
+
+SVC_SET_SYSTEM_MODE: Final[str] = "set_system_mode"
+SCH_SET_SYSTEM_MODE = vol.Schema(
+    vol.Any(
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In(
+                    [
+                        SystemMode.AUTO,
+                        SystemMode.HEAT_OFF,
+                        SystemMode.RESET,
+                    ]
+                )
+            }
+        ),
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In([SystemMode.ECO_BOOST]),
+                vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
+                    cv.time_period,
+                    vol.Range(min=timedelta(hours=1), max=timedelta(hours=24)),
+                ),
+            }
+        ),
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In(
+                    [
+                        SystemMode.AWAY,
+                        SystemMode.CUSTOM,
+                        SystemMode.DAY_OFF,
+                        SystemMode.DAY_OFF_ECO,
+                    ]
+                ),
+                vol.Optional(ATTR_PERIOD, default=timedelta(days=0)): vol.All(
+                    cv.time_period,
+                    vol.Range(min=timedelta(days=0), max=timedelta(days=99)),
+                ),  # 0 means until the end of the day
+            }
+        ),
     )
-    return {
-        "a merged (config/cached)": merged_schema,
-        "the config": config_schema,
-    }  # maybe merged = config
+)
+
+DEFAULT_MIN_TEMP: Final[float] = 5
+MIN_MIN_TEMP: Final[float] = 5
+MAX_MIN_TEMP: Final[float] = 21
+
+DEFAULT_MAX_TEMP: Final[float] = 35
+MIN_MAX_TEMP: Final[float] = 21
+MAX_MAX_TEMP: Final[float] = 35
+
+SVC_SET_ZONE_CONFIG: Final[str] = "set_zone_config"
+SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
+    {
+        vol.Optional(ATTR_MAX_TEMP, default=DEFAULT_MAX_TEMP): vol.All(
+            cv.positive_float, vol.Range(min=MIN_MAX_TEMP, max=MAX_MAX_TEMP)
+        ),
+        vol.Optional(ATTR_MIN_TEMP, default=DEFAULT_MIN_TEMP): vol.All(
+            cv.positive_float, vol.Range(min=MIN_MIN_TEMP, max=MAX_MIN_TEMP)
+        ),
+        vol.Optional(ATTR_LOCAL_OVERRIDE, default=True): cv.boolean,
+        vol.Optional(ATTR_OPENWINDOW, default=True): cv.boolean,
+        vol.Optional(ATTR_MULTIROOM, default=True): cv.boolean,
+    }
+)
+
+SVC_SET_ZONE_MODE: Final[str] = "set_zone_mode"
+SCH_SET_ZONE_MODE = vol.Schema(
+    vol.Any(
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In([ZoneMode.SCHEDULE]),
+            }
+        ),
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In(
+                    [ZoneMode.PERMANENT, ZoneMode.ADVANCED]
+                ),
+                vol.Optional(ATTR_SETPOINT, default=21): vol.All(
+                    cv.positive_float, vol.Range(min=5, max=30)
+                ),
+            }
+        ),
+        cv.make_entity_service_schema(
+            {
+                vol.Required(ATTR_MODE): vol.In([ZoneMode.TEMPORARY]),
+                vol.Optional(ATTR_SETPOINT, default=21): vol.All(
+                    cv.positive_float, vol.Range(min=5, max=30)
+                ),
+                vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
+                vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
+                    cv.time_period,
+                    vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
+                ),
+            }
+        ),
+    )
+)
+
+SVC_SET_ZONE_SCHEDULE: Final[str] = "set_zone_schedule"
+SCH_SET_ZONE_SCHEDULE = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_SCHEDULE): cv.string,
+    }
+)
+
+SVC_FAKE_ZONE_TEMP: Final[str] = "fake_zone_temp"
+SVC_GET_ZONE_SCHEDULE: Final[str] = "get_zone_schedule"
+SVC_RESET_SYSTEM_MODE: Final[str] = "reset_system_mode"
+SVC_RESET_ZONE_CONFIG: Final[str] = "reset_zone_config"
+SVC_RESET_ZONE_MODE: Final[str] = "reset_zone_mode"
+
+SVCS_RAMSES_CLIMATE = {
+    SVC_FAKE_ZONE_TEMP: SCH_PUT_ROOM_TEMP,  # a convenience for SVC_PUT_ROOM_TEMP
+    SVC_SET_SYSTEM_MODE: SCH_SET_SYSTEM_MODE,
+    SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
+    SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,
+    SVC_RESET_SYSTEM_MODE: {},
+    SVC_RESET_ZONE_CONFIG: {},
+    SVC_RESET_ZONE_MODE: {},
+    SVC_GET_ZONE_SCHEDULE: {},
+    SVC_SET_ZONE_SCHEDULE: SCH_SET_ZONE_SCHEDULE,
+}
+
+# services for water_heater platform
+
+SVC_SET_DHW_MODE: Final[str] = "set_dhw_mode"
+SCH_SET_DHW_MODE = cv.make_entity_service_schema(
+    {
+        vol.Optional(ATTR_MODE): vol.In(
+            [ZoneMode.SCHEDULE, ZoneMode.PERMANENT, ZoneMode.TEMPORARY]
+        ),
+        vol.Optional(ATTR_ACTIVE): cv.boolean,
+        vol.Exclusive(ATTR_UNTIL, ATTR_UNTIL): cv.datetime,
+        vol.Exclusive(ATTR_DURATION, ATTR_UNTIL): vol.All(
+            cv.time_period,
+            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
+        ),
+    }
+)
+
+DEFAULT_DHW_SETPOINT: Final[float] = 50
+MIN_DHW_SETPOINT: Final[float] = 30
+MAX_DHW_SETPOINT: Final[float] = 85
+
+DEFAULT_OVERRUN: Final[int] = 5
+MIN_OVERRUN: Final[int] = 1  # TODO: check minimum value, and if int
+MAX_OVERRUN: Final[int] = 10
+
+DEFAULT_DIFFERENTIAL: Final[float] = 60
+MIN_DIFFERENTIAL: Final[float] = 1  # TODO: check minimum value
+MAX_DIFFERENTIAL: Final[float] = 10
+
+SVC_SET_DHW_PARAMS: Final[str] = "set_dhw_params"
+SCH_SET_DHW_PARAMS = cv.make_entity_service_schema(
+    {
+        vol.Optional(ATTR_SETPOINT, default=DEFAULT_DHW_SETPOINT): vol.All(
+            cv.positive_float, vol.Range(min=MIN_DHW_SETPOINT, max=MAX_DHW_SETPOINT)
+        ),
+        vol.Optional(ATTR_OVERRUN, default=DEFAULT_OVERRUN): vol.All(
+            cv.positive_int, vol.Range(min=MIN_OVERRUN, max=MAX_OVERRUN)
+        ),
+        vol.Optional(ATTR_DIFFERENTIAL, default=DEFAULT_DIFFERENTIAL): vol.All(
+            cv.positive_float, vol.Range(min=MIN_DIFFERENTIAL, max=MAX_DIFFERENTIAL)
+        ),
+    }
+)
+
+SVC_SET_DHW_SCHEDULE: Final[str] = "set_dhw_schedule"
+SCH_SET_DHW_SCHEDULE = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_SCHEDULE): cv.string,
+    }
+)
+
+SVC_FAKE_DHW_TEMP: Final[str] = "fake_dhw_temp"
+SVC_GET_DHW_SCHEDULE: Final[str] = "get_dhw_schedule"
+SVC_RESET_DHW_MODE: Final[str] = "reset_dhw_mode"
+SVC_RESET_DHW_PARAMS: Final[str] = "reset_dhw_params"
+SVC_SET_DHW_BOOST: Final[str] = "set_dhw_boost"
+
+SVCS_RAMSES_WATER_HEATER = {
+    SVC_FAKE_DHW_TEMP: SCH_PUT_DHW_TEMP,  # a convenience for SVC_PUT_DHW_TEMP
+    SVC_RESET_DHW_MODE: {},
+    SVC_RESET_DHW_PARAMS: {},
+    SVC_SET_DHW_BOOST: {},
+    SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,
+    SVC_SET_DHW_PARAMS: SCH_SET_DHW_PARAMS,
+    SVC_GET_DHW_SCHEDULE: {},
+    SVC_SET_DHW_SCHEDULE: SCH_SET_DHW_SCHEDULE,
+}
+
+# services for remote platform
+
+DEFAULT_TIMEOUT: Final[int] = 60
+MIN_TIMEOUT: Final[int] = 30
+MAX_TIMEOUT: Final[int] = 300
+
+SVC_LEARN_COMMAND: Final[str] = "learn_command"
+SCH_LEARN_COMMAND = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_COMMAND): cv.string,
+        vol.Required(ATTR_TIMEOUT, default=DEFAULT_TIMEOUT): vol.All(
+            cv.positive_int, vol.Range(min=MIN_TIMEOUT, max=MAX_TIMEOUT)
+        ),
+    }
+)
+
+DEFAULT_NUM_REPEATS: Final[int] = 3
+MIN_NUM_REPEATS: Final[int] = 1
+MAX_NUM_REPEATS: Final[int] = 5
+
+DEFAULT_DELAY_SECS: Final[float] = 0.05
+MIN_DELAY_SECS: Final[float] = 0.02
+MAX_DELAY_SECS: Final[float] = 1.0
+
+SVC_SEND_COMMAND: Final[str] = "send_command"
+SCH_SEND_COMMAND = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_COMMAND): cv.string,
+        vol.Required(ATTR_NUM_REPEATS, default=3): vol.All(
+            cv.positive_int,
+            vol.Range(min=MIN_NUM_REPEATS, max=MAX_NUM_REPEATS),
+        ),
+        vol.Required(ATTR_DELAY_SECS, default=DEFAULT_DELAY_SECS): vol.All(
+            cv.positive_float,
+            vol.Range(min=MIN_DELAY_SECS, max=MAX_DELAY_SECS),
+        ),
+    },
+)
+
+SVC_DELETE_COMMAND: Final[str] = "delete_command"
+SCH_DELETE_COMMAND = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_COMMAND): cv.string,
+    },
+)
+
+SVCS_RAMSES_REMOTE = {
+    SVC_DELETE_COMMAND: SCH_DELETE_COMMAND,
+    SVC_LEARN_COMMAND: SCH_LEARN_COMMAND,
+    SVC_SEND_COMMAND: SCH_SEND_COMMAND,
+}

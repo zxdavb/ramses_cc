@@ -1,31 +1,43 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-"""Support for Honeywell's RAMSES-II RF protocol, as used by CH/DHW & HVAC.
-
-Provides support for HVAC RF remotes.
-"""
+"""Support for RAMSES HVAC RF remotes."""
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterable
+from dataclasses import dataclass
+from datetime import datetime as dt, timedelta
 import logging
-from datetime import datetime as dt
-from datetime import timedelta as td
-from typing import Any, Iterable
+from typing import Any
 
-from homeassistant.components.remote import DOMAIN as PLATFORM
-from homeassistant.components.remote import RemoteEntity, RemoteEntityFeature
+from ramses_rf.device.hvac import HvacRemote
+from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_tx.command import Command
+from ramses_tx.const import Priority
+
+from homeassistant.components.remote import (
+    DOMAIN as PLATFORM,
+    ENTITY_ID_FORMAT,
+    RemoteEntity,
+    RemoteEntityDescription,
+    RemoteEntityFeature,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    EntityPlatform,
+    async_get_current_platform,
+)
 from homeassistant.helpers.typing import DiscoveryInfoType
-from ramses_rf.protocol import Command, Priority
 
-from . import RamsesEntity
+from . import RamsesEntity, RamsesEntityDescription
+from .broker import RamsesBroker
 from .const import BROKER, DOMAIN
-
-QOS_HIGH = {"priority": Priority.HIGH, "retries": 3}
+from .schemas import (
+    DEFAULT_DELAY_SECS,
+    DEFAULT_NUM_REPEATS,
+    DEFAULT_TIMEOUT,
+    SVCS_RAMSES_REMOTE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,54 +48,53 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
-    """Set up the remote entities.
-
-    discovery_info keys:
-      gateway: is the ramses_rf protocol stack (gateway/protocol/transport/serial)
-      devices: heat (e.g. CTL, OTB, BDR, TRV) or hvac (e.g. FAN, CO2, REM)
-      domains: TCS, DHW and Zones
-    """
+    """Create remotes for HVAC."""
 
     if discovery_info is None:
         return
 
-    broker = hass.data[DOMAIN][BROKER]
+    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
-    new_remotes = [
-        RamsesRemote(broker, device) for device in discovery_info["remotes"]
-    ]  # and (not device._is_faked or device["fakable"])
-
-    async_add_entities(new_remotes)
-
-    if not broker._services.get(PLATFORM) and new_remotes:
+    if not broker._services.get(PLATFORM):
         broker._services[PLATFORM] = True
+        platform: EntityPlatform = async_get_current_platform()
+
+        for k, v in SVCS_RAMSES_REMOTE.items():
+            platform.async_register_entity_service(k, v, f"async_{k}")
+
+    entities = [
+        RamsesRemoteEntityDescription.ramses_cc_class(
+            broker, device, RamsesRemoteEntityDescription()
+        )
+        for device in discovery_info["devices"]
+    ]
+    async_add_entities(entities)
 
 
 class RamsesRemote(RamsesEntity, RemoteEntity):
     """Representation of a generic sensor."""
 
-    # entity_description: RemoteEntityDescription
-    # _attr_activity_list: list[str] | None = None
+    _device: HvacRemote
+
     _attr_assumed_state: bool = True
-    # _attr_current_activity: str | None = None
     _attr_supported_features: int = (
         RemoteEntityFeature.LEARN_COMMAND | RemoteEntityFeature.DELETE_COMMAND
     )
-    # _attr_state: None = None
 
-    def __init__(self, broker, device, **kwargs) -> None:
-        """Initialize a sensor."""
-        _LOGGER.info("Found a Remote: %s", device)
-        super().__init__(broker, device)
+    def __init__(
+        self,
+        broker: RamsesBroker,
+        device: RamsesRFEntity,
+        entity_description: RamsesRemoteEntityDescription,
+    ) -> None:
+        """Initialize a HVAC remote."""
+        _LOGGER.info("Found %r", device)
+        super().__init__(broker, device, entity_description)
 
-        self.entity_id = f"{DOMAIN}.{device.id}"
+        self.entity_id = ENTITY_ID_FORMAT.format(device.id)
 
         self._attr_is_on = True
-        self._attr_unique_id = (
-            device.id
-        )  # dont include domain (ramses_cc) / platform (remote)
-
-        self._commands: dict[str, dict] = broker._known_commands.get(device.id, {})
+        self._commands: dict[str, str] = broker._remotes.get(device.id, {})
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -92,7 +103,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
 
     async def async_delete_command(
         self,
-        command: Iterable[str],
+        command: Iterable[str] | str,
         **kwargs: Any,
     ) -> None:
         """Delete commands from the database.
@@ -104,15 +115,22 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
           entity_id: remote.device_id
         """
 
+        # HACK to make ramses_cc call work as per HA service call
+        command = [command] if isinstance(command, str) else list(command)
+        # if len(command) != 1:
+        #     raise TypeError("must be exactly one command to delete")
+
+        assert not kwargs, kwargs  # TODO: remove me
+
         self._commands = {k: v for k, v in self._commands.items() if k not in command}
 
     async def async_learn_command(
         self,
-        command: Iterable[str],
-        timeout: float = 60,
+        command: Iterable[str] | str,
+        timeout: int = DEFAULT_TIMEOUT,
         **kwargs: Any,
     ) -> None:
-        """Learn a command from a device and add to teh database.
+        """Learn a command from a device (remote) and add to the database.
 
         service: remote.learn_command
         data:
@@ -121,6 +139,16 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         target:
           entity_id: remote.device_id
         """
+
+        # HACK to make ramses_cc call work as per HA service call
+        command = [command] if isinstance(command, str) else list(command)
+        if len(command) != 1:
+            raise TypeError("must be exactly one command to learn")
+
+        assert not kwargs, kwargs  # TODO: remove me
+
+        if command[0] in self._commands:
+            await self.async_delete_command(command)
 
         @callback
         def event_filter(event: Event) -> bool:
@@ -131,37 +159,34 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         @callback
         def listener(event: Event) -> None:
             """Save the command to storage."""
+            # if event.data["packet"] in self._commands.values():  # TODO
+            #     raise DuplicateError
             self._commands[command[0]] = event.data["packet"]
 
-        if len(command) != 1:
-            raise TypeError("must be exactly one command to learn")
-        if not isinstance(timeout, (float, int)) or not 5 <= timeout <= 300:
-            raise TypeError("timeout must be 5 to 300 (default 60)")
-
-        if command[0] in self._commands:
-            await self.async_delete_command(command)
-
         with self._broker._sem:
+            self._broker.learn_device_id = self._device.id
             remove_listener = self.hass.bus.async_listen(
-                f"{DOMAIN}_message", listener, event_filter
+                f"{DOMAIN}_learn", listener, event_filter
             )
 
-            dt_expires = dt.now() + td(seconds=timeout)
+            dt_expires = dt.now() + timedelta(seconds=timeout)
             while dt.now() < dt_expires:
                 await asyncio.sleep(0.005)
                 if self._commands.get(command[0]):
                     break
 
+            self._broker.learn_device_id = None
             remove_listener()
 
     async def async_send_command(
         self,
-        command: Iterable[str],
-        delay_secs: float = 0.05,
-        num_repeats: int = 3,
+        command: Iterable[str] | str,
+        num_repeats: int = DEFAULT_NUM_REPEATS,
+        delay_secs: float = DEFAULT_DELAY_SECS,
+        hold_secs: None = None,
         **kwargs: Any,
     ) -> None:
-        """Send commands to a device.
+        """Send commands from a device (remote).
 
         service: remote.send_command
         data:
@@ -172,26 +197,36 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
           entity_id: remote.device_id
         """
 
+        # HACK to make ramses_cc call work as per HA service call
+        command = [command] if isinstance(command, str) else list(command)
         if len(command) != 1:
             raise TypeError("must be exactly one command to send")
-        if not isinstance(delay_secs, (float, int)) or not 0.02 <= delay_secs <= 1:
-            raise TypeError("delay_secs must be 0.02 to 1.0 (default 0.05)")
-        if not isinstance(num_repeats, int) or not 1 <= num_repeats <= 5:
-            raise TypeError("num_repeats must be 1 to 5 (default 3)")
+
+        if hold_secs:
+            raise TypeError("hold_secs is not supported")
+
+        assert not kwargs, kwargs  # TODO: remove me
 
         if command[0] not in self._commands:
             raise LookupError(f"command '{command[0]}' is not known")
 
         if not self._device.is_faked:  # have to check here, as not using device method
-            raise TypeError(f"{self._device.id} is not enabled for faking")
+            raise TypeError(f"{self._device.id} is not configured for faking")
 
-        for x in range(num_repeats):
+        cmd = Command(self._commands[command[0]])
+        for x in range(num_repeats):  # TODO: use ramses_rf's QoS
             if x != 0:
                 await asyncio.sleep(delay_secs)
-            cmd = Command(
-                self._commands[command[0]],
-                qos={"priority": Priority.HIGH, "retries": 0},
-            )
-            self._broker.client.send_cmd(cmd)
+            self._broker.client.send_cmd(cmd, priority=Priority.HIGH)
 
-        async_dispatcher_send(self.hass, DOMAIN)
+        await self._broker.async_update()
+
+
+@dataclass(frozen=True, kw_only=True)
+class RamsesRemoteEntityDescription(RamsesEntityDescription, RemoteEntityDescription):
+    """Class describing Ramses remote entities."""
+
+    key = "remote"
+
+    # integration-specific attributes
+    ramses_cc_class: type[RamsesRemote] = RamsesRemote

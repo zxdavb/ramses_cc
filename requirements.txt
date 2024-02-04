@@ -1,3 +1,8 @@
-colorlog>=4.7.2
-pyserial-asyncio>=0.5
-voluptuous>=0.12.1
+# last checked/updated: 2023/11/06 (based on HA 2023.11.1)
+#
+#
+
+# for using with HA
+  colorlog>=6.7.0  # incl. colorama, if Windows
+  pyserial-asyncio>=0.6  # incl. pyserial
+  voluptuous>=0.13.1

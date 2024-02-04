@@ -1,338 +1,790 @@
 #
-# generic service calls
+# integration-wide service calls
 
-fake_device:
-  name: Fake a device
+bind_device:
+  name: Bind a Device
   description: >-
-    Fake a device, so that it can then cast state data via HA service calls.
+    Bind a device to a CH/DHW controller or a fan/ventilation unit.
 
-    For example, a faked thermostat can be used as a zone sensor to send an explicitly
-    specified current temperature to the controller instead of a real thermostat.
+    The device will be either a sensor (e.g. temperature, humidity, etc.) or a
+    remote (e.g. a 4-way switch).
 
-    If required, a virtual device can be created, or you can fake an existing device
-    (physical devices will continue to cast state date, and so should be deactivated to
-    avoid confusion).
+    It must be included in the known_list and correctly configured with an
+    appropriate class and faking enabled.
 
-    If required, the device can be caused to immediately engage its binding mode.
-
-    Such devices are currently limited to zone sensors.
   fields:
     device_id:
-      name: Device ID
-      description: The ID of the device (not an entity_id). There is no default value.
-      example: 03:123000
-      required: true
-    create_device:
-      name: Enable faking
       description: >-
-        Create the device. Raises an exception if the device exists. Default is False.
-      default: false
-      example: false
-      selector:
-        boolean
-    start_binding:
-      name: Start binding mode
-      description: >-
-        Cause the device to immediately enter its appropriate binding mode. Default is
-        False
-      default: false
-      example: false
-      selector:
-        boolean
+        The device id of the supplicant.
 
-refresh_system:
-  name: Refresh the system state
+        Heating (CH/DHW) devices ids must start with a well-known device type.
+        HVAC devices ids should start with a device type that is consistent with their
+        hardware manufacturer's scheme.
+      example: 03:123456
+      required: true
+
+    offer:
+      description: >-
+        The command_code / domain_idx pairs for the binding offer.
+
+        If you include '10E0' (device info), ensure the domain id is is set to the
+        the hardware manufacturer's oem_code.
+      example: '{"30C9": "00"}'
+      required: true
+
+    confirm:
+      description: >-
+        The command_code / domain_idx pairs for the binding confirmation, if required.
+      required: false
+
+    device_info:
+      description: >-
+        The device_info command of the supplicant (needed to complete some bindings).
+
+        This is required if you include 10E0 (device info) within the offer.
+        It must be the correct payload for the device class.
+      required: false
+
+
+force_update:
+  name: Update the System state
   description: >-
-    Update the system state now, without waiting for the next scheduled update.
+    Immediately update the system state, without waiting for the next scheduled update.
+
 
 send_packet:
-  name: Send a packet
-  description: Send a completely bespoke command packet.
+  name: Send a Command packet
+  description: >-
+    Send a completely bespoke RAMSES II command packet from the gateway.
+
   fields:
     device_id:
-      description: The destination device_id.
+      description: >-
+        The destination device ID (a RAMSES ID, not an entity_id).
+        Use "18:000730" (a sentinel value) to send a broadcast from the gateway.
       example: 01:123456
+      required: true
+
     verb:
-      description: 'The packet verb, one of: I, RQ, RP, W.'
+      description: 'The packet verb, one of: I, RQ, RP, W (leading space not required).'
       example: RQ
+      required: true
+
     code:
       description: The packet code (class).
       example: 1F09
+      required: true
+
     payload:
       description: The packet payload as a hexadecimal string.
-      example: '00'
+      example: '"00"'
+      required: true
+
 
 #
-# evohome (CH/DHW) service calls
+# evohome controller service calls (CH/DHW)
 
 reset_system_mode:
-  name: Fully reset the system mode
+  name: Fully reset the Mode of a TCS
   description: >-
     The system will be in auto mode and all zones will be in follow_schedule mode,
     including (if supported) those in permanent_override mode.
 
+  fields:
+    entity_id: &entity_id_system
+      name: Controller
+      description: >-
+        The entity_id of the evohome Controller (TCS, temperature control system).
+        NB: Most of this integration's climate entities are not Controllers
+        (such entities, e.g. zones, will raise an AttributeError).
+      example: climate.controller
+      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: climate
+
+
 set_system_mode:
-  name: Set the system mode
+  name: Set the Mode of a TCS
   description: >-
     The system will be in the new mode and all zones not in permanent_override mode
     will be affected.
+
+    Some modes have the option of a period of days, others a duration in hours/minutes.
+
   fields:
+    entity_id: *entity_id_system
+
     mode:
-      description: "One of: auto, eco_boost, away, day_off, heat_off, or custom."
+      name: System Mode
+      description: "One of: auto, eco_boost, away, day_off, day_off_eco, heat_off, or custom."
+      default: auto
       example: away
+      required: true
+      selector:
+        select:
+          mode: dropdown
+          options:
+            - auto
+            - eco_boost
+            - away
+            - day_off
+            - day_off_eco
+            - heat_off
+            - custom
+
     period:
+      name: Period (days)
       description: >-
-        Optional. A period of time in days; used only with away, day_off, or custom. The
-        system will revert to auto at midnight (up to 99 days, today is day 1).
+        Optional. A period of time in days; used only with away, day_off, day_off_eco or custom.
+        The system will revert to auto at midnight (up to 99 days, today is day 1).
+      default:
+        days: 28
       example: '{"days": 28}'
+      selector:
+        duration:
+          enable_day: true
+
     duration:
+      name: Duration (hours/minutes)
       description: >-
-        Optional. The duration in hours; used only with eco_boost (up to 24 hours).
-      example: '{"hours": 18}'
+        Optional. The duration in hours/minutes; used only with eco_boost (up to 24h).
+      default:
+        hours: 1
+        minutes: 30
+      example: '{"hours": 1, "minutes": 30}'
+      selector:
+        duration:
+
 
 #
-# evohome (CH/DHW) zone service calls
+# evohome zone service calls (CH/DHW)
 
-put_zone_temp:
-  name: Fake a zone's temperature
+get_zone_schedule:
+  name: Get the Weekly schedule of a Zone
   description: >-
-    Announce the current temperature of a zone's temperature sensor. The zone must have
-    a faked sensor (see the `fake_device` service call).
-  target:
-    integration: ramses_cc
-    domain: climate
+    Obtains the zone's latest weekly schedule from the controller and updates the
+    entity's state attributes with that data.
+
+    The schedule will be available at:
+    `{{ state_attr('climate.main_room', 'schedule') }}`
+
+    Note: only evohome-compatible zones have schedules and not all of this integration's
+    climate entities are such zones (will raise a TypeError).
+
   fields:
-    entity_id:
+    entity_id: &entity_id_zone
+      name: Zone
       description: >-
-        The entity_id of the zone. Raises an exception if the zone's sensor is not
-        faked.
+        The entity_id of the evohome Zone.
+        NB: Some of this integration's climate entities are not Zones
+        (such entities, e.g. Controllers, will raise an AttributeError).
       example: climate.main_room
       required: true
-    temperature:
-      description: >-
-        The current temperature in degrees Celsius. This is the measured temperature,
-        not the target temperature (i.e. the setpoint).
-      example: 21.3
-      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: climate
+
+
+put_zone_temp:
+  name: Fake the Sensor temperature of a Zone
+  description: Currently deprecated, use `fake_zone_temp` or `put_room_temp` instead.
+
 
 reset_zone_config:
-  name: Reset a zone's config
+  name: Reset the Configuration of a Zone
   description: Reset the configuration of the zone.
+
   fields:
-    entity_id:
-      description: The entity_id of the zone.
-      example: climate.bedroom
+    entity_id: *entity_id_zone
+
 
 reset_zone_mode:
-  name: Reset a zone's mode
+  name: Reset the Mode of a Zone
   description: Reset the operating mode of the zone.
+
   fields:
-    entity_id:
-      description: The entity_id of the zone.
-      example: climate.bedroom
+    entity_id: *entity_id_zone
+
 
 set_zone_config:
-  name: Set a zone's config
+  name: Set the Configuration of a Zone
   description: Reset the configuration of the zone.
+
   fields:
-    entity_id:
-      description: The entity_id of the zone.
-      example: climate.bedroom
+    entity_id: *entity_id_zone
+
     min_temp:
-      description: The minimum permitted setpoint (5-21, in degrees C).
+      description: The minimum permitted setpoint in degrees Celsius (5-21 °C).
       example: 5
+      selector:
+        number:
+          min: 5
+          max: 21
+          step: 0.5
+          unit_of_measurement: °C
+          mode: slider
+
     max_temp:
-      description: The maximum permitted setpoint (21-35, in degrees C).
+      description: The maximum permitted setpoint in degrees Celsius (21-35 °C).
       example: 30
+      selector:
+        number:
+          min: 21
+          max: 35
+          step: 0.5
+          unit_of_measurement: °C
+          mode: slider
+
 
 set_zone_mode:
-  name: Set a zone's mode
+  name: Set the Mode of a Zone
   description: >-
     Set the operating mode of the zone, either indefinitely or for a given duration.
+
   fields:
-    entity_id:
-      description: The entity_id of the zone.
-      example: climate.bedroom
+    entity_id: *entity_id_zone
+
     mode:
+      name: Zone Mode
       description: >-
         The permanency of the override. Optional, one of: follow_schedule,
         advanced_override (until next scheduled setpoint), temporary_override (see:
         duration and until), or permanent_override (indefinitely).
+      default: follow_schedule
       example: advanced_override
+      required: true
+      selector:
+        select:
+          mode: dropdown
+          options:
+            - follow_schedule
+            - advanced_override
+            - permanent_override
+            - temporary_override
+
     setpoint:
+      name: Setpoint
       description: >-
         The target temperature in degrees Celsius. Default is 21.0.
+      default: 19.5
       example: 21.0
+      selector:
+        number:
+          min: 5
+          max: 35
+          step: 0.5
+          unit_of_measurement: °C
+          mode: slider
+
     duration:
+      name: Duration
       description: >-
         The duration of the temporary_override. Mutually exclusive with until.
-      example: '{"minutes": 135}'
+      default:
+        hours: 1
+        minutes: 30
+      example: '{"hours": 1, "minutes": 30}'
+      required: true
+      selector:
+        duration:
+
     until:
+      name: Until
       description: >-
         The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
+      required: true
+      selector:
+        datetime:
+
+
+set_zone_schedule:
+  name: Set the Weekly schedule of a Zone
+  description: >-
+    Upload the zone's weekly schedule from a portable format.
+
+  fields:
+    entity_id: *entity_id_zone
+
+    schedule:
+      name: Schedule
+      description: The weekly schedule of the zone in JSON format.
+      required: true
+      selector:
+        text:
+          multiline: true
+
 
 #
-# evohome DHW service calls
+# evohome DHW service calls (CH/DHW)
 
-put_dhw_temp:
-  name: Fake a DHW sensor's temperature
+get_dhw_schedule:
+  name: Get the Weekly schedule of a DHW
   description: >-
-    Announce the current temperature of a DHW temperature sensor. The sensor must be
-    faked (see the `fake_device` service call).
-  target:
-    integration: ramses_cc
-    domain: water_heater
+    Obtains the DHW's latest weekly schedule from the controller and updates the
+    entity's state attributes with that data.
+
+    The schedule will be available at:
+    `{{ state_attr('water_heater.stored_hw', 'schedule') }}`
+
   fields:
-    entity_id:
-      description: >-
-        The entity_id of the water_heater. Raises an exception if the sensor is not
-        faked.
-      example: water_heater.main_room
+    entity_id: &entity_id_dhw
+      name: Stored DHW
+      description: The entity_id of the stored DHW.
+      example: water_heater.stored_hw
       required: true
-    temperature:
-      description: >-
-        The current temperature in degrees Celsius. This is the measured temperature,
-        not the target temperature (i.e. the setpoint).
-      example: 63.4
-      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: water_heater
+
 
 reset_dhw_mode:
-  name: Reset the DHW mode
+  name: Reset the Mode of a DHW
   description: Reset the operating mode of the system's DHW.
 
+  fields:
+    entity_id: *entity_id_dhw
+
+
 reset_dhw_params:
-  name: Reset the DHW config
+  name: Reset the Configuration of a DHW
   description: Reset the configuration of the system's DHW.
 
+  fields:
+    entity_id: *entity_id_dhw
+
+
 set_dhw_boost:
-  name: Enable DHW boost mode
+  name: Start Boost mode for a DHW
   description: Enable the system's DHW for an hour.
 
+  fields:
+    entity_id: *entity_id_dhw
+
+
 set_dhw_mode:
-  name: Set the DHW mode
+  name: Set the Mode of a DHW
   description: >-
     Set the operating mode of the system's DHW, optionally for a given duration.
+
   fields:
+    entity_id: *entity_id_dhw
+
     mode:
       name: DHW mode
       description: >-
         The permanency of the override. Optional, one of: follow_schedule,
         advanced_override (until next scheduled setpoint), temporary_override (see:
         duration and until), or permanent_override (indefinitely).
+      default: follow_schedule
       example: advanced_override
+      required: true
       selector:
         select:
+          mode: dropdown
           options:
             - follow_schedule
             - advanced_override
             - permanent_override
             - temporary_override
+
     active:
       name: DHW state
       description: >-
         The state of the water heater. If active, the system will heat the water until
         the current temperature exceeds the setpoint.
+      example: true
       selector:
         boolean:
-      example: true
+
     duration:
-      name: Override duration
+      name: Duration
       description: >-
         The duration of the temporary_override. Mutually exclusive with until.
-      example: '{"minutes": 135}'
+      default:
+        hours: 1
+        minutes: 30
+      example: '{"hours": 1, "minutes": 30}'
       selector:
-        number:
-          min: 15
-          max: 1440
-          step: 15
-          unit_of_measurement: mins
-          mode: slider
+        duration:
+
     until:
-      name: Override end time
+      name: Until
       description: >-
         The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
+      selector:
+        datetime:
+
 
 set_dhw_params:
-  name: Set the DHW config
+  name: Set the Configuration of a DHW
   description: Set the configuration of the system's DHW.
+
   fields:
+    entity_id: *entity_id_dhw
+
     setpoint:
       description: >-
         The target temperature in degrees Celsius. Default is 50.0.
       example: 50.0
+      selector:
+        number:
+          min: 35
+          max: 85
+          step: 0.5
+          unit_of_measurement: °C
+          mode: slider
+
     overrun:
       description: >-
         The overrun in minutes. Default is 5.
       example: 5
+      selector:
+        number:
+          min: 0
+          max: 5
+          step: 0.5
+          unit_of_measurement: mins
+          mode: slider
+
     differential:
       description: >-
-        The differential in degrees Celsius. Default is 1.
+        The differential in degrees Celsius. Default is 1.0.
       example: 1
+      selector:
+        number:
+          min: 5
+          max: 21
+          step: 0.5
+          unit_of_measurement: °C
+          mode: slider
+
+
+set_dhw_schedule:
+  name: Set the Weekly schedule of a DHW
+  description: >-
+    Upload the DHW's weekly schedule from a portable format.
+
+  fields:
+    entity_id: *entity_id_dhw
+
+    schedule:
+      name: Schedule
+      description: The weekly schedule of the DHW in JSON format.
+      required: true
+      selector:
+        text:
+          multiline: true
+
 
 #
-# sensor (HVAC) service calls
+# faked entity service calls
+
+fake_zone_temp:
+  name: Fake a Room temperature
+  description: >-
+    Set the current temperature (not setpoint) of an evohome zone.
+    This is a convenience wrapper for `put_zone_temp` service call.
+
+  fields:
+    entity_id:
+      name: Zone
+      description: >-
+        The entity_id of the evohome zone.
+        Raises an exception if its sensor is not faked (fully-faked, or impersonated).
+      example: climate.01_123456_02
+      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: climate
+
+    temperature:
+      description: The current temperature in degrees Celsius (not the setpoint).
+      required: true
+      example: 21.3
+      selector:
+        number:
+          unit_of_measurement: °C
+          min: -20
+          max: 60
+          step: 0.5
+          mode: slider
+
+
+fake_dhw_temp:
+  name: Fake a DHW temperature
+  description: >-
+    Set the current temperature (not setpoint) of an evohome water heater.
+    This is a convenience wrapper for the `put_dhw_temp` service call.
+
+  fields:
+    entity_id:
+      name: Stored HW
+      description: >-
+        The entity_id of the evohome water heater.
+        Raises an exception if its sensor is not faked (fully-faked, or impersonated).
+      example: water_heater.01_123456
+      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: water_heater
+
+    temperature:
+      description: The current temperature in degrees Celsius (not the setpoint).
+      required: true
+      example: 63.4
+      selector:
+        number:
+          unit_of_measurement: °C
+          min: 0
+          max: 99
+          step: 0.5
+          mode: slider
+
+
+#
+# faked sensor service calls
+
+put_room_temp:
+  name: Announce a Room temperature
+  description: >-
+    Announce the measured room temperature of an evohome zone sensor.
+
+    The device must be faked (in the known_list), and should be bound to
+    a CH/DHW controller as a zone sensor.
+
+  fields:
+    entity_id:
+      name: Thermostat
+      description: >-
+        The entity_id of the sensor. Raises an exception if it is not faked.
+        Does not raise an exception if not is not bound.
+      example: sensor.03_123456_temperature
+      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: sensor
+          device_class: temperature
+
+    temperature:
+      description: The current temperature in degrees Celsius (not the setpoint).
+      required: true
+      example: 21.3
+      selector:
+        number:
+          unit_of_measurement: °C
+          min: -20
+          max: 60
+          step: 0.5
+          mode: slider
+
+
+put_dhw_temp:
+  name: Announce a DHW temperature
+  description: >-
+    Announce the measured temperature of an evohome DHW sensor.
+
+    The device must be faked (in the known_list), and should be bound to
+    a CH/DHW controller as a DHW sensor.
+
+  fields:
+    entity_id:
+      name: Stored DHW
+      description: >-
+        The entity_id of the sensor. Raises an exception if it is not faked.
+        Does not raise an exception if not is not bound.
+      example: sensor.07_123456_temperature
+      required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: sensor
+          device_class: dhw_temp
+
+    temperature:
+      description: The current temperature in degrees Celsius (not the setpoint).
+      required: true
+      example: 63.4
+      selector:
+        number:
+          unit_of_measurement: °C
+          min: 0
+          max: 99
+          step: 0.5
+          mode: slider
+
 
 put_co2_level:
-  name: Fake a CO2 sensor's reading
+  name: Announce an Indoor CO2 level
   description: >-
-    Announce the CO2 level of a faked CO2 sensor (experimental).
-    To be useful, the sensor must bound to a fan (see the `fake_device` service call).
-  target:
-    integration: ramses_cc
-    domain: sensor
+    Announce the measured CO2 level of a indoor sensor (experimental).
+
+    The device must faked (in the known_list), and should be bound to
+    a fan/ventilation unit as a CO2 sensor.
+
   fields:
     entity_id:
       description: >-
         The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an expception if not is not bound.
+        Does not raise an exception if not is not bound.
       example: sensor.30_123456_co2_level
       required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: sensor
+          device_class: carbon_dioxide
+
     co2_level:
       description: The current CO2 level in ppm.
-      example: 363
       required: true
+      example: 363
+      selector:
+        number:
+          unit_of_measurement: ppm
+          min: 300
+          max: 9999
+          step: 25
+          mode: slider
+
 
 put_indoor_humidity:
-  name: Fake a humidity sensor's reading
+  name: Announce an Indoor relative humidity
   description: >-
-    Announce the relative humidity of a faked indoor sensor (experimental).
-    To be useful, the sensor must bound to a fan (see the `fake_device` service call).
-  target:
-    integration: ramses_cc
-    domain: sensor
+    Announce the measured relative humidity of a indoor sensor (experimental).
+
+    The device must be faked (in the known_list), and should be bound to
+    a fan/ventilation unit as a humidity sensor.
+
   fields:
     entity_id:
       description: >-
         The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an expception if not is not bound.
+        Does not raise an exception if not is not bound.
       example: sensor.30_123456_indoor_humidity
       required: true
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: sensor
+          device_class: humidity
+
     indoor_humidity:
       description: The current relative humidity as a perecentage (%).
+      required: true
       example: 59.3
-      required: true
+      selector:
+        number:
+          unit_of_measurement: '%'
+          min: 0
+          max: 100
+          step: 0.5
+          mode: slider
 
-put_presence_detect:
-  name: Fake a presence sensor's reading
+
+#
+# faked remote service calls
+
+delete_command:
+  name: Delete a Remote command
   description: >-
-    Announce the CO2 level of a faked presence sensor (experimental).
-    To be useful, the sensor must bound to a fan (see the `fake_device` service call).
-  target:
-    integration: ramses_cc
-    domain: sensor
+    Deletes a RAMSES command from the database.
+
+    This is a convenience wrapper for HA's own `delete_command` service call.
+
   fields:
-    entity_id:
+    entity_id: &entity_id_remote
       description: >-
-        The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an expception if not is not bound.
-      example: sensor.30_123456_presence_detected
+        The entity_id of the remote, usually a HVAC device.
       required: true
-    presence_detected:
-      description: The current state.
-      example: True
+      example: remote.30_123456
+      selector:
+        entity:
+          integration: ramses_cc
+          domain: remote
+
+    command: &command_remote
+      name: Command name
+      description: The name of the command. Only include a single command at a time.
       required: true
+      example: Boost
+      selector:
+        text:
+
+
+learn_command:
+  name: Learn a Remote command
+  description: >-
+    Learns a RAMSES command and adds it to the database.
+
+    This is a convenience wrapper for HA's own `learn_command` service call.
+    The device should be bound to a fan/ventilation unit as a switch.
+
+  fields:
+    entity_id: *entity_id_remote
+
+    command: *command_remote
+
+    timeout:
+      description: Timeout for the command to be learned.
+      required: false
+      default: 30
+      example: 60
+      selector:
+        number:
+          unit_of_measurement: seconds
+          min: 30
+          max: 300
+          steps: 5
+          mode: slider
+
+
+send_command:
+  name: Send a Remote command
+  description: >-
+    Sends a RAMSES command as if from a remote.
+
+    This is a convenience wrapper for HA's own `send_command` service call.
+    The device must be faked (in the known_list), and should be bound to
+    a fan/ventilation unit as a switch.
+
+  fields:
+    entity_id: *entity_id_remote
+
+    command: *command_remote
+
+    num_repeats:
+      description: The number of times you want to repeat the command.
+      required: false
+      default: 3
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 5
+          steps: 1
+          mode: slider
+
+    delay_secs:
+      description: The time you want to wait in between repeated commands.
+      required: false
+      default: 0.05
+      example: 0.05
+      selector:
+        number:
+          unit_of_measurement: seconds
+          min: 0.02
+          max: 1.0
+          steps: 0.01
+          mode: slider
 
 
 # If the service accepts entity IDs, target allows the user to specify entities by
