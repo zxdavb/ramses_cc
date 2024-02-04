@@ -10,5 +10,5 @@
     ],
     "dependencies": [],
     "config_flow": true,
-    "version": "0.31.7"
+    "version": "0.40.0"
   }
