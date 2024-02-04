@@ -9,9 +9,8 @@ DOMAIN: Final[str] = "ramses_cc"
 STORAGE_VERSION: Final[int] = 1
 STORAGE_KEY: Final[str] = DOMAIN
 
-BROKER: Final[str] = "broker"
-
 # Dispatcher signals
+SIGNAL_NEW_DEVICES = f"{DOMAIN}_new_devices_" + "{}"
 SIGNAL_UPDATE = f"{DOMAIN}_update"
 
 # Config
@@ -20,6 +19,7 @@ CONF_COMMANDS: Final[str] = "commands"
 CONF_DEV_MODE: Final[str] = "dev_mode"
 CONF_MESSAGE_EVENTS: Final[str] = "message_events"
 CONF_RAMSES_RF: Final[str] = "ramses_rf"
+CONF_SCHEMA: Final[str] = "schema"
 CONF_SEND_PACKET: Final[str] = "send_packet"
 CONF_UNKNOWN_CODES: Final[str] = "unknown_codes"
 

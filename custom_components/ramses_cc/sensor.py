@@ -62,13 +62,13 @@ from ramses_tx.const import (
 )
 
 from homeassistant.components.sensor import (
-    DOMAIN as PLATFORM,
     ENTITY_ID_FORMAT,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
@@ -83,44 +83,37 @@ from homeassistant.helpers.entity_platform import (
     EntityPlatform,
     async_get_current_platform,
 )
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
-from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
+from .const import ATTR_SETPOINT, DOMAIN, UnitOfVolumeFlowRate
 from .schemas import SVCS_RAMSES_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    _: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType = None,
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Create sensors for CH/DHW (heat) & HVAC."""
+    """Set up the sensor platform."""
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    platform: EntityPlatform = async_get_current_platform()
 
-    if discovery_info is None:
-        return
+    for k, v in SVCS_RAMSES_SENSOR.items():
+        platform.async_register_entity_service(k, v, f"async_{k}")
 
-    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
+    @callback
+    def add_devices(devices: list[RamsesRFEntity]) -> None:
+        entities = [
+            description.ramses_cc_class(broker, device, description)
+            for device in devices
+            for description in SENSOR_DESCRIPTIONS
+            if isinstance(device, description.ramses_rf_class)
+            and hasattr(device, description.ramses_rf_attr)
+        ]
+        async_add_entities(entities)
 
-    if not broker._services.get(PLATFORM):
-        broker._services[PLATFORM] = True
-        platform: EntityPlatform = async_get_current_platform()
-
-        for k, v in SVCS_RAMSES_SENSOR.items():
-            platform.async_register_entity_service(k, v, f"async_{k}")
-
-    entities = [
-        description.ramses_cc_class(broker, device, description)
-        for device in discovery_info["devices"]
-        for description in SENSOR_DESCRIPTIONS
-        if isinstance(device, description.ramses_rf_class)
-        and hasattr(device, description.ramses_rf_attr)
-    ]
-    async_add_entities(entities)
+    broker.async_register_platform(platform, add_devices)
 
 
 class RamsesSensor(RamsesEntity, SensorEntity):
@@ -165,17 +158,6 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         if self.entity_description.ramses_cc_icon_off and not self.native_value:
             return self.entity_description.ramses_cc_icon_off
         return super().icon
-
-    # TODO: Remove this when we have config entries and devices.
-    @property
-    def name(self) -> str:
-        """Return name temporarily prefixed with device name/id."""
-        prefix = (
-            self._device.name
-            if hasattr(self._device, "name") and self._device.name
-            else self._device.id
-        )
-        return f"{prefix} {super().name}"
 
     # the following methods are integration-specific service calls
 

@@ -13,7 +13,6 @@ from ramses_rf.system.zones import Zone
 from ramses_tx.const import SZ_MODE, SZ_SETPOINT, SZ_SYSTEM_MODE
 
 from homeassistant.components.climate import (
-    DOMAIN as PLATFORM,
     ENTITY_ID_FORMAT,
     FAN_AUTO,
     FAN_HIGH,
@@ -31,6 +30,7 @@ from homeassistant.components.climate import (
     HVACAction,
     HVACMode,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import (
@@ -38,12 +38,10 @@ from homeassistant.helpers.entity_platform import (
     EntityPlatform,
     async_get_current_platform,
 )
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import (
-    BROKER,
     DOMAIN,
     PRESET_CUSTOM,
     PRESET_PERMANENT,
@@ -103,33 +101,27 @@ PRESET_ZONE_TO_HA: Final[dict[str, str]] = {
 PRESET_HA_TO_ZONE: Final[dict[str, str]] = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    _: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType = None,
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Create climate entities for CH/DHW (heat) & HVAC."""
+    """Set up the climate platform."""
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    platform: EntityPlatform = async_get_current_platform()
 
-    if discovery_info is None:
-        return
+    for k, v in SVCS_RAMSES_CLIMATE.items():
+        platform.async_register_entity_service(k, v, f"async_{k}")
 
-    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
+    @callback
+    def add_devices(devices: list[Evohome | Zone | HvacVentilator]) -> None:
+        entities = [
+            description.ramses_cc_class(broker, device, description)
+            for device in devices
+            for description in CLIMATE_DESCRIPTIONS
+            if isinstance(device, description.ramses_rf_class)
+        ]
+        async_add_entities(entities)
 
-    if not broker._services.get(PLATFORM):
-        broker._services[PLATFORM] = True
-        platform: EntityPlatform = async_get_current_platform()
-
-        for k, v in SVCS_RAMSES_CLIMATE.items():
-            platform.async_register_entity_service(k, v, f"async_{k}")
-
-    entities = [
-        description.ramses_cc_class(broker, device, description)
-        for device in discovery_info["devices"]
-        for description in CLIMATE_DESCRIPTIONS
-        if isinstance(device, description.ramses_rf_class)
-    ]
-    async_add_entities(entities)
+    broker.async_register_platform(platform, add_devices)
 
 
 class RamsesController(RamsesEntity, ClimateEntity):
@@ -210,11 +202,6 @@ class RamsesController(RamsesEntity, ClimateEntity):
         if self._device.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY:
             return HVACMode.AUTO  # users can't adjust setpoints in away mode
         return HVACMode.HEAT
-
-    @property
-    def name(self) -> str:
-        """Return the name of the Controller."""
-        return "Controller"
 
     @property
     def preset_mode(self) -> str | None:
@@ -364,11 +351,6 @@ class RamsesZone(RamsesEntity, ClimateEntity):
         if not self._device.config:
             return 5
         return self._device.config["min_temp"]
-
-    @property
-    def name(self) -> str | None:
-        """Return the name of the zone."""
-        return self._device.name
 
     @property
     def preset_mode(self) -> str | None:
@@ -538,11 +520,6 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
         return "mdi:hvac-off" if self._device.fan_info == "off" else "mdi:hvac"
 
     @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return self._device.id
-
-    @property
     def preset_mode(self) -> str | None:
         """Return the current preset mode, e.g., home, away, temp."""
         return PRESET_NONE
@@ -559,12 +536,21 @@ class RamsesClimateEntityDescription(RamsesEntityDescription, ClimateEntityDescr
 
 CLIMATE_DESCRIPTIONS: tuple[RamsesClimateEntityDescription, ...] = (
     RamsesClimateEntityDescription(
-        key="controller", ramses_cc_class=RamsesController, ramses_rf_class=Evohome
+        key="controller",
+        name=None,
+        ramses_rf_class=Evohome,
+        ramses_cc_class=RamsesController,
     ),
     RamsesClimateEntityDescription(
-        key="zone", ramses_cc_class=RamsesZone, ramses_rf_class=Zone
+        key="zone",
+        name=None,
+        ramses_rf_class=Zone,
+        ramses_cc_class=RamsesZone,
     ),
     RamsesClimateEntityDescription(
-        key="hvac", ramses_cc_class=RamsesHvac, ramses_rf_class=HvacVentilator
+        key="hvac",
+        name=None,
+        ramses_rf_class=HvacVentilator,
+        ramses_cc_class=RamsesHvac,
     ),
 )

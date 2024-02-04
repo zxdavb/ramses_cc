@@ -36,10 +36,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
@@ -49,34 +50,31 @@ from .const import (
     ATTR_LATEST_EVENT,
     ATTR_LATEST_FAULT,
     ATTR_WORKING_SCHEMA,
-    BROKER,
     DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    _: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType = None,
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Create binary sensors for CH/DHW (heat) & HVAC."""
+    """Set up the binary sensor platform."""
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    platform = entity_platform.async_get_current_platform()
 
-    if discovery_info is None:
-        return
+    @callback
+    def add_devices(devices: list[RamsesRFEntity]) -> None:
+        entities = [
+            description.ramses_cc_class(broker, device, description)
+            for device in devices
+            for description in BINARY_SENSOR_DESCRIPTIONS
+            if isinstance(device, description.ramses_rf_class)
+            and hasattr(device, description.ramses_rf_attr)
+        ]
+        async_add_entities(entities)
 
-    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
-
-    entities = [
-        description.ramses_cc_class(broker, device, description)
-        for device in discovery_info["devices"]
-        for description in BINARY_SENSOR_DESCRIPTIONS
-        if isinstance(device, description.ramses_rf_class)
-        and hasattr(device, description.key)
-    ]
-    async_add_entities(entities)
+    broker.async_register_platform(platform, add_devices)
 
 
 class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
@@ -117,17 +115,6 @@ class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
             if self.is_on
             else self.entity_description.icon_off
         )
-
-    # TODO: Remove this when we have config entries and devices.
-    @property
-    def name(self) -> str:
-        """Return name temporarily prefixed with device name/id."""
-        prefix = (
-            self._device.name
-            if hasattr(self._device, "name") and self._device.name
-            else self._device.id
-        )
-        return f"{prefix} {super().name}"
 
 
 class RamsesLogbookBinarySensor(RamsesBinarySensor):
