@@ -85,7 +85,7 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
 
         if (
             regex := broker.config[CONF_ADVANCED_FEATURES][CONF_MESSAGE_EVENTS]
-        ) and regex.match(f"{msg!r}"):
+        ) and regex.search(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
                 "src": msg.src.id,
