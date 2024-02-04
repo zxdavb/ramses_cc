@@ -135,7 +135,7 @@ def async_register_domain_events(
     def async_process_msg(msg: Message, *args: Any, **kwargs: Any) -> None:
         """Process a message from the event bus as pass it on."""
 
-        if message_events_regex and message_events_regex.match(f"{msg!r}"):
+        if message_events_regex and message_events_regex.search(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
                 "src": msg.src.id,
