@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
 import logging
-from typing import Any, TypeAlias
+from typing import Any
 
 from ramses_rf.device.hvac import HvacRemote
 from ramses_tx.command import Command
@@ -36,12 +36,6 @@ from .schemas import (
     SVCS_RAMSES_REMOTE,
 )
 
-
-@dataclass(kw_only=True)
-class RamsesRemoteEntityDescription(RamsesEntityDescription, RemoteEntityDescription):
-    """Class describing Ramses remote entities."""
-
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -58,8 +52,8 @@ async def async_setup_entry(
     @callback
     def add_devices(devices: list[HvacRemote]) -> None:
         entities = [
-            RamsesRemote(
-                broker, device, RamsesRemoteEntityDescription(key="remote", name=None)
+            RamsesRemoteEntityDescription.ramses_cc_class(
+                broker, device, RamsesRemoteEntityDescription()
             )
             for device in devices
         ]
@@ -219,4 +213,11 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         await self._broker.async_update()
 
 
-_RemoteEntityT: TypeAlias = type[RamsesRemote]
+@dataclass(frozen=True, kw_only=True)
+class RamsesRemoteEntityDescription(RamsesEntityDescription, RemoteEntityDescription):
+    """Class describing Ramses remote entities."""
+
+    key = "remote"
+
+    # integration-specific attributes
+    ramses_cc_class: type[RamsesRemote] = RamsesRemote
