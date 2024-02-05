@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING, Any, Final
 
 from ramses_rf.device import Fakeable
 from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_tx.address import pkt_addrs
 from ramses_tx.command import Command
-from ramses_tx.exceptions import TransportSerialError
+from ramses_tx.exceptions import PacketAddrSetInvalid, TransportSerialError
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
@@ -199,7 +200,21 @@ def async_register_domain_services(
             and broker.client.hgi.id
         ):
             kwargs["device_id"] = broker.client.hgi.id
-        broker.client.send_cmd(broker.client.create_cmd(**kwargs))
+
+        cmd = broker.client.create_cmd(**kwargs)
+
+        # HACK: to fix the device_id when GWY announcing, will be:
+        #    I --- 18:000730 18:006402 --:------ 0008 002 00C3  # because src != dst
+        # ... should be:
+        #    I --- 18:000730 --:------ 18:006402 0008 002 00C3  # 18:730 is sentinel
+        if cmd.src.id == "18:000730" and cmd.dst.id == broker.client.hgi.id:
+            try:
+                pkt_addrs(broker.client.hgi.id + cmd._frame[16:37])
+            except PacketAddrSetInvalid:
+                cmd._addrs[1], cmd._addrs[2] = cmd._addrs[2], cmd._addrs[1]
+                cmd._repr = None
+
+        broker.client.send_cmd(cmd)
         hass.helpers.event.async_call_later(5, broker.async_update)
 
     hass.services.async_register(
