@@ -36,8 +36,8 @@ from .schemas import SVCS_RAMSES_WATER_HEATER
 _LOGGER = logging.getLogger(__name__)
 
 
-STATE_AUTO: Final[str] = "auto"
-STATE_BOOST: Final[str] = "boost"
+STATE_AUTO: Final = "auto"
+STATE_BOOST: Final = "boost"
 
 MODE_HA_TO_RAMSES: Final[dict[str, str]] = {
     STATE_AUTO: ZoneMode.SCHEDULE,
