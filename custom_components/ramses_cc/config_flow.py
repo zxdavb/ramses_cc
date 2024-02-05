@@ -4,7 +4,7 @@ from abc import abstractmethod
 from copy import deepcopy
 import logging
 import re
-from typing import Any
+from typing import Any, Final
 
 from ramses_rf.schemas import SCH_GATEWAY_DICT, SCH_GLOBAL_SCHEMAS, SZ_SCHEMA
 from ramses_tx.schemas import (
@@ -51,7 +51,7 @@ from .schemas import SCH_GLOBAL_TRAITS_DICT
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_MANUAL_PATH = "Enter Manually"
+CONF_MANUAL_PATH: Final = "Enter Manually"
 
 
 def get_usb_ports() -> dict[str, str]:

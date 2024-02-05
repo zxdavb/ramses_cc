@@ -7,11 +7,11 @@ from typing import Final
 DOMAIN: Final = "ramses_cc"
 
 STORAGE_VERSION: Final[int] = 1
-STORAGE_KEY: Final[str] = DOMAIN
+STORAGE_KEY: Final = DOMAIN
 
 # Dispatcher signals
-SIGNAL_NEW_DEVICES = f"{DOMAIN}_new_devices_" + "{}"
-SIGNAL_UPDATE = f"{DOMAIN}_update"
+SIGNAL_NEW_DEVICES: Final = f"{DOMAIN}_new_devices_" + "{}"
+SIGNAL_UPDATE: Final = f"{DOMAIN}_update"
 
 # Config
 CONF_ADVANCED_FEATURES: Final = "advanced_features"
