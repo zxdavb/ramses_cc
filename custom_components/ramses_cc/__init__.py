@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
+import re
 from typing import TYPE_CHECKING, Any, Final
 
 from ramses_rf.device import Fakeable
@@ -13,10 +14,14 @@ from ramses_rf.entity_base import Entity as RamsesRFEntity
 from ramses_tx.address import pkt_addrs
 from ramses_tx.command import Command
 from ramses_tx.exceptions import PacketAddrSetInvalid, TransportSerialError
-import voluptuous as vol  # type: ignore[import-untyped]
 
+from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.service import verify_domain_control
@@ -24,7 +29,6 @@ from homeassistant.helpers.typing import ConfigType
 
 from .broker import RamsesBroker
 from .const import (
-    BROKER,
     CONF_ADVANCED_FEATURES,
     CONF_MESSAGE_EVENTS,
     CONF_SEND_PACKET,
@@ -33,7 +37,6 @@ from .const import (
 )
 from .schemas import (
     SCH_BIND_DEVICE,
-    SCH_DOMAIN_CONFIG,
     SCH_SEND_PACKET,
     SVC_BIND_DEVICE,
     SVC_FORCE_UPDATE,
@@ -47,7 +50,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-CONFIG_SCHEMA = vol.Schema({DOMAIN: SCH_DOMAIN_CONFIG}, extra=vol.ALLOW_EXTRA)
+CONFIG_SCHEMA = cv.deprecated(DOMAIN, raise_if_present=False)
 
 PLATFORMS: Final[Platform] = (
     Platform.BINARY_SENSOR,
@@ -59,34 +62,81 @@ PLATFORMS: Final[Platform] = (
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Create a ramses_rf (RAMSES_II)-based system."""
+    """Set up the Ramses integration."""
+    hass.data[DOMAIN] = {}
 
-    broker = RamsesBroker(hass, config)
+    # One-off import of entry from config yaml
+    if DOMAIN in config and not hass.config_entries.async_entries(DOMAIN):
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": config_entries.SOURCE_IMPORT},
+                data=config[DOMAIN],
+            )
+        )
+
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Create a ramses_rf (RAMSES_II)-based system."""
+    broker = RamsesBroker(hass, entry)
     try:
-        await broker.start()
+        await broker.async_setup()
     except TransportSerialError as exc:
-        _LOGGER.error("There is a problem with the serial port: %s", exc)
+        raise ConfigEntryNotReady(
+            f"There is a problem with the serial port: {exc}"
+        ) from exc
+
+    # Setup is complete and config is valid, so start polling
+    hass.data[DOMAIN][entry.entry_id] = broker
+    await broker.async_start()
+
+    async_register_domain_services(hass, entry, broker)
+    async_register_domain_events(hass, entry, broker)
+
+    entry.async_on_unload(entry.add_update_listener(async_update_listener))
+
+    return True
+
+
+async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    if not await broker.async_unload_platforms():
         return False
 
-    hass.data.setdefault(DOMAIN, {})[BROKER] = broker
+    hass.services.async_remove(DOMAIN, SVC_BIND_DEVICE)
+    hass.services.async_remove(DOMAIN, SVC_FORCE_UPDATE)
+    hass.services.async_remove(DOMAIN, SVC_SEND_PACKET)
 
-    register_domain_services(hass, broker)
-    register_domain_events(hass, broker)
+    hass.data[DOMAIN].pop(entry.entry_id)
 
     return True
 
 
 @callback  # TODO: the following is a mess - to add register/deregister of clients
-def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
+def async_register_domain_events(
+    hass: HomeAssistant, entry: ConfigEntry, broker: RamsesBroker
+) -> None:
     """Set up the handlers for the system-wide events."""
+
+    features: dict[str, Any] = entry.options.get(CONF_ADVANCED_FEATURES, {})
+    if message_events := features.get(CONF_MESSAGE_EVENTS):
+        message_events_regex = re.compile(message_events)
+    else:
+        message_events_regex = None
 
     @callback
     def async_process_msg(msg: Message, *args: Any, **kwargs: Any) -> None:
         """Process a message from the event bus as pass it on."""
 
-        if (
-            regex := broker.config[CONF_ADVANCED_FEATURES][CONF_MESSAGE_EVENTS]
-        ) and regex.search(f"{msg!r}"):
+        if message_events_regex and message_events_regex.search(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
                 "src": msg.src.id,
@@ -110,7 +160,9 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
 
 
 @callback
-def register_domain_services(hass: HomeAssistant, broker: RamsesBroker) -> None:
+def async_register_domain_services(
+    hass: HomeAssistant, entry: ConfigEntry, broker: RamsesBroker
+) -> None:
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)  # TODO: is a work in progress
@@ -172,7 +224,7 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker) -> None:
         DOMAIN, SVC_FORCE_UPDATE, async_force_update, schema={}
     )
 
-    if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
+    if entry.options.get(CONF_ADVANCED_FEATURES, {}).get(CONF_SEND_PACKET):
         hass.services.async_register(
             DOMAIN, SVC_SEND_PACKET, async_send_packet, schema=SCH_SEND_PACKET
         )
@@ -201,6 +253,7 @@ class RamsesEntity(Entity):
         self.entity_description = entity_description
 
         self._attr_unique_id = device.id
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, device.id)})
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
