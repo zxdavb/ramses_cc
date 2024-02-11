@@ -295,7 +295,7 @@ class RamsesBroker:
         )
         self._devices, new_devices = find_new_entities(self._devices, gwy.devices)
 
-        for device in self._devices + self._systems + self._zones:
+        for device in self._devices + self._systems + self._zones + self._dhws:
             self._update_device(device)
 
         new_entities = new_devices + new_systems + new_zones + new_dhws
