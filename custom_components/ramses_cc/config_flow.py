@@ -7,6 +7,7 @@ import re
 from typing import Any, Final
 
 from ramses_rf.schemas import SCH_GATEWAY_DICT, SCH_GLOBAL_SCHEMAS, SZ_SCHEMA
+from ramses_tx.const import Code
 from ramses_tx.schemas import (
     SCH_ENGINE_DICT,
     SCH_SERIAL_PORT_CONFIG,
@@ -562,7 +563,7 @@ class RamsesOptionsFlow(BaseRamsesFlow, OptionsFlow):
                         return {
                             dtm: pkt
                             for dtm, pkt in packets.items()
-                            if pkt[41:45] not in ["0005", "000C"]
+                            if pkt[41:45] not in [Code._0004, Code._0005, Code._000C]
                         }
 
                     # Filter out cached packets used for schema discovery
