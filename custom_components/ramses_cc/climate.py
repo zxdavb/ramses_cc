@@ -130,13 +130,19 @@ class RamsesController(RamsesEntity, ClimateEntity):
     _device: Evohome
 
     _attr_icon: str = "mdi:thermostat"
-    _attr_hvac_modes: list[str] = list(MODE_HA_TO_TCS)
+    _attr_hvac_modes: list[HVACMode] = list(MODE_HA_TO_TCS)
     _attr_max_temp: None = None
     _attr_min_temp: None = None
     _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_HA_TO_TCS)
-    _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
+    _attr_supported_features: ClimateEntityFeature = (
+        ClimateEntityFeature.PRESET_MODE
+        | ClimateEntityFeature.TURN_ON
+        | ClimateEntityFeature.TURN_OFF
+    )
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
+
+    _enable_turn_on_off_backwards_compatibility: bool = False  # remove when HA 2025.1
 
     def __init__(
         self,
@@ -264,10 +270,10 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     _device: Zone
 
     _attr_icon: str = "mdi:radiator"
-    _attr_hvac_modes: list[str] = list(MODE_HA_TO_ZONE)
+    _attr_hvac_modes: list[HVACMode] = list(MODE_HA_TO_ZONE)
     _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_HA_TO_ZONE)
-    _attr_supported_features: int = (
+    _attr_supported_features: ClimateEntityFeature = (
         ClimateEntityFeature.PRESET_MODE | ClimateEntityFeature.TARGET_TEMPERATURE
     )
     _attr_target_temperature_step: float = PRECISION_TENTHS
@@ -468,7 +474,7 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     _attr_hvac_modes: list[HVACMode] | list[str] = [HVACMode.AUTO, HVACMode.OFF]
     _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] | None = None
-    _attr_supported_features: int = (
+    _attr_supported_features: ClimateEntityFeature = (
         ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.PRESET_MODE
     )
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
