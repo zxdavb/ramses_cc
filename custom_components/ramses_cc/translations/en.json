@@ -173,6 +173,7 @@
             },
             "clear_cache": {
                 "title": "Clear cache",
+                "description": "Choose items below to immediately clear the cache and reload the integration after significant changes to your system schema or configuration.",
                 "data": {
                     "clear_schema": "Clear discovered system schema(s)",
                     "clear_packets": "Clear system state (recent packets)"
