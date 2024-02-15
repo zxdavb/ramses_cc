@@ -60,10 +60,10 @@ async def async_setup_entry(
     @callback
     def add_devices(devices: list[DhwZone]) -> None:
         entities = [
-            RamsesWaterHeaterEntityDescription.ramses_cc_class(
-                broker, device, RamsesWaterHeaterEntityDescription()
-            )
+            description.ramses_cc_class(broker, device, description)
             for device in devices
+            for description in WATER_HEATER_DESCRIPTIONS
+            if isinstance(device, description.ramses_rf_class)
         ]
         async_add_entities(entities)
 
@@ -230,7 +230,16 @@ class RamsesWaterHeaterEntityDescription(
 ):
     """Class describing Ramses water heater entities."""
 
-    key = "dhwzone"
-
     # integration-specific attributes
-    ramses_cc_class: type[RamsesWaterHeater] = RamsesWaterHeater
+    ramses_cc_class: type[RamsesWaterHeater]
+    ramses_rf_class: type[DhwZone]
+
+
+WATER_HEATER_DESCRIPTIONS: tuple[RamsesWaterHeaterEntityDescription, ...] = (
+    RamsesWaterHeaterEntityDescription(
+        key="dhwzone",
+        name=None,
+        ramses_rf_class=DhwZone,
+        ramses_cc_class=RamsesWaterHeater,
+    ),
+)
