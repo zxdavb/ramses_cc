@@ -20,13 +20,12 @@ from homeassistant.core import HomeAssistant
 TEST_DIR = Path(__file__).resolve().parent
 INPUT_FILE = "evo_control.log"
 
-
 SCHEMA = {
-    "system": {"appliance_control": "13:120242"},
+    "system": {"appliance_control": "13:120241"},
     "orphans": [],
     "stored_hotwater": {
         "sensor": "07:046947",
-        "hotwater_valve": None,
+        "hotwater_valve": "13:120242",
         "heating_valve": None,
     },
     "underfloor_heating": {},
@@ -126,6 +125,7 @@ async def test_namespace(hass: HomeAssistant) -> None:
     assert binary.unique_id == f"{ctl_id}-status"
     assert binary.state in (STATE_ON, STATE_OFF, None)
 
+    #
     # evo_control uses: the working_schema
     schema = binary.extra_state_attributes["working_schema"]
     assert schema["stored_hotwater"] == SCHEMA["stored_hotwater"]
@@ -133,7 +133,12 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     #
     # evo_control uses: binary_sensor.${i}_battery_low
-    for dev_id in ("07:046947", "22:140285", "34:092243"):  # via walking the schema
+    for dev_id in (
+        "04:056053",
+        "07:046947",
+        "22:140285",
+        "34:092243",
+    ):  # via walking the schema
         id = f"binary_sensor.{dev_id}_battery_low"
 
         binary = [e for e in binary_sensors if e.entity_id == id][0]
@@ -143,12 +148,14 @@ async def test_namespace(hass: HomeAssistant) -> None:
         battery_level = binary.extra_state_attributes["battery_level"]
         assert battery_level is None or 0.0 < battery_level < 1.0  # FIXME
 
+    #
     # evo_control uses: binary_sensor.${cid}_${haZid}_window_open
     for zon_idx in ("02", "0A"):  # via walking the schema
         id = f"binary_sensor.{ctl_id}_{zon_idx}_window_open"
 
         binary = [e for e in binary_sensors if e.entity_id == id][0]
         assert binary.unique_id == f"{ctl_id}_{zon_idx}-window_open"
+
         assert binary.state in (STATE_ON, STATE_OFF, None)
 
     #
@@ -157,28 +164,35 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     sensor: SensorEntity = [e for e in sensors if e.entity_id == id][0]
     assert sensor.unique_id == f"{ctl_id}-heat_demand"
+
     assert sensor.state is None or 0.0 <= sensor.state <= 100.0
 
+    #
     # evo_control uses: sensor.${dhwRelayId}_relay_demand
-    bdr_id = "13:120242"  # via walking the schema
-    id = f"binary_sensor.{bdr_id}_active"
+    dhw_id = SCHEMA["stored_hotwater"]["hotwater_valve"]  # type: ignore[index]
+    id = f"binary_sensor.{dhw_id}_active"
 
     binary = [e for e in binary_sensors if e.entity_id == id][0]
-    assert binary.unique_id == f"{bdr_id}-active"
+    assert binary.unique_id == f"{dhw_id}-active"
+
     assert binary.state in (STATE_ON, STATE_OFF, None)
 
-    id = f"sensor.{bdr_id}_relay_demand"
+    id = f"sensor.{dhw_id}_relay_demand"
 
+    #
     sensor = [e for e in sensors if e.entity_id == id][0]
-    assert sensor.unique_id == f"{bdr_id}-relay_demand"
+    assert sensor.unique_id == f"{dhw_id}-relay_demand"
+
     assert sensor.state is None or 0.0 <= sensor.state <= 100.0
 
+    #
     # evo_control uses: sensor.${cid}_${haZid}_heat_demand
     for zon_idx in ("02", "0A", "HW"):  # via walking the schema
         id = f"sensor.{ctl_id}_{zon_idx}_heat_demand"
 
         sensor = [e for e in sensors if e.entity_id == id][0]
         assert sensor.unique_id == f"{ctl_id}_{zon_idx}-heat_demand"
+
         assert sensor.state is None or 0.0 <= sensor.state <= 100.0
 
     #
@@ -186,6 +200,9 @@ async def test_namespace(hass: HomeAssistant) -> None:
     id = f"climate.{ctl_id}"  # via a webform, from the user
 
     climate: ClimateEntity = [e for e in climates if e.entity_id == id][0]
+    assert climate.unique_id == ctl_id
+    # assert climate.name is None or True  # FIXME
+
     assert climate.state == HVACMode.HEAT
     assert climate.preset_mode == PRESET_ECO
     climate.extra_state_attributes["system_mode"] = {
@@ -193,17 +210,23 @@ async def test_namespace(hass: HomeAssistant) -> None:
         "until": "2022-03-06T14:44:00",
     }
 
+    #
     # evo_control uses: climate.${cid}_${haZid}
     for zon_idx in ("02", "0A"):  # via walking the schema
-        id = f"climate.01:145038_{zon_idx}"
+        id = f"climate.{ctl_id}_{zon_idx}"
 
         climate = [e for e in climates if e.entity_id == id][0]
+        assert climate.unique_id == f"{ctl_id}_{zon_idx}"
+        # assert climate._device.name == SCHEMA["zones"][zon_idx]["_name"]  # FIXME
+
         assert isinstance(climate.current_temperature, float)
 
+    #
     # evo_control uses: water_heater.${cid}_hw
     id = f"water_heater.{ctl_id}_HW"  # via walking the schema
 
     heater: WaterHeaterEntity = [e for e in water_heaters if e.entity_id == id][0]
-    assert isinstance(heater.current_temperature, float)
+    assert heater.unique_id == f"{ctl_id}_HW"
+    # assert heater.name == "Stored HW"  # FIXME
 
-    assert True
+    assert isinstance(heater.current_temperature, float)
