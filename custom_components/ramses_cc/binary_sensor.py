@@ -117,6 +117,20 @@ class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
         )
 
 
+class RamsesBatteryBinarySensor(RamsesBinarySensor):
+    """Representation of a generic binary sensor."""
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        if self._device.battery_state is None:
+            level = None
+        else:
+            level = self._device.battery_state[ATTR_BATTERY_LEVEL]
+
+        return super().extra_state_attributes | {ATTR_BATTERY_LEVEL: level}
+
+
 class RamsesLogbookBinarySensor(RamsesBinarySensor):
     """Representation of a fault log."""
 
@@ -238,10 +252,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     RamsesBinarySensorEntityDescription(
         key=BatteryState.BATTERY_LOW,
         ramses_rf_attr=BatteryState.BATTERY_LOW,
+        ramses_cc_class=RamsesBatteryBinarySensor,
         device_class=BinarySensorDeviceClass.BATTERY,
-        ramses_cc_extra_attributes={
-            ATTR_BATTERY_LEVEL: BatteryState.BATTERY_STATE,
-        },
     ),
     RamsesBinarySensorEntityDescription(
         key="active_fault",
