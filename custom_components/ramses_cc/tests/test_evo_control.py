@@ -123,7 +123,7 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     binary: BinarySensorEntity = [e for e in binary_sensors if e.entity_id == id][0]
     assert binary.unique_id == f"{ctl_id}-status"
-    assert binary.state in (STATE_ON, STATE_OFF, None)
+    assert binary.state == STATE_OFF
 
     #
     # evo_control uses: the working_schema
@@ -155,7 +155,6 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
         binary = [e for e in binary_sensors if e.entity_id == id][0]
         assert binary.unique_id == f"{ctl_id}_{zon_idx}-window_open"
-
         assert binary.state in (STATE_ON, STATE_OFF, None)
 
     #
@@ -164,8 +163,7 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     sensor: SensorEntity = [e for e in sensors if e.entity_id == id][0]
     assert sensor.unique_id == f"{ctl_id}-heat_demand"
-
-    assert sensor.state is None or 0.0 <= sensor.state <= 100.0
+    assert sensor.state == 72.0
 
     #
     # evo_control uses: sensor.${dhwRelayId}_relay_demand
@@ -174,15 +172,12 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     binary = [e for e in binary_sensors if e.entity_id == id][0]
     assert binary.unique_id == f"{dhw_id}-active"
-
     assert binary.state in (STATE_ON, STATE_OFF, None)
 
     id = f"sensor.{dhw_id}_relay_demand"
 
-    #
     sensor = [e for e in sensors if e.entity_id == id][0]
     assert sensor.unique_id == f"{dhw_id}-relay_demand"
-
     assert sensor.state is None or 0.0 <= sensor.state <= 100.0
 
     #
@@ -192,7 +187,6 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
         sensor = [e for e in sensors if e.entity_id == id][0]
         assert sensor.unique_id == f"{ctl_id}_{zon_idx}-heat_demand"
-
         assert sensor.state is None or 0.0 <= sensor.state <= 100.0
 
     #
