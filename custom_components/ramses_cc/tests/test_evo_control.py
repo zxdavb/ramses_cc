@@ -205,7 +205,7 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     assert climate.state == HVACMode.HEAT
     assert climate.preset_mode == PRESET_ECO
-    climate.extra_state_attributes["system_mode"] = {
+    assert climate.extra_state_attributes["system_mode"] == {
         "system_mode": "eco_boost",
         "until": "2022-03-06T14:44:00",
     }
@@ -220,6 +220,15 @@ async def test_namespace(hass: HomeAssistant) -> None:
         # assert climate._device.name == SCHEMA["zones"][zon_idx]["_name"]  # FIXME
 
         assert isinstance(climate.current_temperature, float)
+        assert zon_idx != "02" or climate.extra_state_attributes["mode"] == {
+            "mode": "permanent_override",
+            "setpoint": 5.0,
+        }
+        assert zon_idx != "0A" or climate.extra_state_attributes["mode"] == {
+            "mode": "temporary_override",
+            "setpoint": 20.0,
+            "until": "2022-01-22T10:00:00",
+        }
 
     #
     # evo_control uses: water_heater.${cid}_hw
@@ -229,4 +238,11 @@ async def test_namespace(hass: HomeAssistant) -> None:
     assert heater.unique_id == f"{ctl_id}_HW"
     # assert heater.name == "Stored HW"  # FIXME
 
-    assert isinstance(heater.current_temperature, float)
+    assert heater.current_temperature == 61.87
+    assert heater.extra_state_attributes["mode"] == {
+        "mode": "temporary_override",
+        "active": True,
+        "until": "2022-02-10T22:00:00",
+    }
+
+    assert True
