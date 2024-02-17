@@ -106,7 +106,7 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     with open(f"{TEST_DIR}/{SCHEMA_FILE}") as f:
         _SCHEMA: dict[str, dict[str, Any]] = json.load(f)
-        CTL_ID = list(_SCHEMA.keys())[0]
+        CTL_ID = list(_SCHEMA.keys())[0]  # ctl_id via a webform, from the user
         SCHEMA = list(_SCHEMA.values())[0]
 
     # The intention here is check the namespace used by EvoControl
@@ -114,7 +114,6 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     #
     # evo_control uses: binary_sensor.${cid}_status
-    CTL_ID = "01:145038"  # ctl_id via a webform, from the user
     id = f"binary_sensor.{CTL_ID}_status"
 
     binary: BinarySensorEntity = [e for e in binary_sensors if e.entity_id == id][0]
