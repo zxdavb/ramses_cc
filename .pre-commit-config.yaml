@@ -10,11 +10,13 @@ repos:
       - id: ruff         # linter
       - id: ruff-format  # formatter
 
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.8.0
-  #   hooks:
-  #   - id: mypy
-  #     additional_dependencies: [voluptuous==0.14.1]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+    - id: mypy
+      additional_dependencies:
+        - voluptuous==0.13.1
+        - pytest-homeassistant-custom-component==0.13.100
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
@@ -37,21 +39,21 @@ repos:
       # entry: '[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'  # email address
 
     - id: debugs
-      name: check DEBUG flags
+      name: check for DEBUG flags
       entry: '_DBG_.*=.*True'
       language: pygrep
       args: [-i]
       exclude: (.pre-commit-config.yaml|^tests/.*\.py$)  # avoid false +ve
 
     # - id: fixme
-    #   name: check FIXME flags
+    #   name: check for FIXME flags
     #   entry: '#.*(FIXME)'  # |TODO)'
     #   language: pygrep
     #   args: [-i]
     #   exclude: (.pre-commit-config.yaml|^tests/.*\.py$)  # avoid false +ve
 
     - id: secrets
-      name: check secrets
+      name: check for secrets
       entry: '#.*(secret|password|pwd)'
       language: pygrep
       args: [-i]
