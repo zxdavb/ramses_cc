@@ -217,7 +217,9 @@ async def test_namespace(hass: HomeAssistant) -> None:
                 "mode": "permanent_override",
                 "setpoint": 5.0,
             }
-            assert climate.current_temperature == 18.16
+            assert (
+                climate.current_temperature == 18.16
+            )  # equivalent to {"temperatureStatus": isAvailable: true, temperature: 18.16}
 
         else:
             assert climate.extra_state_attributes["mode"] == {
@@ -225,7 +227,9 @@ async def test_namespace(hass: HomeAssistant) -> None:
                 "setpoint": 20.0,
                 "until": "2022-01-22T10:00:00",
             }
-            assert climate.current_temperature is None
+            assert (
+                climate.current_temperature is None
+            )  # equivalent to {"temperatureStatus": isAvailable: false}
 
     #
     # evo_control uses: water_heater.${cid}_hw
