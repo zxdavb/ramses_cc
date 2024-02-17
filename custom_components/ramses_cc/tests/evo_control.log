@@ -18,9 +18,9 @@
 2022-01-22T09:07:15.219648 ... RP --- 01:145038 18:006402 --:------ 2349 013 0A07D004FFFFFF000A160107E6  # {'zone_idx': '0A', 'mode': 'temporary_override', 'setpoint': 20.0, 'until': '2022-01-22T10:00:00'}
 2022-02-10T21:51:22.449512 ... RP --- 01:145038 18:006402 --:------ 1F41 012 000104FFFFFF00160A0207E6    # {'dhw_idx':  '00', 'mode': 'temporary_override', 'active':   True, 'until': '2022-02-10T22:00:00'}
 
-2024-01-19T12:00:00.001000 ...  I --- 01:145038 --:------ 01:145038 2309 006 02076C0A05DC                # [{'zone_idx': '02', 'setpoint':    19.0 }, {'zone_idx': '0A', 'setpoint':    15.0 }]
-2024-01-19T12:00:00.002000 ...  I --- 01:145038 --:------ 01:145038 30C9 006 0207180A0709                # [{'zone_idx': '02', 'temperature': 18.16}, {'zone_idx': '0A', 'temperature': 18.01}]
 2024-01-19T12:00:00.003000 ...  I --- 01:145038 --:------ 01:145038 000A 012 001001F40BB8011001F40BB8    # [{'zone_idx': '02', 'min_temp': 5.0, 'max_temp': 30.0, 'local_override': True, 'openwindow_function': True, 'multiroom_mode': False, '_unknown_bitmap': '0b00010000'}, {'zone_idx': '0A', 'min_temp': 5.0, 'max_temp': 30.0, 'local_override': True, 'openwindow_function': True, 'multiroom_mode': False, '_unknown_bitmap': '0b00010000'}]
+2024-01-19T12:00:00.001000 ...  I --- 01:145038 --:------ 01:145038 2309 006 02076C0A05DC                # [{'zone_idx': '02', 'setpoint':    19.0 }, {'zone_idx': '0A', 'setpoint':    15.0 }]
+2024-01-19T12:00:00.002000 ...  I --- 01:145038 --:------ 01:145038 30C9 006 0207180A7FFF                # [{'zone_idx': '02', 'temperature': 18.16}, {'zone_idx': '0A', 'temperature': None }]  # zone 0A is unavailable
 
 2022-05-02T10:02:28.141317 ... RP --- 01:145038 18:006402 --:------ 12B0 003 020000        # {'zone_idx':  '02', 'window_open': False}
 2022-05-02T10:02:28.141317 ... RP --- 01:145038 18:006402 --:------ 12B0 003 0AC800        # {'zone_idx':  '04', 'window_open': True}

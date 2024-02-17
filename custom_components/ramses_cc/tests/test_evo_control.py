@@ -1,4 +1,16 @@
-"""Test the compatibility of the interface with EvoControl."""
+"""Test the compatibility of the interface with EvoControl.
+
+    See: https://www.amazon.co.uk/dp/B0BL1CN6WS
+
+    The intention here is to confirm the namespace remains consistent, so that the
+    interface with EvoControl is not broken from one version of this itegration to
+    the next.
+
+    The test will check schema JSON, entity_id, attributes (attr_id and data type).
+
+    Note that EvoControl uses the /api/states endpoint to get its data (and that is
+    tested only indirectly here).
+"""
 
 from pathlib import Path
 
@@ -111,14 +123,14 @@ async def instantiate_entities(
 
 
 async def test_namespace(hass: HomeAssistant) -> None:
-    """Test the namespace (i.e. entity_id) of entities used by EvoControl."""
+    """Test the namespace of entities/attrs used by EvoControl."""
 
     # The intention here is check the namespace used by EvoControl
     climates, water_heaters, binary_sensors, sensors = await instantiate_entities(hass)
 
     #
     # evo_control uses: binary_sensor.${cid}_status
-    ctl_id = "01:145038"  # via a webform, from the user
+    ctl_id = "01:145038"  # ctl_id via a webform, from the user
     id = f"binary_sensor.{ctl_id}_status"
 
     binary: BinarySensorEntity = [e for e in binary_sensors if e.entity_id == id][0]
@@ -167,7 +179,7 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     #
     # evo_control uses: sensor.${dhwRelayId}_relay_demand
-    dhw_id = SCHEMA["stored_hotwater"]["hotwater_valve"]  # type: ignore[index]
+    dhw_id = SCHEMA["stored_hotwater"]["hotwater_valve"]  # type: ignore[index]  # via walking the schema
     id = f"binary_sensor.{dhw_id}_active"
 
     binary = [e for e in binary_sensors if e.entity_id == id][0]
@@ -191,7 +203,7 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     #
     # evo_control uses: climate.${cid}
-    id = f"climate.{ctl_id}"  # via a webform, from the user
+    id = f"climate.{ctl_id}"  # ctl_id via a webform, from the user
 
     climate: ClimateEntity = [e for e in climates if e.entity_id == id][0]
     assert climate.unique_id == ctl_id
@@ -213,30 +225,34 @@ async def test_namespace(hass: HomeAssistant) -> None:
         assert climate.unique_id == f"{ctl_id}_{zon_idx}"
         # assert climate._device.name == SCHEMA["zones"][zon_idx]["_name"]  # FIXME
 
-        assert isinstance(climate.current_temperature, float)
-        assert zon_idx != "02" or climate.extra_state_attributes["mode"] == {
-            "mode": "permanent_override",
-            "setpoint": 5.0,
-        }
-        assert zon_idx != "0A" or climate.extra_state_attributes["mode"] == {
-            "mode": "temporary_override",
-            "setpoint": 20.0,
-            "until": "2022-01-22T10:00:00",
-        }
+        if zon_idx == "02":
+            assert climate.extra_state_attributes["mode"] == {
+                "mode": "permanent_override",
+                "setpoint": 5.0,
+            }
+            assert climate.current_temperature == 18.16
+
+        else:
+            assert climate.extra_state_attributes["mode"] == {
+                "mode": "temporary_override",
+                "setpoint": 20.0,
+                "until": "2022-01-22T10:00:00",
+            }
+            assert climate.current_temperature is None
 
     #
     # evo_control uses: water_heater.${cid}_hw
-    id = f"water_heater.{ctl_id}_HW"  # via walking the schema
+    id = f"water_heater.{ctl_id}_HW"  # ctl_id via a webform, from the user
 
     heater: WaterHeaterEntity = [e for e in water_heaters if e.entity_id == id][0]
     assert heater.unique_id == f"{ctl_id}_HW"
     # assert heater.name == "Stored HW"  # FIXME
 
-    assert heater.current_temperature == 61.87
     assert heater.extra_state_attributes["mode"] == {
         "mode": "temporary_override",
         "active": True,
         "until": "2022-02-10T22:00:00",
     }
+    assert heater.current_temperature == 61.87
 
     assert True
