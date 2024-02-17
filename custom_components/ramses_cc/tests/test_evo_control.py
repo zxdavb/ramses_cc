@@ -10,6 +10,8 @@
 
     Note that EvoControl uses the /api/states endpoint to get its data (and that is
     tested only indirectly here).
+
+    This does not test any service calls, or any other endpoints.
 """
 
 import json
