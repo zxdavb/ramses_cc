@@ -18,7 +18,7 @@ from ramses_rf.schemas import (
 )
 from ramses_tx.const import COMMAND_REGEX
 from ramses_tx.schemas import sch_global_traits_dict_factory
-import voluptuous as vol  # type: ignore[import-untyped]
+import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
 
 from homeassistant.helpers import config_validation as cv
 

@@ -22,7 +22,7 @@ from ramses_tx.schemas import (
     SZ_SERIAL_PORT,
     extract_serial_port,
 )
-import voluptuous as vol  # type: ignore[import-untyped]
+import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform

@@ -20,8 +20,8 @@ from ramses_tx.schemas import (
     SZ_ROTATE_BYTES,
     SZ_SERIAL_PORT,
 )
-from serial.tools import list_ports  # type: ignore[import-untyped]
-import voluptuous as vol  # type: ignore[import-untyped]
+from serial.tools import list_ports  # type: ignore[import-untyped, unused-ignore]
+import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
 
 from homeassistant.components import usb
 from homeassistant.config_entries import (
