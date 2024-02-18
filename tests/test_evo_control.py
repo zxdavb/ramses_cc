@@ -1,4 +1,4 @@
-"""Test the compatibility of the interface with EvoControl.
+"""Test the compatibility of the interface (/api/states) with EvoControl.
 
     See: https://www.amazon.co.uk/dp/B0BL1CN6WS
 
