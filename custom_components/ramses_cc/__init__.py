@@ -80,6 +80,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
+
     broker = RamsesBroker(hass, entry)
     try:
         await broker.async_setup()
