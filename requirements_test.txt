@@ -1,0 +1,7 @@
+# last checked/updated: 2023/11/05 (based on HA 2023.11.1)
+#
+
+# for using the library
+  -r requirements.txt
+
+  pytest_homeassistant_custom_component
