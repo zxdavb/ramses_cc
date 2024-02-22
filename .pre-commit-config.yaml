@@ -55,10 +55,10 @@ repos:
   # (like --ignore-missing-imports) and is difficult to configure to run
   # with the dependencies correctly installed.
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
-    hooks:
-    - id: mypy
-      additional_dependencies:
-        - voluptuous==0.13.1
-        - pytest-homeassistant-custom-component==0.13.100
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.8.0
+  #   hooks:
+  #   - id: mypy
+  #     additional_dependencies:
+  #       - voluptuous==0.13.1
+  #       - pytest-homeassistant-custom-component==0.13.100
