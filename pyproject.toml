@@ -17,7 +17,7 @@
   files = [
     "custom_components"
   ]
-  exclude = "tests/virtual_rf"
+  exclude = "tests/virtual_rf/*"
 
   follow_imports = "skip"  # TODO: don't use this feature
   # no_implicit_optional = false
