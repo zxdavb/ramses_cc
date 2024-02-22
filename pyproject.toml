@@ -1,6 +1,6 @@
 #
 ### project ##########################################################################
-# ramses_cc, updated: 2023-11-11
+# ramses_cc, updated: 2024-02-22
 #
 
 #
@@ -14,14 +14,23 @@
 ### mypy ############################################################################
 
 [tool.mypy]
-  # exclude = "tests"
-  files = ["custom_components"]
+  files = [
+    "custom_components"
+  ]
+  exclude = "tests/virtual_rf"
+
   follow_imports = "skip"  # TODO: don't use this feature
+  # no_implicit_optional = false
+
+  # see: https://mypy.readthedocs.io/en/stable/existing_code.html#introduce-stricter-options
 
   # Start off with these
   warn_unused_configs = true
   warn_redundant_casts = true  # this is not per-module
   warn_unused_ignores = true
+
+  # Getting these passing should be easy
+  # extra_checks = true  # was: strict_equality, strict_concatenate = true
 
   # Strongly recommend enabling this one as soon as you can
   check_untyped_defs = true
