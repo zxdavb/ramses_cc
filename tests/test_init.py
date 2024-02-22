@@ -1,14 +1,13 @@
 """Test the setup."""
 
-from collections.abc import AsyncGenerator
 from typing import Final
 from unittest.mock import patch
 
 from custom_components.ramses_cc import DOMAIN, RamsesBroker
-import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from homeassistant.config_entries import ConfigEntryState
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from tests.virtual_rf import VirtualRf
@@ -16,38 +15,38 @@ from tests.virtual_rf import VirtualRf
 # patched constants
 _CALL_LATER_DELAY: Final = 0  # from: custom_components.ramses_cc.broker.py
 
-CONFIG = {
-    "serial_port": "/dev/ttyACM0",
-}
 
-
-@pytest.fixture(scope="module")
-async def rf() -> AsyncGenerator[VirtualRf, None]:
-    """Utilize a virtual serial port."""
-
-    rf = VirtualRf(1)
-    rf.set_gateway(rf.ports[0], "18:000730")  # , fw_type=HgiFwTypes.HGI_80)
-
+async def _test_setup_common(hass: HomeAssistant, entry: ConfigEntry = None) -> None:
     try:
-        yield rf
+        entries = hass.config_entries.async_entries(DOMAIN)
+        assert len(entries) == 1
+
+        assert entry is None or entry is entries[0]
+
+        entry = entries[0]
+        assert entry.state is ConfigEntryState.LOADED
+
+        assert hass.data["setup_tasks"] == {}
+        assert isinstance(hass.data[DOMAIN][entry.entry_id], RamsesBroker)
+
+        broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+        assert len(broker._devices) == 1  # 18_000730
+
+        assert (
+            len(hass.states.async_entity_ids(Platform.BINARY_SENSOR)) == 1
+        )  # binary_sensor.18_000730_status
+
+        assert len(hass.services.async_services_for_domain(DOMAIN)) == 6
+
     finally:
-        await rf.stop()
+        assert await hass.config_entries.async_unload(entry.entry_id)
+        assert await hass.config_entries.async_remove(entry.entry_id)
 
 
-async def test_setup_entry(hass: HomeAssistant, rf: VirtualRf) -> None:
-    """Test setup of ramses_cc via config entry."""
-
-    rf = VirtualRf(1)  # TODO: fixture is not working!
-    rf.set_gateway(rf.ports[0], "18:000730")  # , fw_type=HgiFwTypes.HGI_80)
+async def _test_setup_entry(hass: HomeAssistant, rf: VirtualRf) -> None:
     config = {"serial_port": {"port_name": rf.ports[0]}}
 
-    assert len(hass.config_entries.async_entries(DOMAIN)) == 0
-
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        # data={DOMAIN: config},
-        options=config,
-    )
+    entry = MockConfigEntry(domain=DOMAIN, options=config)
     entry.add_to_hass(hass)
     assert len(hass.config_entries.async_entries(DOMAIN)) == 1
 
@@ -58,34 +57,13 @@ async def test_setup_entry(hass: HomeAssistant, rf: VirtualRf) -> None:
         assert await hass.config_entries.async_setup(entry.entry_id)
         # await hass.async_block_till_done()
 
-    entries = hass.config_entries.async_entries(DOMAIN)
-    assert len(entries) == 1
-
-    assert entry is entries[0]
-    assert entry.state is ConfigEntryState.LOADED
-
-    assert hass.data["setup_tasks"] == {}
-    assert isinstance(hass.data[DOMAIN][entry.entry_id], RamsesBroker)
-
-    # assert len(hass.states.async_entity_ids(SENSOR_DOMAIN)) == 1
-
-    assert await hass.config_entries.async_unload(entry.entry_id)
-    assert await hass.config_entries.async_remove(entry.entry_id)
-
-    # hass.stop()  # not needed?
-    # await hass.async_block_till_done()
-
-    await rf.stop()
+    await _test_setup_common(hass, entry=entry)
 
 
-async def test_setup_import(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_setup_import(hass: HomeAssistant, rf: VirtualRf) -> None:
     """Test setup of ramses_cc via importing a configuration."""
 
-    rf = VirtualRf(1)  # TODO: fixture is not working!
-    rf.set_gateway(rf.ports[0], "18:000730")  # , fw_type=HgiFwTypes.HGI_80)
     config = {"serial_port": {"port_name": rf.ports[0]}}
-
-    assert len(hass.config_entries.async_entries(DOMAIN)) == 0
 
     # mocked to avoid: Lingering timer after job <Job call_later 5...
     with patch(
@@ -94,21 +72,40 @@ async def test_setup_import(hass: HomeAssistant, rf: VirtualRf) -> None:
         assert await async_setup_component(hass, DOMAIN, {DOMAIN: config})  # True
         # await hass.async_block_till_done()
 
-    entries = hass.config_entries.async_entries(DOMAIN)
-    assert len(entries) == 1
+    await _test_setup_common(hass)
 
-    entry = entries[0]
-    assert entry.state is ConfigEntryState.LOADED
 
-    assert hass.data["setup_tasks"] == {}
-    assert isinstance(hass.data[DOMAIN][entry.entry_id], RamsesBroker)
+async def test_setup_entry(hass: HomeAssistant) -> None:
+    """Test setup of ramses_cc via config entry."""
 
-    # assert len(hass.states.async_entity_ids(SENSOR_DOMAIN)) == 1
+    rf = VirtualRf(1)
+    rf.set_gateway(rf.ports[0], "18:000730")  # , fw_type=HgiFwTypes.HGI_80)
 
-    assert await hass.config_entries.async_unload(entry.entry_id)
-    assert await hass.config_entries.async_remove(entry.entry_id)
+    assert len(hass.config_entries.async_entries(DOMAIN)) == 0
 
-    # hass.stop()  # not needed?
-    # await hass.async_block_till_done()
+    try:
+        await _test_setup_entry(hass, rf)
 
-    await rf.stop()
+    finally:
+        # hass.stop()  # not needed?
+        # await hass.async_block_till_done()
+
+        await rf.stop()  # prevent: Lingering task: VirtualRfBase._poll_ports_for_data()
+
+
+async def test_setup_import(hass: HomeAssistant) -> None:
+    """Test setup of ramses_cc via importing a configuration."""
+
+    rf = VirtualRf(1)
+    rf.set_gateway(rf.ports[0], "18:000730")  # , fw_type=HgiFwTypes.HGI_80)
+
+    assert len(hass.config_entries.async_entries(DOMAIN)) == 0
+
+    try:
+        await _test_setup_import(hass, rf)
+
+    finally:
+        # hass.stop()  # not needed?
+        # await hass.async_block_till_done()
+
+        await rf.stop()  # prevent: Lingering task: VirtualRfBase._poll_ports_for_data()
