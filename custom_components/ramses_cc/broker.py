@@ -60,6 +60,8 @@ _LOGGER = logging.getLogger(__name__)
 
 SAVE_STATE_INTERVAL: Final[timedelta] = timedelta(minutes=5)
 
+_CALL_LATER_DELAY: Final = 5  # needed for tests
+
 
 class RamsesBroker:
     """Container for client and data."""
@@ -141,7 +143,9 @@ class RamsesBroker:
 
     async def async_start(self) -> None:
         """Perform initial update, then poll and save state at intervals."""
+
         await self.async_update()
+
         self.entry.async_on_unload(
             async_track_time_interval(
                 self.hass,
@@ -149,7 +153,6 @@ class RamsesBroker:
                 timedelta(seconds=self.options.get(CONF_SCAN_INTERVAL, 60)),
             )
         )
-
         self.entry.async_on_unload(
             async_track_time_interval(
                 self.hass, self.async_save_client_state, SAVE_STATE_INTERVAL
@@ -314,7 +317,7 @@ class RamsesBroker:
         await async_add_entities(Platform.WATER_HEATER, new_dhws)
 
         if new_entities:
-            async_call_later(self.hass, 5, self.async_save_client_state)
+            async_call_later(self.hass, _CALL_LATER_DELAY, self.async_save_client_state)
 
         # Trigger state updates of all entities
         async_dispatcher_send(self.hass, SIGNAL_UPDATE)
