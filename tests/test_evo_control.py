@@ -33,10 +33,10 @@ from homeassistant.components.water_heater import WaterHeaterEntity
 from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 
-TEST_DIR = Path(__file__).resolve().parent / "evo_control"
+TEST_DIR = Path(__file__).resolve().parent / "test_data"
 
-INPUT_FILE = "/packet.log"
-SCHEMA_FILE = "/schema.json"
+INPUT_FILE = "/system_1.log"
+SCHEMA_FILE = "/system_1.json"
 
 
 class MockRamsesBroker:
