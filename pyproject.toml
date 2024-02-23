@@ -84,7 +84,7 @@
   ignore = ["E501"]
   # E501  - Line too long
 
-[tool.ruff.flake8-import-conventions.extend-aliases]
+[tool.ruff.lint.flake8-import-conventions.extend-aliases]
   voluptuous = "vol"
   "homeassistant.helpers.area_registry" = "ar"
   "homeassistant.helpers.config_validation" = "cv"
@@ -93,18 +93,18 @@
   "homeassistant.helpers.issue_registry" = "ir"
   "homeassistant.util.dt" = "dt_util"
 
-[tool.ruff.flake8-pytest-style]
+[tool.ruff.lint.flake8-pytest-style]
   fixture-parentheses = false
 
-[tool.ruff.flake8-tidy-imports.banned-api]
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
   "async_timeout".msg = "use asyncio.timeout instead"
   "pytz".msg = "use zoneinfo instead"
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
   force-sort-within-sections = true
   known-first-party = ["homeassistant"]
   combine-as-imports = true
   split-on-trailing-comma = false
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
   max-complexity = 25
