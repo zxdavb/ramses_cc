@@ -17,6 +17,8 @@ _CALL_LATER_DELAY: Final = 0  # from: custom_components.ramses_cc.broker.py
 
 
 async def _test_setup_common(hass: HomeAssistant, entry: ConfigEntry = None) -> None:
+    """Test setup of ramses_cc via config entry (or importing a configuration)."""
+
     try:
         entries = hass.config_entries.async_entries(DOMAIN)
         assert len(entries) == 1
@@ -38,16 +40,16 @@ async def _test_setup_common(hass: HomeAssistant, entry: ConfigEntry = None) -> 
 
         assert len(hass.services.async_services_for_domain(DOMAIN)) == 6
 
-    finally:
+    finally:  # only need unload, not remove, as we're using a MockConfigEntry
         assert await hass.config_entries.async_unload(entry.entry_id)
-        assert await hass.config_entries.async_remove(entry.entry_id)
+        assert await hass.config_entries.async_remove(entry.entry_id)  # will unload
 
 
-async def _test_setup_entry(hass: HomeAssistant, rf: VirtualRf) -> None:
-    config = {"serial_port": {"port_name": rf.ports[0]}}
+async def _test_setup_config_entry(
+    hass: HomeAssistant, rf: VirtualRf, entry: ConfigEntry
+) -> None:
+    """Test setup of a ramses_cc config via config entry."""
 
-    entry = MockConfigEntry(domain=DOMAIN, options=config)
-    entry.add_to_hass(hass)
     assert len(hass.config_entries.async_entries(DOMAIN)) == 1
 
     # mocked to avoid: Lingering timer after job <Job call_later 5...
@@ -60,10 +62,12 @@ async def _test_setup_entry(hass: HomeAssistant, rf: VirtualRf) -> None:
     await _test_setup_common(hass, entry=entry)
 
 
-async def _test_setup_import(hass: HomeAssistant, rf: VirtualRf) -> None:
-    """Test setup of ramses_cc via importing a configuration."""
+async def _test_setup_config_import(
+    hass: HomeAssistant, rf: VirtualRf, config: dict
+) -> None:
+    """Test setup of a ramses_cc config via importing."""
 
-    config = {"serial_port": {"port_name": rf.ports[0]}}
+    assert len(hass.config_entries.async_entries(DOMAIN)) == 0
 
     # mocked to avoid: Lingering timer after job <Job call_later 5...
     with patch(
@@ -77,14 +81,20 @@ async def _test_setup_import(hass: HomeAssistant, rf: VirtualRf) -> None:
 
 async def test_setup_entry(hass: HomeAssistant) -> None:
     """Test setup of ramses_cc via config entry."""
+    # only config var and inside try block vary from _test_setup_import
 
     rf = VirtualRf(1)
     rf.set_gateway(rf.ports[0], "18:000730")  # , fw_type=HgiFwTypes.HGI_80)
 
-    assert len(hass.config_entries.async_entries(DOMAIN)) == 0
+    # in future, we may want to test multiple configs
+    config = {"serial_port": {"port_name": rf.ports[0]}}  # must be per config schema
 
     try:
-        await _test_setup_entry(hass, rf)
+        assert len(hass.config_entries.async_entries(DOMAIN)) == 0
+        entry = MockConfigEntry(domain=DOMAIN, options=config)
+        entry.add_to_hass(hass)
+
+        await _test_setup_config_entry(hass, rf, entry)
 
     finally:
         # hass.stop()  # not needed?
@@ -94,15 +104,17 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
 
 
 async def test_setup_import(hass: HomeAssistant) -> None:
-    """Test setup of ramses_cc via importing a configuration."""
+    """Test setup of ramses_cc via importing a config file."""
+    # only config var and inside try block vary from test_setup_entry
 
     rf = VirtualRf(1)
     rf.set_gateway(rf.ports[0], "18:000730")  # , fw_type=HgiFwTypes.HGI_80)
 
-    assert len(hass.config_entries.async_entries(DOMAIN)) == 0
+    # in future, we may want to test multiple configs
+    config = {"serial_port": rf.ports[0]}
 
     try:
-        await _test_setup_import(hass, rf)
+        await _test_setup_config_import(hass, rf, config)
 
     finally:
         # hass.stop()  # not needed?
