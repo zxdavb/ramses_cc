@@ -10,14 +10,14 @@ from ramses_rf.device import Fakeable
 def ensure_fakeable(dev: Device, make_fake: bool = True) -> None:
     """If a Device is not Fakeable (i.e. Fakeable, not _faked), make it so."""
 
-    class _Fakeable(dev.__class__, Fakeable):
+    class _Fakeable(dev.__class__, Fakeable):  # type: ignore[misc]
         pass
 
     if isinstance(dev, Fakeable | _Fakeable):
         return
 
-    dev.__class__ = _Fakeable
-    setattr(dev, "_bind_context", BindContext(dev))  # noqa: B010
+    dev.__class__ = _Fakeable  # type: ignore[unreachable]
+    dev._bind_context = BindContext(dev)
 
     assert isinstance(dev, Fakeable)
     if make_fake:

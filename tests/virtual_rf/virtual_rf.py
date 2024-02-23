@@ -11,12 +11,13 @@ from io import FileIO
 import logging
 import os
 import pty
+from select import select
 from selectors import EVENT_READ, DefaultSelector
 import signal
 import tty
-from typing import TypeAlias
+from typing import TypeAlias, TypedDict
 
-from serial import Serial, serial_for_url  # type: ignore[import]
+from serial import Serial, serial_for_url  # type: ignore[import-untyped]
 
 from .const import HgiFwTypes
 
@@ -25,6 +26,21 @@ _PN: TypeAlias = str  # port name
 
 # _FILEOBJ: TypeAlias = int | Any  # int | HasFileno
 
+_GwyAttrsT = TypedDict(  # noqa: UP013
+    "_GwyAttrsT",
+    {
+        "manufacturer": str,
+        "product": str,
+        "vid": int,
+        "pid": int,
+        "description": str,
+        "interface": str | None,
+        "serial_number": str | None,
+        "subsystem": str,
+        "_dev_path": str,
+        "_dev_by-id": str,
+    },
+)
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
@@ -37,7 +53,7 @@ FW_VERSION = "fw_version"
 MAX_NUM_PORTS = 6
 
 
-_GWY_ATTRS: dict[str, int | str | None] = {
+_GWY_ATTRS: dict[str, _GwyAttrsT] = {
     HgiFwTypes.HGI_80: {
         "manufacturer": "Texas Instruments",
         "product": "TUSB3410 Boot Device",
@@ -85,38 +101,27 @@ _GWY_ATTRS: dict[str, int | str | None] = {
 class VirtualComPortInfo:
     """A container for emulating pyserial's PortInfo (SysFS) objects."""
 
-    manufacturer: str
-    product: str
-
-    vid: int
-    pid: int
-
-    description: str
-    interface: None | str
-    serial_number: None | str
-    subsystem: str
-
     def __init__(self, port_name: _PN, dev_type: HgiFwTypes | None) -> None:
         """Supplies a useful subset of PortInfo attrs according to gateway type."""
 
-        self.device = port_name  # # e.g. /dev/pts/2 (a la /dev/ttyUSB0)
-        self.name = port_name[5:]  # e.g.      pts/2 (a la      ttyUSB0)
+        self.device: _PN = port_name  # # e.g. /dev/pts/2 (a la /dev/ttyUSB0)
+        self.name: str = port_name[5:]  # e.g.      pts/2 (a la      ttyUSB0)
 
         self._set_attrs(_GWY_ATTRS[dev_type or HgiFwTypes.EVOFW3])
 
-    def _set_attrs(self, gwy_attrs: dict[str, int | str | None]) -> None:
-        """Set the USB attributes according to the gateway type."""
+    def _set_attrs(self, gwy_attrs: _GwyAttrsT) -> None:
+        """Set the remaining USB attributes according to the gateway type."""
 
-        self.manufacturer = gwy_attrs["manufacturer"]
-        self.product = gwy_attrs["product"]
+        self.manufacturer: str = gwy_attrs["manufacturer"]
+        self.product: str = gwy_attrs["product"]
 
-        self.vid = gwy_attrs["vid"]
-        self.pid = gwy_attrs["pid"]
+        self.vid: int = gwy_attrs["vid"]
+        self.pid: int = gwy_attrs["pid"]
 
-        self.description = gwy_attrs["description"]
-        self.interface = gwy_attrs["interface"]
-        self.serial_number = gwy_attrs["serial_number"]
-        self.subsystem = gwy_attrs["subsystem"]
+        self.description: str = gwy_attrs["description"]
+        self.interface: str | None = gwy_attrs["interface"]
+        self.serial_number: str | None = gwy_attrs["serial_number"]
+        self.subsystem: str = gwy_attrs["subsystem"]
 
 
 class VirtualRfBase:
@@ -141,38 +146,42 @@ class VirtualRfBase:
 
         self._loop = asyncio.get_running_loop()
 
-        self._file_objs: dict[_FD, FileIO] = {}  # master fd to port object, for I/O
-        self._pty_names: dict[_FD, _PN] = {}  # master fd to slave port name, for logger
-        self._tty_names: dict[_PN, _FD] = {}  # slave port name to slave fd, for cleanup
+        self._master_to_port: dict[_FD, _PN] = {}  # #  for polling port
+        self._port_to_master: dict[_PN, _FD] = {}  # #  for logging
+        self._port_to_object: dict[_PN, FileIO] = {}  # for I/O (read/write)
+        self._port_to_slave_: dict[_PN, _FD] = {}  # #  for cleanup only
 
         # self._setup_event_handlers()  # TODO: needs fixing/testing
         for idx in range(num_ports):
             self._create_port(idx)
 
-        self._log: list[tuple[str, str, bytes]] = deque([], log_size)
+        self._log: deque[tuple[_PN, str, bytes]] = deque([], log_size)
         self._task: asyncio.Task = None  # type: ignore[assignment]
 
-    def _create_port(self, port_idx: int, dev_type: None | HgiFwTypes = None) -> None:
+    def _create_port(self, port_idx: int, dev_type: HgiFwTypes | None = None) -> None:
         """Create a port without a HGI80 attached."""
         master_fd, slave_fd = pty.openpty()  # pty, tty
 
         tty.setraw(master_fd)  # requires termios module, so: works only on *nix
         os.set_blocking(master_fd, False)  # make non-blocking
 
-        self._file_objs[master_fd] = open(master_fd, "rb+", buffering=0)
-        self._pty_names[master_fd] = os.ttyname(slave_fd)
-        self._tty_names[os.ttyname(slave_fd)] = slave_fd
+        port_name = os.ttyname(slave_fd)
 
-        self._set_comport_info(self._pty_names[master_fd], dev_type=dev_type)
+        self._master_to_port[master_fd] = port_name
+        self._port_to_master[port_name] = master_fd
+        self._port_to_object[port_name] = open(master_fd, "rb+", buffering=0)
+        self._port_to_slave_[port_name] = slave_fd
+
+        self._set_comport_info(port_name, dev_type=dev_type)
 
     def comports(self, include_links=False) -> list[VirtualComPortInfo]:  # unsorted
         """Use this method to monkey patch serial.tools.list_ports.comports()."""
         return list(self._port_info_list.values())
 
     def _set_comport_info(
-        self, port_name: _PN, dev_type: None | HgiFwTypes = None
+        self, port_name: _PN, dev_type: HgiFwTypes | None = None
     ) -> VirtualComPortInfo:
-        """Add comport info to the list (wont fail if the entry already exists)"""
+        """Add comport info to the list (wont fail if the entry already exists)."""
         self._port_info_list.pop(port_name, None)
         self._port_info_list[port_name] = VirtualComPortInfo(port_name, dev_type)
         return self._port_info_list[port_name]
@@ -180,7 +189,7 @@ class VirtualRfBase:
     @property
     def ports(self) -> list[_PN]:
         """Return a list of the names of the serial ports."""
-        return list(self._tty_names)  # [p.name for p in self.comports]
+        return list(self._port_to_master)  # [p.name for p in self.comports]
 
     async def stop(self) -> None:
         """Stop polling ports and distributing data."""
@@ -195,12 +204,12 @@ class VirtualRfBase:
 
         self._cleanup()
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         """Destroy file objects and file descriptors."""
 
-        for f in self._file_objs.values():
-            f.close()  # also closes corresponding master fd
-        for fd in self._tty_names.values():
+        for fo in self._port_to_object.values():
+            fo.close()  # also closes corresponding master fd
+        for fd in self._port_to_slave_.values():
             os.close(fd)  # else this slave fd will persist
 
     def start(self) -> asyncio.Task:
@@ -213,49 +222,49 @@ class VirtualRfBase:
         """Send data received from any one port (as .write(data)) to all other ports."""
 
         with DefaultSelector() as selector, ExitStack() as stack:
-            for fd, f in self._file_objs.items():
-                stack.enter_context(f)
+            for pn, fd in self._port_to_master.items():
+                stack.enter_context(self._port_to_object[pn])
                 selector.register(fd, EVENT_READ)
 
             while True:
                 for key, event_mask in selector.select(timeout=0):
                     if not event_mask & EVENT_READ:
                         continue
-                    self._pull_data_from_src_port(key.fileobj)  # type: ignore[arg-type]  # fileobj type is int | HasFileno
+                    self._pull_data_from_src_port(self._master_to_port[key.fileobj])  # type: ignore[index]
                     await asyncio.sleep(0)
                 else:
                     await asyncio.sleep(0.0001)
 
-    def _pull_data_from_src_port(self, master: _FD) -> None:
+    def _pull_data_from_src_port(self, src_port: _PN) -> None:
         """Pull the data from the sending port and process any frames."""
 
-        data = self._file_objs[master].read()  # read the Tx'd data
-        self._log.append((self._pty_names[master], "SENT", data))
+        data = self._port_to_object[src_port].read()  # read the Tx'd data
+        self._log.append((src_port, "SENT", data))
 
         # this assumes all .write(data) are 1+ whole frames terminated with \r\n
         for frame in (d + b"\r\n" for d in data.split(b"\r\n") if d):  # ignore b""
-            if f := self._proc_before_tx(frame, master):
-                self._cast_frame_to_all_ports(f, master)  # can cast (is not echo only)
+            if fr := self._proc_before_tx(src_port, frame):
+                self._cast_frame_to_all_ports(src_port, fr)  # is not echo only
 
-    def _cast_frame_to_all_ports(self, frame: bytes, master: _FD) -> None:
-        """Pull the frame from the sending port and cast it to the RF."""
+    def _cast_frame_to_all_ports(self, src_port: _PN, frame: bytes) -> None:
+        """Pull the frame from the source port and cast it to the RF."""
 
-        _LOGGER.info(f"{self._pty_names[master]:<11} cast:  {frame!r}")
-        for fd in self._file_objs:
-            self._push_frame_to_dst_port(frame, fd)
+        _LOGGER.info(f"{src_port:<11} cast:  {frame!r}")
+        for dst_port in self._port_to_master.keys():
+            self._push_frame_to_dst_port(dst_port, frame)
 
-    def _push_frame_to_dst_port(self, frame: bytes, master: _FD) -> None:
+    def _push_frame_to_dst_port(self, dst_port: _PN, frame: bytes) -> None:
         """Push the frame to a single destination port."""
 
-        if data := self._proc_after_rx(frame, master):
-            self._log.append((self._pty_names[master], "RCVD", data))
-            self._file_objs[master].write(data)
+        if data := self._proc_after_rx(dst_port, frame):
+            self._log.append((dst_port, "RCVD", data))
+            self._port_to_object[dst_port].write(data)
 
-    def _proc_after_rx(self, frame: bytes, master: _FD) -> None | bytes:
+    def _proc_after_rx(self, rcv_port: _PN, frame: bytes) -> bytes | None:
         """Allow the device to modify the frame after receiving (e.g. adding RSSI)."""
         return frame
 
-    def _proc_before_tx(self, frame: bytes, master: _FD) -> None | bytes:
+    def _proc_before_tx(self, src_port: _PN, frame: bytes) -> bytes | None:
         """Allow the device to modify the frame before sending (e.g. changing addr0)."""
         return frame
 
@@ -339,7 +348,21 @@ class VirtualRf(VirtualRfBase):
 
         self._set_comport_info(port_name, dev_type=fw_type)
 
-    def _proc_after_rx(self, frame: bytes, master: _FD) -> None | bytes:
+    async def dump_pkts_to_rf(self, pkts: list[bytes]) -> None:  # TODO: WIP
+        """Dump frames as if from a sending port (for mocking)."""
+
+        def data_to_read() -> bool:
+            readable, *_ = select(self._port_to_object.values(), [], [], 0)
+            return bool(readable)
+
+        for data in pkts:
+            self._log.append(("/dev/mock", "SENT", data))
+            self._cast_frame_to_all_ports("/dev/mock", data)  # is not echo only
+
+            while data_to_read():  # give the write a chance to effect
+                await asyncio.sleep(0.0001)
+
+    def _proc_after_rx(self, rcv_port: _PN, frame: bytes) -> bytes | None:
         """Return the frame as it would have been modified by a gateway after Rx.
 
         Return None if the bytes are not to be Rx by this device.
@@ -351,16 +374,16 @@ class VirtualRf(VirtualRfBase):
             return b"000 " + frame
 
         # The type of Gateway will inform next steps...
-        gwy = self._gateways.get(self._pty_names[master], {})  # not a ramses_rf gwy
+        gwy = self._gateways.get(rcv_port, {})  # not a ramses_rf gwy
 
         if gwy.get(FW_VERSION) != HgiFwTypes.EVOFW3:
             return None
 
         if frame == b"!V":
-            return b"# evofw3 0.7.1\r\n"  # self._file_objs[master].write(data)
+            return b"# evofw3 0.7.1\r\n"  # self._fxle_objs[port_name].write(data)
         return None  # TODO: return the ! response
 
-    def _proc_before_tx(self, frame: bytes, master: _FD) -> None | bytes:
+    def _proc_before_tx(self, src_port: _PN, frame: bytes) -> bytes | None:
         """Return the frame as it would have been modified by a gateway before Tx.
 
         Return None if the bytes are not to be Tx to the RF ether (e.g. to echo only).
@@ -370,12 +393,12 @@ class VirtualRf(VirtualRfBase):
         """
 
         # The type of Gateway will inform next steps...
-        gwy = self._gateways.get(self._pty_names[master], {})  # not a ramses_rf gwy
+        gwy = self._gateways.get(src_port, {})  # not a ramses_rf gwy
 
         # Handle trace flags (evofw3 only)
         if frame[:1] == b"!":  # never to be cast, but may be echo'd, or other response
             if gwy.get(FW_VERSION) == HgiFwTypes.EVOFW3:
-                self._push_frame_to_dst_port(frame, master)
+                self._push_frame_to_dst_port(src_port, frame)
             return None  # do not Tx the frame
 
         if not gwy:  # TODO: ?should raise: but is probably from test suite
@@ -392,7 +415,7 @@ class VirtualRf(VirtualRfBase):
         return frame
 
 
-async def main():
+async def main() -> None:
     """ "Demonstrate the class functionality."""
 
     num_ports = 3
@@ -400,7 +423,7 @@ async def main():
     rf = VirtualRf(num_ports)
     print(f"Ports are: {rf.ports}")
 
-    sers: list[Serial] = [serial_for_url(rf.ports[i]) for i in range(num_ports)]  # type: ignore[annotation-unchecked]
+    sers: list[Serial] = [serial_for_url(rf.ports[i]) for i in range(num_ports)]
 
     for i in range(num_ports):
         sers[i].write(bytes(f"Hello World {i}! ", "utf-8"))

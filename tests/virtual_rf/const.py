@@ -3,10 +3,26 @@
 """A virtual RF network useful for testing."""
 
 from enum import StrEnum
+from typing import TypedDict
+
+
+class _ComPortsT(TypedDict):
+    manufacturer: str
+    product: str
+    vid: int
+    pid: int
+
+    description: str
+    serial_number: str | None
+    interface: str | None
+
+    device: str
+    name: str
+
 
 # NOTE: Below values are from real devices (with some contrived values)
 
-COMPORTS_ATMEGA32U4 = {  # 8/16 MHz atmega32u4 (HW Uart)
+COMPORTS_ATMEGA32U4: _ComPortsT = {  # 8/16 MHz atmega32u4 (HW Uart)
     "manufacturer": "SparkFun",
     "product": "evofw3 atmega32u4",
     "vid": 0x1B4F,  # aka SparkFun Electronics
@@ -20,7 +36,7 @@ COMPORTS_ATMEGA32U4 = {  # 8/16 MHz atmega32u4 (HW Uart)
     "name": "ttyACM0",  # not fixed
 }
 
-COMPORTS_ATMEGA328P = {  # 16MHZ atmega328 (SW Uart)
+COMPORTS_ATMEGA328P: _ComPortsT = {  # 16MHZ atmega328 (SW Uart)
     "manufacturer": "FTDI",
     "product": "FT232R USB UART",
     "vid": 0x0403,  # aka Future Technology Devices International Ltd.
@@ -34,7 +50,7 @@ COMPORTS_ATMEGA328P = {  # 16MHZ atmega328 (SW Uart)
     "name": "ttyUSB0",  # not fixed
 }
 
-COMPORTS_TI4310 = {  # Honeywell HGI80 (partially contrived)
+COMPORTS_TI4310: _ComPortsT = {  # Honeywell HGI80 (partially contrived)
     "manufacturer": "Texas Instruments",
     "product": "TUSB3410 Boot Device",
     "vid": 0x10AC,  # aka Honeywell, Inc.
@@ -50,8 +66,8 @@ COMPORTS_TI4310 = {  # Honeywell HGI80 (partially contrived)
 
 
 class HgiFwTypes(StrEnum):
-    EVOFW3 = " ".join(COMPORTS_ATMEGA32U4[k] for k in ("manufacturer", "product"))
-    HGI_80 = " ".join(COMPORTS_TI4310[k] for k in ("manufacturer", "product"))
+    EVOFW3 = " ".join(COMPORTS_ATMEGA32U4[k] for k in ("manufacturer", "product"))  # type: ignore[literal-required]
+    HGI_80 = " ".join(COMPORTS_TI4310[k] for k in ("manufacturer", "product"))  # type: ignore[literal-required]
 
 
 SCHEMA_1 = {

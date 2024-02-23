@@ -30,7 +30,7 @@ _DEFAULT_GWY_CONFIG = {
 }
 
 
-def _get_hgi_id_for_schema(schema: dict, port_idx: int) -> str:
+def _get_hgi_id_for_schema(schema: dict, port_idx: int) -> tuple[str, HgiFwTypes]:
     """Return the Gateway's device_id for a schema (if required, construct an id).
 
     Does not modify the schema.
@@ -67,7 +67,7 @@ def _get_hgi_id_for_schema(schema: dict, port_idx: int) -> str:
 
 @patch("ramses_tx.protocol._GAP_BETWEEN_WRITES", _GAP_BETWEEN_WRITES)
 async def rf_factory(
-    schemas: list[dict], start_gwys: bool = True
+    schemas: list[dict | None], start_gwys: bool = True
 ) -> tuple[VirtualRf, list[Gateway]]:
     """Return the virtual network corresponding to a list of gateway schema/configs.
 
