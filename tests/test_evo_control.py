@@ -15,7 +15,6 @@
 """
 
 import json
-from pathlib import Path
 from typing import Any
 
 from custom_components.ramses_cc.binary_sensor import BINARY_SENSOR_DESCRIPTIONS
@@ -33,7 +32,7 @@ from homeassistant.components.water_heater import WaterHeaterEntity
 from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 
-TEST_DIR = Path(__file__).resolve().parent / "test_data"
+from .common import TEST_DIR
 
 INPUT_FILE = "/system_1.log"
 SCHEMA_FILE = "/system_1.json"
