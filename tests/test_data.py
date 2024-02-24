@@ -11,7 +11,6 @@ from custom_components.ramses_cc import DOMAIN, SVC_FORCE_UPDATE
 from custom_components.ramses_cc.const import STORAGE_KEY, STORAGE_VERSION
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from ramses_rf.gateway import Command, Gateway
-import serial
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -54,27 +53,38 @@ def normalise_storage_file(file_name: str) -> dict[str, Any]:
     return {STORAGE_KEY: {"version": STORAGE_VERSION, "data": storage["data"]}}
 
 
-def cast_packets_to_rf(rf: VirtualRf, packet_log: str):
-    ser = serial.Serial(rf.ports[1])
+async def no_data_left_to_read(gwy: Gateway) -> bool:
+    """Wait until all pending data frames are read."""
+    while gwy._transport.serial.in_waiting:
+        await asyncio.sleep(0.001)
+
+
+async def cast_packets_to_rf(
+    rf: VirtualRf, packet_log: str, /, timeout: float = 0.05
+) -> None:
+    frames = []
 
     with open(packet_log) as f:
         for line in f:
             if line := line.rstrip():
-                # pkt = Packet.from_file(line[:26], line[27:])
                 cmd = Command(line[31:].split("#")[0].rstrip())
-                ser.write(str(cmd).encode() + b"\r\n")
+                frames.append(str(cmd).encode() + b"\r\n")
+
+    await rf.dump_frames_to_rf(frames)
 
 
 async def _test_setup_common(
     hass: HomeAssistant, rf: VirtualRf, entry: ConfigEntry
 ) -> None:
-    cast_packets_to_rf(rf, f"{TEST_DIR}/system_1.log")
-    await asyncio.sleep(0.05)  # how to quiesce the above?
+    gwy: Gateway = list(hass.data[DOMAIN].values())[0].client
+    assert len(gwy.devices) == 1
 
-    _: Gateway = list(hass.data[DOMAIN].values())[0].client
+    await cast_packets_to_rf(rf, f"{TEST_DIR}/system_1.log")
+    await asyncio.wait_for(no_data_left_to_read(gwy), timeout=0.05)
+
+    assert len(gwy.devices) == 9
 
     assert len(hass.services.async_services_for_domain(DOMAIN)) == 6
-
     for test in TEST_SUITE:
         _ = await hass.services.async_call(DOMAIN, **test, blocking=True)
 

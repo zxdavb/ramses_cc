@@ -17,7 +17,7 @@ def ensure_fakeable(dev: Device, make_fake: bool = True) -> None:
         return
 
     dev.__class__ = _Fakeable  # type: ignore[unreachable]
-    dev._bind_context = BindContext(dev)
+    setattr(dev, "_bind_context", BindContext(dev))  # noqa: B010
 
     assert isinstance(dev, Fakeable)
     if make_fake:

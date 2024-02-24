@@ -11,7 +11,6 @@ from io import FileIO
 import logging
 import os
 import pty
-from select import select
 from selectors import EVENT_READ, DefaultSelector
 import signal
 import tty
@@ -145,6 +144,7 @@ class VirtualRfBase:
         self._port_info_list: dict[_PN, VirtualComPortInfo] = {}
 
         self._loop = asyncio.get_running_loop()
+        self._selector = DefaultSelector()
 
         self._master_to_port: dict[_FD, _PN] = {}  # #  for polling port
         self._port_to_master: dict[_PN, _FD] = {}  # #  for logging
@@ -166,6 +166,7 @@ class VirtualRfBase:
         os.set_blocking(master_fd, False)  # make non-blocking
 
         port_name = os.ttyname(slave_fd)
+        self._selector.register(master_fd, EVENT_READ)
 
         self._master_to_port[master_fd] = port_name
         self._port_to_master[port_name] = master_fd
@@ -221,15 +222,14 @@ class VirtualRfBase:
     async def _poll_ports_for_data(self) -> None:
         """Send data received from any one port (as .write(data)) to all other ports."""
 
-        with DefaultSelector() as selector, ExitStack() as stack:
-            for pn, fd in self._port_to_master.items():
-                stack.enter_context(self._port_to_object[pn])
-                selector.register(fd, EVENT_READ)
+        with ExitStack() as stack:
+            for fo in self._port_to_object.values():
+                stack.enter_context(fo)
 
             while True:
-                for key, event_mask in selector.select(timeout=0):
-                    if not event_mask & EVENT_READ:
-                        continue
+                for key, _ in self._selector.select(timeout=0):
+                    # if not event_mask & EVENT_READ:
+                    #     continue
                     self._pull_data_from_src_port(self._master_to_port[key.fileobj])  # type: ignore[index]
                     await asyncio.sleep(0)
                 else:
@@ -348,19 +348,22 @@ class VirtualRf(VirtualRfBase):
 
         self._set_comport_info(port_name, dev_type=fw_type)
 
-    async def dump_pkts_to_rf(self, pkts: list[bytes]) -> None:  # TODO: WIP
+    async def dump_frames_to_rf(
+        self, pkts: list[bytes], /, timeout: float | None = None
+    ) -> None:  # TODO: WIP
         """Dump frames as if from a sending port (for mocking)."""
 
-        def data_to_read() -> bool:
-            readable, *_ = select(self._port_to_object.values(), [], [], 0)
-            return bool(readable)
+        async def no_data_left_to_send() -> None:
+            """Wait until there all pending data is read."""
+            while self._selector.select(timeout=0):
+                await asyncio.sleep(0.001)
 
         for data in pkts:
             self._log.append(("/dev/mock", "SENT", data))
             self._cast_frame_to_all_ports("/dev/mock", data)  # is not echo only
 
-            while data_to_read():  # give the write a chance to effect
-                await asyncio.sleep(0.0001)
+        if timeout:
+            await asyncio.wait_for(no_data_left_to_send(), timeout)
 
     def _proc_after_rx(self, rcv_port: _PN, frame: bytes) -> bytes | None:
         """Return the frame as it would have been modified by a gateway after Rx.
