@@ -9,11 +9,8 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any, Final
 
-from ramses_rf.device import Fakeable
 from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_tx.address import pkt_addrs
-from ramses_tx.command import Command
-from ramses_tx.exceptions import PacketAddrSetInvalid, TransportSerialError
+from ramses_tx.exceptions import TransportSerialError
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
@@ -63,6 +60,7 @@ PLATFORMS: Final[Platform] = (
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Ramses integration."""
+
     hass.data[DOMAIN] = {}
 
     # One-off import of entry from config yaml
@@ -81,7 +79,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
 
-    broker = RamsesBroker(hass, entry)
+    broker = RamsesBroker(hass, entry)  # KeyError: 'serial_port'
+
     try:
         await broker.async_setup()
     except TransportSerialError as exc:
@@ -108,13 +107,13 @@ async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
     if not await broker.async_unload_platforms():
         return False
 
-    hass.services.async_remove(DOMAIN, SVC_BIND_DEVICE)
-    hass.services.async_remove(DOMAIN, SVC_FORCE_UPDATE)
-    hass.services.async_remove(DOMAIN, SVC_SEND_PACKET)
+    for svc in hass.services.async_services_for_domain(DOMAIN):
+        hass.services.async_remove(DOMAIN, svc)
 
     hass.data[DOMAIN].pop(entry.entry_id)
 
@@ -168,55 +167,15 @@ def async_register_domain_services(
 
     @verify_domain_control(hass, DOMAIN)  # TODO: is a work in progress
     async def async_bind_device(call: ServiceCall) -> None:
-        device: Fakeable
-
-        try:
-            device = broker.client.fake_device(call.data["device_id"])
-        except LookupError as exc:
-            _LOGGER.error("%s", exc)
-            return
-
-        if call.data["device_info"]:
-            cmd = Command(call.data["device_info"])
-        else:
-            cmd = None
-
-        await device._initiate_binding_process(  # may: BindingFlowFailed
-            list(call.data["offer"].keys()),
-            confirm_code=list(call.data["confirm"].keys()),
-            ratify_cmd=cmd,
-        )  # TODO: will need to re-discover schema
-        hass.helpers.event.async_call_later(5, broker.async_update)
+        await broker.async_bind_device(call)
 
     @verify_domain_control(hass, DOMAIN)
-    async def async_force_update(_: ServiceCall) -> None:
-        await broker.async_update()
+    async def async_force_update(call: ServiceCall) -> None:
+        await broker.async_force_update(call)
 
     @verify_domain_control(hass, DOMAIN)
     async def async_send_packet(call: ServiceCall) -> None:
-        kwargs = dict(call.data.items())  # is ReadOnlyDict
-        if (
-            call.data["device_id"] == "18:000730"
-            and kwargs.get("from_id", "18:000730") == "18:000730"
-            and broker.client.hgi.id
-        ):
-            kwargs["device_id"] = broker.client.hgi.id
-
-        cmd = broker.client.create_cmd(**kwargs)
-
-        # HACK: to fix the device_id when GWY announcing, will be:
-        #    I --- 18:000730 18:006402 --:------ 0008 002 00C3  # because src != dst
-        # ... should be:
-        #    I --- 18:000730 --:------ 18:006402 0008 002 00C3  # 18:730 is sentinel
-        if cmd.src.id == "18:000730" and cmd.dst.id == broker.client.hgi.id:
-            try:
-                pkt_addrs(broker.client.hgi.id + cmd._frame[16:37])
-            except PacketAddrSetInvalid:
-                cmd._addrs[1], cmd._addrs[2] = cmd._addrs[2], cmd._addrs[1]
-                cmd._repr = None
-
-        broker.client.send_cmd(cmd)
-        hass.helpers.event.async_call_later(5, broker.async_update)
+        await broker.async_send_packet(call)
 
     hass.services.async_register(
         DOMAIN, SVC_BIND_DEVICE, async_bind_device, schema=SCH_BIND_DEVICE
