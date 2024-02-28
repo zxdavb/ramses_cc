@@ -56,4 +56,4 @@ async def cast_packets_to_rf(
     await rf.dump_frames_to_rf(frames)
 
     if gwy:
-        await asyncio.wait_for(no_data_left_to_read(gwy), timeout=0.05)
+        await asyncio.wait_for(no_data_left_to_read(gwy), timeout=0.5)
