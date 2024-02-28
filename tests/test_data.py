@@ -4,6 +4,7 @@ from typing import Any, Final
 from unittest.mock import patch
 
 from custom_components.ramses_cc import DOMAIN
+from custom_components.ramses_cc.broker import RamsesBroker
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from ramses_rf.gateway import Gateway
@@ -46,9 +47,23 @@ async def _test_common(hass: HomeAssistant, entry: ConfigEntry, rf: VirtualRf) -
     assert len(gwy.devices) == 1
 
     await cast_packets_to_rf(rf, f"{TEST_DIR}/system_1.log", gwy=gwy)
-    assert len(gwy.devices) == 9
+    assert len(gwy.devices) == 11
 
     assert len(hass.services.async_services_for_domain(DOMAIN)) == 6
+
+    broker: RamsesBroker = list(hass.data[DOMAIN].values())[0]
+    assert len(broker._entities) == 1
+
+    await broker.async_update()
+    await hass.async_block_till_done()
+    assert len(broker._entities) == 36  # HA entities
+
+    # ramses_rf entities
+    assert len(broker._devices) == 11
+    assert len(broker._dhws) == 1
+    assert len(broker._remotes) == 0
+    assert len(broker._systems) == 1
+    assert len(broker._zones) == 2
 
 
 @patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY)

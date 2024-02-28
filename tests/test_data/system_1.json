@@ -22,5 +22,8 @@
                 "actuators": ["04:189082"]
             }
         }
+    },
+    "known_list": {
+        "03:123456": {"class": "THM", "faked": true}
     }
 }
