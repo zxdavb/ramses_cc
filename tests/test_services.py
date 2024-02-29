@@ -19,12 +19,15 @@ from custom_components.ramses_cc.schemas import (
     SCH_PUT_INDOOR_HUMIDITY,
     SCH_PUT_ROOM_TEMP,
     SCH_SET_SYSTEM_MODE,
+    SCH_SET_ZONE_MODE,
     SVC_PUT_CO2_LEVEL,
     SVC_PUT_DHW_TEMP,
     SVC_PUT_INDOOR_HUMIDITY,
     SVC_PUT_ROOM_TEMP,
     SVC_RESET_SYSTEM_MODE,
+    SVC_RESET_ZONE_MODE,
     SVC_SET_SYSTEM_MODE,
+    SVC_SET_ZONE_MODE,
 )
 import pytest
 from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
@@ -56,7 +59,7 @@ SERVICES = {
     ),
     SVC_FORCE_UPDATE: (
         "custom_components.ramses_cc.broker.RamsesBroker.async_force_update",
-        dict,  # data is like {"entity_id": "climate.01_145038}
+        dict,  # data is like {"entity_id": "climate.01_145038"}
     ),
     SVC_PUT_CO2_LEVEL: (
         "custom_components.ramses_cc.sensor.RamsesSensor.async_put_co2_level",
@@ -80,11 +83,19 @@ SERVICES = {
     ),
     SVC_RESET_SYSTEM_MODE: (
         "custom_components.ramses_cc.climate.RamsesController.async_reset_system_mode",
-        dict,  # data is like {"entity_id": "climate.01_145038}
+        dict,  # data is like {"entity_id": "climate.01_145038"}
+    ),
+    SVC_RESET_ZONE_MODE: (
+        "custom_components.ramses_cc.climate.RamsesZone.async_reset_zone_mode",
+        dict,  # data is like {"entity_id": "climate.01_145038_02"}
     ),
     SVC_SET_SYSTEM_MODE: (
         "custom_components.ramses_cc.climate.RamsesController.async_set_system_mode",
         SCH_SET_SYSTEM_MODE,
+    ),
+    SVC_SET_ZONE_MODE: (
+        "custom_components.ramses_cc.climate.RamsesZone.async_set_zone_mode",
+        SCH_SET_ZONE_MODE,
     ),
 }
 
@@ -273,8 +284,10 @@ async def _test_reset_zone_config(hass: HomeAssistant, rf: VirtualRf) -> None:
     pass
 
 
-async def _test_reset_zone_mode(hass: HomeAssistant, rf: VirtualRf) -> None:
-    pass
+async def test_reset_zone_mode(hass: HomeAssistant, rf: VirtualRf) -> None:
+    data = {"entity_id": "climate.01_145038_02"}
+
+    await _test_entity_service_call(hass, rf, SVC_RESET_ZONE_MODE, data)
 
 
 async def _test_set_dhw_boost(hass: HomeAssistant, rf: VirtualRf) -> None:
@@ -320,8 +333,28 @@ async def _test_set_zone_config(hass: HomeAssistant, rf: VirtualRf) -> None:
     pass
 
 
-async def _test_set_zone_mode(hass: HomeAssistant, rf: VirtualRf) -> None:
-    pass
+TESTS_SET_ZONE_MODE: dict[str, dict[str, Any]] = {
+    "00": {"mode": "follow_schedule"},
+    "01": {"mode": "permanent_override", "setpoint": 18.5},
+    "02": {"mode": "advanced_override", "setpoint": 19.5},
+    "03": {"mode": "temporary_override", "setpoint": 20.5, "duration": {"minutes": 90}},
+    "04": {"mode": "temporary_override", "setpoint": 21.5, "duration": {"hours": 3}},
+}
+
+
+@pytest.mark.parametrize("index", TESTS_SET_ZONE_MODE)
+async def test_set_zone_mode(
+    hass: HomeAssistant,
+    rf: VirtualRf,
+    index: str,
+    tests: dict[str, Any] = TESTS_SET_ZONE_MODE,
+) -> None:
+    data = {
+        "entity_id": "climate.01_145038_02",
+        **TESTS_SET_ZONE_MODE[index],
+    }
+
+    await _test_entity_service_call(hass, rf, SVC_SET_ZONE_MODE, data)
 
 
 async def _test_set_zone_schedule(hass: HomeAssistant, rf: VirtualRf) -> None:
