@@ -100,21 +100,7 @@ SERVICES = {
 }
 
 
-@pytest.fixture()  # add hass fixture to ensure hass/rf use same event loop
-async def rf(hass: HomeAssistant) -> AsyncGenerator[Any, None]:
-    """Utilize a virtual evofw3-compatible gateway."""
-
-    rf = VirtualRf(2)
-    rf.set_gateway(rf.ports[0], "18:000730")
-
-    with patch("ramses_tx.transport.comports", rf.comports):
-        try:
-            yield rf
-        finally:
-            await rf.stop()
-
-
-async def _setup_testbed_heat(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _cast_packets_to_rf(hass: HomeAssistant, rf: VirtualRf) -> None:
     """Load packets from a CH/DHW system."""
 
     gwy: Gateway = list(hass.data[DOMAIN].values())[0].client
@@ -126,7 +112,7 @@ async def _setup_testbed_heat(hass: HomeAssistant, rf: VirtualRf) -> None:
     assert len(hass.services.async_services_for_domain(DOMAIN)) == 7
 
 
-async def _setup_testbed_via_entry_(
+async def _setup_via_entry_(
     hass: HomeAssistant, rf: VirtualRf, config: dict[str, Any] = TEST_CONFIG
 ) -> ConfigEntry:
     """Test ramses_cc via config entry."""
@@ -141,7 +127,7 @@ async def _setup_testbed_via_entry_(
     # await hass.async_block_till_done()  # ?clear hass._tasks
 
     #
-    await _setup_testbed_heat(hass, rf)
+    await _cast_packets_to_rf(hass, rf)
 
     broker: RamsesBroker = list(hass.data[DOMAIN].values())[0]
 
@@ -152,61 +138,67 @@ async def _setup_testbed_via_entry_(
     return entry
 
 
-@patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY)
+@pytest.fixture()  # need hass fixture to ensure hass/rf use same event loop
+async def entry(hass: HomeAssistant) -> AsyncGenerator[Any, None]:
+    """Set up the test bed."""
+
+    # Utilize a virtual evofw3-compatible gateway
+    rf = VirtualRf(2)
+    rf.set_gateway(rf.ports[0], "18:000730")
+
+    with patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", 0):
+        entry: ConfigEntry = await _setup_via_entry_(hass, rf, TEST_CONFIG)
+
+        try:
+            yield entry
+
+        finally:
+            await hass.config_entries.async_unload(entry.entry_id)
+            await hass.async_block_till_done()
+            await rf.stop()
+
+
 async def _test_entity_service_call(
-    hass: HomeAssistant, rf: VirtualRf, service: str, data: dict[str, Any]
+    hass: HomeAssistant, service: str, data: dict[str, Any]
 ) -> None:
-    """Test a service call."""
+    """Test an entity service call."""
 
     # should check that the entity exists, and is available
 
-    entry: ConfigEntry = await _setup_testbed_via_entry_(hass, rf, TEST_CONFIG)
-
     with patch(SERVICES[service][0]) as mock_method:
-        try:
-            _ = await hass.services.async_call(
-                DOMAIN, service=service, service_data=data, blocking=True
-            )
-            # await hass.async_block_till_done()
+        _ = await hass.services.async_call(
+            DOMAIN, service=service, service_data=data, blocking=True
+        )
 
-            mock_method.assert_called_once()
+        mock_method.assert_called_once()
 
-            assert mock_method.call_args.kwargs == {
-                k: v for k, v in SERVICES[service][1](data).items() if k != "entity_id"
-            }
-
-        finally:
-            await hass.config_entries.async_unload(entry.entry_id)
+        assert mock_method.call_args.kwargs == {
+            k: v for k, v in SERVICES[service][1](data).items() if k != "entity_id"
+        }
 
 
-@patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY)
 async def _test_service_call(
-    hass: HomeAssistant, rf: VirtualRf, service: str, data: dict[str, Any]
+    hass: HomeAssistant, service: str, data: dict[str, Any]
 ) -> None:
     """Test a service call."""
 
-    entry: ConfigEntry = await _setup_testbed_via_entry_(hass, rf, TEST_CONFIG)
+    # should check that any referenced entity exists, and is available
 
     with patch(SERVICES[service][0]) as mock_method:
-        try:
-            _ = await hass.services.async_call(
-                DOMAIN, service=service, service_data=data, blocking=True
-            )  # Referenced entities sensor.07_046947_temperature are missing...
-            # await hass.async_block_till_done()
+        _ = await hass.services.async_call(
+            DOMAIN, service=service, service_data=data, blocking=True
+        )
 
-            mock_method.assert_called_once()
+        mock_method.assert_called_once()
 
-            service_call: ServiceCall = mock_method.call_args[0][0]
-            assert service_call.data == SERVICES[service][1](data)
-
-        finally:
-            await hass.config_entries.async_unload(entry.entry_id)
+        service_call: ServiceCall = mock_method.call_args[0][0]
+        assert service_call.data == SERVICES[service][1](data)
 
 
 ########################################################################################
 
 
-async def _test_put_co2_level(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_put_co2_level(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the put_room_co2_level service call."""
 
     data = {
@@ -214,10 +206,10 @@ async def _test_put_co2_level(hass: HomeAssistant, rf: VirtualRf) -> None:
         "co2_level": 600,
     }
 
-    await _test_entity_service_call(hass, rf, SVC_PUT_CO2_LEVEL, data)
+    await _test_entity_service_call(hass, SVC_PUT_CO2_LEVEL, data)
 
 
-async def test_put_dhw_temp(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def test_put_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the put_dhe_temp service call."""
 
     data = {
@@ -225,10 +217,10 @@ async def test_put_dhw_temp(hass: HomeAssistant, rf: VirtualRf) -> None:
         "temperature": 56.3,
     }
 
-    await _test_entity_service_call(hass, rf, SVC_PUT_DHW_TEMP, data)
+    await _test_entity_service_call(hass, SVC_PUT_DHW_TEMP, data)
 
 
-async def _test_put_indoor_humidity(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_put_indoor_humidity(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the put_indoor_humidity service call."""
 
     data = {
@@ -236,10 +228,10 @@ async def _test_put_indoor_humidity(hass: HomeAssistant, rf: VirtualRf) -> None:
         "humidity": 56.3,
     }
 
-    await _test_entity_service_call(hass, rf, SVC_PUT_INDOOR_HUMIDITY, data)
+    await _test_entity_service_call(hass, SVC_PUT_INDOOR_HUMIDITY, data)
 
 
-async def test_put_room_temp(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def test_put_room_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the put_room_temp service call."""
 
     data = {
@@ -247,62 +239,63 @@ async def test_put_room_temp(hass: HomeAssistant, rf: VirtualRf) -> None:
         "temperature": 21.3,
     }
 
-    await _test_entity_service_call(hass, rf, SVC_PUT_ROOM_TEMP, data)
+    await _test_entity_service_call(hass, SVC_PUT_ROOM_TEMP, data)
 
 
-async def _test_fake_dhw_temp(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_fake_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def _test_fake_zone_temp(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_fake_zone_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def _test_get_dhw_schedule(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_get_dhw_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def _test_get_zone_schedule(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_get_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def _test_reset_dhw_mode(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_reset_dhw_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def _test_reset_dhw_params(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_reset_dhw_params(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def test_reset_system_mode(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def test_reset_system_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
     data = {"entity_id": "climate.01_145038"}
 
-    await _test_entity_service_call(hass, rf, SVC_RESET_SYSTEM_MODE, data)
-
-
-async def _test_reset_zone_config(hass: HomeAssistant, rf: VirtualRf) -> None:
+    await _test_entity_service_call(hass, SVC_RESET_SYSTEM_MODE, data)
     pass
 
 
-async def test_reset_zone_mode(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_reset_zone_config(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    pass
+
+
+async def test_reset_zone_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
     data = {"entity_id": "climate.01_145038_02"}
 
-    await _test_entity_service_call(hass, rf, SVC_RESET_ZONE_MODE, data)
+    await _test_entity_service_call(hass, SVC_RESET_ZONE_MODE, data)
 
 
-async def _test_set_dhw_boost(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_set_dhw_boost(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def _test_set_dhw_mode(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_set_dhw_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def _test_set_dhw_params(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_set_dhw_params(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def _test_set_dhw_schedule(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_set_dhw_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
@@ -314,22 +307,19 @@ TESTS_SET_SYSTEM_MODE: dict[str, dict[str, Any]] = {
 }
 
 
-@pytest.mark.parametrize("index", TESTS_SET_SYSTEM_MODE)
+@pytest.mark.parametrize("idx", TESTS_SET_SYSTEM_MODE)
 async def test_set_system_mode(
-    hass: HomeAssistant,
-    rf: VirtualRf,
-    index: str,
-    tests: dict[str, Any] = TESTS_SET_SYSTEM_MODE,
+    hass: HomeAssistant, entry: ConfigEntry, idx: str
 ) -> None:
     data = {
         "entity_id": "climate.01_145038",
-        **TESTS_SET_SYSTEM_MODE[index],
+        **TESTS_SET_SYSTEM_MODE[idx],
     }
 
-    await _test_entity_service_call(hass, rf, SVC_SET_SYSTEM_MODE, data)
+    await _test_entity_service_call(hass, SVC_SET_SYSTEM_MODE, data)
 
 
-async def _test_set_zone_config(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_set_zone_config(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
@@ -342,26 +332,21 @@ TESTS_SET_ZONE_MODE: dict[str, dict[str, Any]] = {
 }  # need to add until...
 
 
-@pytest.mark.parametrize("index", TESTS_SET_ZONE_MODE)
-async def test_set_zone_mode(
-    hass: HomeAssistant,
-    rf: VirtualRf,
-    index: str,
-    tests: dict[str, Any] = TESTS_SET_ZONE_MODE,
-) -> None:
+@pytest.mark.parametrize("idx", TESTS_SET_ZONE_MODE)
+async def test_set_zone_mode(hass: HomeAssistant, entry: ConfigEntry, idx: str) -> None:
     data = {
         "entity_id": "climate.01_145038_02",
-        **TESTS_SET_ZONE_MODE[index],
+        **TESTS_SET_ZONE_MODE[idx],
     }
 
-    await _test_entity_service_call(hass, rf, SVC_SET_ZONE_MODE, data)
+    await _test_entity_service_call(hass, SVC_SET_ZONE_MODE, data)
 
 
-async def _test_set_zone_schedule(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def _test_set_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def test_svc_bind_device(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def test_svc_bind_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the service call."""
 
     data = {
@@ -369,18 +354,18 @@ async def test_svc_bind_device(hass: HomeAssistant, rf: VirtualRf) -> None:
         "offer": {"30C9": "00"},
     }
 
-    await _test_service_call(hass, rf, SVC_BIND_DEVICE, data)
+    await _test_service_call(hass, SVC_BIND_DEVICE, data)
 
 
-async def test_svc_force_update(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def test_svc_force_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the service call."""
 
     data: dict[str, Any] = {}
 
-    await _test_service_call(hass, rf, SVC_FORCE_UPDATE, data)
+    await _test_service_call(hass, SVC_FORCE_UPDATE, data)
 
 
-async def test_svc_send_packet(hass: HomeAssistant, rf: VirtualRf) -> None:
+async def test_svc_send_packet(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the service call."""
 
     data = {
@@ -390,4 +375,4 @@ async def test_svc_send_packet(hass: HomeAssistant, rf: VirtualRf) -> None:
         "payload": "00",
     }
 
-    await _test_service_call(hass, rf, SVC_SEND_PACKET, data)
+    await _test_service_call(hass, SVC_SEND_PACKET, data)
