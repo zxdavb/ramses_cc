@@ -85,7 +85,7 @@ send_packet:
 # evohome controller service calls (CH/DHW)
 
 reset_system_mode:
-  name: Fully reset the Mode of a TCS
+  name: Fully reset the Mode of a TCS (Controller)
   description: >-
     The system will be in auto mode and all zones will be in follow_schedule mode,
     including (if supported) those in permanent_override mode.
@@ -97,7 +97,7 @@ reset_system_mode:
         The entity_id of the evohome Controller (TCS, temperature control system).
         NB: Most of this integration's climate entities are not Controllers
         (such entities, e.g. zones, will raise an AttributeError).
-      example: climate.controller
+      example: climate.01_123456
       required: true
       selector:
         entity:
@@ -106,19 +106,21 @@ reset_system_mode:
 
 
 set_system_mode:
-  name: Set the Mode of a TCS
+  name: Set the Mode of a TCS (Controller)
   description: >-
     The system will be in the new mode and all zones not in permanent_override mode
     will be affected.
-
-    Some modes have the option of a period of days, others a duration in hours/minutes.
+    Some modes have the option of a period (of days), others a duration (of hours/minutes).
 
   fields:
     entity_id: *entity_id_system
 
     mode:
       name: System Mode
-      description: "One of: auto, eco_boost, away, day_off, day_off_eco, heat_off, or custom."
+      description: >-
+        One of: auto, eco_boost, away, day_off, day_off_eco, heat_off, or custom.
+        All modes can be set indefinitely, some can be set for a period of days,
+        and others for a duration in hours/minutes.
       default: auto
       example: away
       required: true
@@ -137,11 +139,11 @@ set_system_mode:
     period:
       name: Period (days)
       description: >-
-        Optional. A period of time in days; used only with away, day_off, day_off_eco or custom.
-        The system will revert to auto at midnight (up to 99 days, today is day 1).
-      default:
-        days: 28
-      example: '{"days": 28}'
+        Optional. A period of time in days; valid only with away, day_off, day_off_eco
+        or custom.
+        The system will revert to auto at midnight (up to 99 days, 0 is until midnight tonight).
+      default: {days: 0}
+      example: {days: 28}
       selector:
         duration:
           enable_day: true
@@ -149,11 +151,9 @@ set_system_mode:
     duration:
       name: Duration (hours/minutes)
       description: >-
-        Optional. The duration in hours/minutes; used only with eco_boost (up to 24h).
-      default:
-        hours: 1
-        minutes: 30
-      example: '{"hours": 1, "minutes": 30}'
+        Optional. The duration in hours/minutes (up to 24h); valid only with eco_boost.
+      default: {hours: 1}
+      example: {hours: 2, minutes: 30}
       selector:
         duration:
 
@@ -180,7 +180,7 @@ get_zone_schedule:
         The entity_id of the evohome Zone.
         NB: Some of this integration's climate entities are not Zones
         (such entities, e.g. Controllers, will raise an AttributeError).
-      example: climate.main_room
+      example: climate.01_123456_02
       required: true
       selector:
         entity:
@@ -334,7 +334,7 @@ get_dhw_schedule:
     entity_id: &entity_id_dhw
       name: Stored DHW
       description: The entity_id of the stored DHW.
-      example: water_heater.stored_hw
+      example: water_heater.01_123456_hw
       required: true
       selector:
         entity:

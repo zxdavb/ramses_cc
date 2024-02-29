@@ -215,30 +215,31 @@ SVCS_RAMSES_SENSOR = {
 
 # services for climate platform
 
+SCH_DURATION = vol.All(  # of time (<=24h)
+    cv.time_period,
+    vol.Range(min=timedelta(hours=1), max=timedelta(hours=24)),
+)
+SCH_PERIOD = vol.All(  # of days (0-99)
+    cv.time_period, vol.Range(min=timedelta(days=0), max=timedelta(days=99))
+)
+
 SVC_SET_SYSTEM_MODE: Final = "set_system_mode"
 SCH_SET_SYSTEM_MODE = vol.Schema(
     vol.Any(
-        cv.make_entity_service_schema(
-            {
+        cv.make_entity_service_schema(  # canBeTemporary: false
+            {  # also: Off, Heat, Cool (for pre-evohome)
                 vol.Required(ATTR_MODE): vol.In(
-                    [
-                        SystemMode.AUTO,
-                        SystemMode.HEAT_OFF,
-                        SystemMode.RESET,
-                    ]
+                    [SystemMode.AUTO, SystemMode.HEAT_OFF, SystemMode.RESET]
                 )
             }
         ),
-        cv.make_entity_service_schema(
+        cv.make_entity_service_schema(  # canBeTemporary: true, timingMode: Duration
             {
                 vol.Required(ATTR_MODE): vol.In([SystemMode.ECO_BOOST]),
-                vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(hours=1), max=timedelta(hours=24)),
-                ),
+                vol.Optional(ATTR_DURATION): vol.Any(SCH_DURATION, None),
             }
-        ),
-        cv.make_entity_service_schema(
+        ),  # Duration: : None is indefinitely; 0 is invalid
+        cv.make_entity_service_schema(  # canBeTemporary: true, timingMode: Period
             {
                 vol.Required(ATTR_MODE): vol.In(
                     [
@@ -248,13 +249,11 @@ SCH_SET_SYSTEM_MODE = vol.Schema(
                         SystemMode.DAY_OFF_ECO,
                     ]
                 ),
-                vol.Optional(ATTR_PERIOD, default=timedelta(days=0)): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(days=0), max=timedelta(days=99)),
-                ),  # 0 means until the end of the day
+                vol.Optional(ATTR_PERIOD): vol.Any(SCH_PERIOD, None),
             }
-        ),
-    )
+        ),  # Period: None is indefinitely; 0 is the end of today, 1 is end of tomorrow
+        extra=vol.PREVENT_EXTRA,
+    ),
 )
 
 DEFAULT_MIN_TEMP: Final[float] = 5

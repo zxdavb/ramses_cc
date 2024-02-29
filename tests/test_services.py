@@ -56,7 +56,7 @@ SERVICES = {
     ),
     SVC_FORCE_UPDATE: (
         "custom_components.ramses_cc.broker.RamsesBroker.async_force_update",
-        dict,  # data is '{}'
+        dict,  # data is like {"entity_id": "climate.01_145038}
     ),
     SVC_PUT_CO2_LEVEL: (
         "custom_components.ramses_cc.sensor.RamsesSensor.async_put_co2_level",
@@ -68,7 +68,7 @@ SERVICES = {
     ),
     SVC_PUT_INDOOR_HUMIDITY: (
         "custom_components.ramses_cc.sensor.RamsesSensor.async_put_indoor_humidity",
-        SCH_PUT_INDOOR_HUMIDITY,  # data is '{}'
+        SCH_PUT_INDOOR_HUMIDITY,
     ),
     SVC_PUT_ROOM_TEMP: (
         "custom_components.ramses_cc.sensor.RamsesSensor.async_put_room_temp",
@@ -80,7 +80,7 @@ SERVICES = {
     ),
     SVC_RESET_SYSTEM_MODE: (
         "custom_components.ramses_cc.climate.RamsesController.async_reset_system_mode",
-        None,
+        dict,  # data is like {"entity_id": "climate.01_145038}
     ),
     SVC_SET_SYSTEM_MODE: (
         "custom_components.ramses_cc.climate.RamsesController.async_set_system_mode",
@@ -147,10 +147,7 @@ async def _test_entity_service_call(
 ) -> None:
     """Test a service call."""
 
-    if schema := SERVICES[service][1]:
-        assert schema(data)
-
-    # must check that the entity exists, and is available
+    # should check that the entity exists, and is available
 
     entry: ConfigEntry = await _setup_testbed_via_entry_(hass, rf, TEST_CONFIG)
 
@@ -163,8 +160,9 @@ async def _test_entity_service_call(
 
             mock_method.assert_called_once()
 
-            # service_call: ServiceCall = mock_method.call_args[0][0]
-            # assert service_call.data == schema(data)
+            assert mock_method.call_args.kwargs == {
+                k: v for k, v in SERVICES[service][1](data).items() if k != "entity_id"
+            }
 
         finally:
             await hass.config_entries.async_unload(entry.entry_id)
@@ -297,8 +295,9 @@ async def _test_set_dhw_schedule(hass: HomeAssistant, rf: VirtualRf) -> None:
 
 TESTS_SET_SYSTEM_MODE: dict[str, dict[str, Any]] = {
     "00": {"mode": "auto"},
-    "01": {"mode": "day_off", "period": {"days": 3}},
-    "02": {"mode": "eco_boost", "duration": {"hours": 3, "minutes": 30}},
+    "01": {"mode": "eco_boost"},
+    "02": {"mode": "day_off", "period": {"days": 3}},
+    "03": {"mode": "eco_boost", "duration": {"hours": 3, "minutes": 30}},
 }
 
 

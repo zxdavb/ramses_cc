@@ -254,12 +254,18 @@ class RamsesController(RamsesEntity, ClimateEntity):
         duration: timedelta | None = None,
     ) -> None:
         """Set the (native) operating mode of the Controller."""
-        if period is not None:
-            until = datetime.now() + period  # Period in days TODO: round down
-        elif duration is not None:
-            until = datetime.now() + duration  # Duration in hours/minutes for eco_boost
-        else:
+
+        if duration is not None:
+            # evohome controllers uitilse whole hours
+            until = datetime.now() + duration  # <=24 hours
+        elif period is None:
             until = None
+        elif period.seconds == period.microseconds == 0:
+            # this is teh behaviour of an evohome controller
+            until = datetime.now().date() + timedelta(days=1) + period
+        else:
+            until = datetime.now() + period
+
         self._device.set_mode(system_mode=mode, until=until)
         self.async_write_ha_state_delayed()
 
