@@ -339,7 +339,7 @@ TESTS_SET_ZONE_MODE: dict[str, dict[str, Any]] = {
     "02": {"mode": "advanced_override", "setpoint": 19.5},
     "03": {"mode": "temporary_override", "setpoint": 20.5, "duration": {"minutes": 90}},
     "04": {"mode": "temporary_override", "setpoint": 21.5, "duration": {"hours": 3}},
-}
+}  # need to add until...
 
 
 @pytest.mark.parametrize("index", TESTS_SET_ZONE_MODE)
