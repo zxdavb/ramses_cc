@@ -1,9 +1,12 @@
-# last updated 2024-02-22, based on HA 2024.03.dev0
+# last updated 2024-02-24, based on HA 2024.02.4
 #  - to check against pyproject.toml, github workflows
 #
 
-# for using with HA
-  colorlog >= 6.8.2              # incl. colorama, if Windows
-  pyserial-asyncio >= 0.6        # incl. pyserial==3.5
-# pyserial-asyncio-fast == 0.11  # HA uses (written by HA)
-  voluptuous >= 0.13.1           # 0.14.x has typing support
+# for running the tests (includes HA)
+  pytest_homeassistant_custom_component >= 0.13.102  # replaces HA with latest release
+
+# # for using with HA
+#   colorlog >= 6.8.2              # incl. colorama 0.4.6, if Windows/WSL
+#   pyserial-asyncio >= 0.6        # incl. pyserial==3.5
+# # pyserial-asyncio-fast == 0.11  # HA uses (written by HA)
+#   voluptuous >= 0.13.1           # 0.14.x has typing support

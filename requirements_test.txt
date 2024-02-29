@@ -1,9 +1,0 @@
-# last updated 2024-02-22, based on HA 2024.03.dev0
-#  - to check against pyproject.toml, github workflows
-#
-
-# for using the library
-  -r requirements.txt
-
-# for running the tests
-  pytest_homeassistant_custom_component

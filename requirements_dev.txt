@@ -1,4 +1,4 @@
-# last updated 2024-02-22, based on HA 2024.03.dev0
+# last updated 2024-02-29, based on HA 2024.3.0b1
 #  - to check against pyproject.toml, github workflows
 #
 
@@ -11,7 +11,7 @@
   ruff >= 0.2.1
 
 # used for testing
-  pytest >= 8.0.1
+  pytest >= 8.0.2
   pytest-asyncio >= 0.23.5
   pytest-xdist >= 3.3.1
 
