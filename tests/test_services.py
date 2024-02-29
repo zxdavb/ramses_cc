@@ -1,5 +1,6 @@
 """Test the setup."""
 
+from collections.abc import AsyncGenerator
 from typing import Any, Final
 from unittest.mock import patch
 
@@ -17,13 +18,18 @@ from custom_components.ramses_cc.schemas import (
     SCH_PUT_DHW_TEMP,
     SCH_PUT_INDOOR_HUMIDITY,
     SCH_PUT_ROOM_TEMP,
+    SCH_SET_SYSTEM_MODE,
     SVC_PUT_CO2_LEVEL,
     SVC_PUT_DHW_TEMP,
     SVC_PUT_INDOOR_HUMIDITY,
     SVC_PUT_ROOM_TEMP,
+    SVC_RESET_SYSTEM_MODE,
+    SVC_SET_SYSTEM_MODE,
 )
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
+    MockConfigEntry,
+)
 from ramses_rf.gateway import Gateway
 
 from homeassistant.config_entries import ConfigEntry
@@ -52,10 +58,6 @@ SERVICES = {
         "custom_components.ramses_cc.broker.RamsesBroker.async_force_update",
         dict,  # data is '{}'
     ),
-    SVC_SEND_PACKET: (
-        "custom_components.ramses_cc.broker.RamsesBroker.async_send_packet",
-        SCH_SEND_PACKET,
-    ),
     SVC_PUT_CO2_LEVEL: (
         "custom_components.ramses_cc.sensor.RamsesSensor.async_put_co2_level",
         SCH_PUT_CO2_LEVEL,
@@ -72,11 +74,23 @@ SERVICES = {
         "custom_components.ramses_cc.sensor.RamsesSensor.async_put_room_temp",
         SCH_PUT_ROOM_TEMP,
     ),
+    SVC_SEND_PACKET: (
+        "custom_components.ramses_cc.broker.RamsesBroker.async_send_packet",
+        SCH_SEND_PACKET,
+    ),
+    SVC_RESET_SYSTEM_MODE: (
+        "custom_components.ramses_cc.climate.RamsesController.async_reset_system_mode",
+        None,
+    ),
+    SVC_SET_SYSTEM_MODE: (
+        "custom_components.ramses_cc.climate.RamsesController.async_set_system_mode",
+        SCH_SET_SYSTEM_MODE,
+    ),
 }
 
 
 @pytest.fixture()  # add hass fixture to ensure hass/rf use same event loop
-async def rf(hass: HomeAssistant):
+async def rf(hass: HomeAssistant) -> AsyncGenerator[Any, None]:
     """Utilize a virtual evofw3-compatible gateway."""
 
     rf = VirtualRf(2)
@@ -102,8 +116,8 @@ async def _setup_testbed_heat(hass: HomeAssistant, rf: VirtualRf) -> None:
 
 
 async def _setup_testbed_via_entry_(
-    hass: HomeAssistant, rf: VirtualRf, config: dict[str:Any] = TEST_CONFIG
-) -> None:
+    hass: HomeAssistant, rf: VirtualRf, config: dict[str, Any] = TEST_CONFIG
+) -> ConfigEntry:
     """Test ramses_cc via config entry."""
 
     config["serial_port"]["port_name"] = rf.ports[0]
@@ -133,7 +147,10 @@ async def _test_entity_service_call(
 ) -> None:
     """Test a service call."""
 
-    # must first check that the entity exists, and is available
+    if schema := SERVICES[service][1]:
+        assert schema(data)
+
+    # must check that the entity exists, and is available
 
     entry: ConfigEntry = await _setup_testbed_via_entry_(hass, rf, TEST_CONFIG)
 
@@ -147,7 +164,7 @@ async def _test_entity_service_call(
             mock_method.assert_called_once()
 
             # service_call: ServiceCall = mock_method.call_args[0][0]
-            # assert service_call.data == SERVICES[service][1](data)
+            # assert service_call.data == schema(data)
 
         finally:
             await hass.config_entries.async_unload(entry.entry_id)
@@ -248,8 +265,10 @@ async def _test_reset_dhw_params(hass: HomeAssistant, rf: VirtualRf) -> None:
     pass
 
 
-async def _test_reset_system_mode(hass: HomeAssistant, rf: VirtualRf) -> None:
-    pass
+async def test_reset_system_mode(hass: HomeAssistant, rf: VirtualRf) -> None:
+    data = {"entity_id": "climate.01_145038"}
+
+    await _test_entity_service_call(hass, rf, SVC_RESET_SYSTEM_MODE, data)
 
 
 async def _test_reset_zone_config(hass: HomeAssistant, rf: VirtualRf) -> None:
@@ -276,8 +295,26 @@ async def _test_set_dhw_schedule(hass: HomeAssistant, rf: VirtualRf) -> None:
     pass
 
 
-async def _test_set_system_mode(hass: HomeAssistant, rf: VirtualRf) -> None:
-    pass
+TESTS_SET_SYSTEM_MODE: dict[str, dict[str, Any]] = {
+    "00": {"mode": "auto"},
+    "01": {"mode": "day_off", "period": {"days": 3}},
+    "02": {"mode": "eco_boost", "duration": {"hours": 3, "minutes": 30}},
+}
+
+
+@pytest.mark.parametrize("index", TESTS_SET_SYSTEM_MODE)
+async def test_set_system_mode(
+    hass: HomeAssistant,
+    rf: VirtualRf,
+    index: str,
+    tests: dict[str, Any] = TESTS_SET_SYSTEM_MODE,
+) -> None:
+    data = {
+        "entity_id": "climate.01_145038",
+        **TESTS_SET_SYSTEM_MODE[index],
+    }
+
+    await _test_entity_service_call(hass, rf, SVC_SET_SYSTEM_MODE, data)
 
 
 async def _test_set_zone_config(hass: HomeAssistant, rf: VirtualRf) -> None:
@@ -306,7 +343,7 @@ async def test_svc_bind_device(hass: HomeAssistant, rf: VirtualRf) -> None:
 async def test_svc_force_update(hass: HomeAssistant, rf: VirtualRf) -> None:
     """Test the service call."""
 
-    data = {}
+    data: dict[str, Any] = {}
 
     await _test_service_call(hass, rf, SVC_FORCE_UPDATE, data)
 

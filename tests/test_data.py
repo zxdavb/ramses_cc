@@ -1,12 +1,15 @@
 """Test the setup of ramses_cc with data (vanilla configuration)."""
 
+from collections.abc import AsyncGenerator
 from typing import Any, Final
 from unittest.mock import patch
 
 from custom_components.ramses_cc import DOMAIN
 from custom_components.ramses_cc.broker import RamsesBroker
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
+    MockConfigEntry,
+)
 from ramses_rf.gateway import Gateway
 
 from homeassistant.config_entries import ConfigEntry
@@ -27,7 +30,7 @@ TEST_CONFIG = {
 
 
 @pytest.fixture()  # add hass fixture to ensure hass/rf use same event loop
-async def rf(hass: HomeAssistant):
+async def rf(hass: HomeAssistant) -> AsyncGenerator[Any, None]:
     """Utilize a virtual evofw3-compatible gateway."""
 
     rf = VirtualRf(2)
@@ -68,7 +71,7 @@ async def _test_common(hass: HomeAssistant, entry: ConfigEntry, rf: VirtualRf) -
 
 @patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY)
 async def test_services_entry_(
-    hass: HomeAssistant, rf: VirtualRf, config: dict[str:Any] = TEST_CONFIG
+    hass: HomeAssistant, rf: VirtualRf, config: dict[str, Any] = TEST_CONFIG
 ) -> None:
     """Test ramses_cc via config entry."""
 
@@ -90,7 +93,7 @@ async def test_services_entry_(
 
 @patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY)
 async def test_services_import(
-    hass: HomeAssistant, rf: VirtualRf, config: dict[str:Any] = TEST_CONFIG
+    hass: HomeAssistant, rf: VirtualRf, config: dict[str, Any] = TEST_CONFIG
 ) -> None:
     """Test ramses_cc via importing a configuration."""
 

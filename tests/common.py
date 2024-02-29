@@ -33,7 +33,7 @@ def normalise_storage_file(file_name: str) -> dict[str, Any]:
     return {STORAGE_KEY: {"version": STORAGE_VERSION, "data": storage["data"]}}
 
 
-async def no_data_left_to_read(gwy: Gateway) -> bool:
+async def no_data_left_to_read(gwy: Gateway) -> None:
     """Wait until all pending data frames are read."""
 
     while gwy._transport.serial.in_waiting:
