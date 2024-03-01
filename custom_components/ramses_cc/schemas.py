@@ -362,16 +362,16 @@ SCH_SET_DHW_MODE = cv.make_entity_service_schema(
     }
 )
 
-DEFAULT_DHW_SETPOINT: Final[float] = 50
+DEFAULT_DHW_SETPOINT: Final[float] = 50  # degrees celsius, float
 MIN_DHW_SETPOINT: Final[float] = 30
 MAX_DHW_SETPOINT: Final[float] = 85
 
-DEFAULT_OVERRUN: Final[int] = 5
-MIN_OVERRUN: Final[int] = 1  # TODO: check minimum value, and if int
+DEFAULT_OVERRUN: Final[int] = 5  # minutes, int
+MIN_OVERRUN: Final[int] = 0
 MAX_OVERRUN: Final[int] = 10
 
-DEFAULT_DIFFERENTIAL: Final[float] = 60
-MIN_DIFFERENTIAL: Final[float] = 1  # TODO: check minimum value
+DEFAULT_DIFFERENTIAL: Final[float] = 10  # degrees celsius, float
+MIN_DIFFERENTIAL: Final[float] = 1
 MAX_DIFFERENTIAL: Final[float] = 10
 
 SVC_SET_DHW_PARAMS: Final = "set_dhw_params"
