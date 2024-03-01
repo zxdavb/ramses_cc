@@ -18,14 +18,17 @@ from custom_components.ramses_cc.schemas import (
     SCH_PUT_DHW_TEMP,
     SCH_PUT_INDOOR_HUMIDITY,
     SCH_PUT_ROOM_TEMP,
+    SCH_SET_DHW_MODE,
     SCH_SET_SYSTEM_MODE,
     SCH_SET_ZONE_MODE,
     SVC_PUT_CO2_LEVEL,
     SVC_PUT_DHW_TEMP,
     SVC_PUT_INDOOR_HUMIDITY,
     SVC_PUT_ROOM_TEMP,
+    SVC_RESET_DHW_MODE,
     SVC_RESET_SYSTEM_MODE,
     SVC_RESET_ZONE_MODE,
+    SVC_SET_DHW_MODE,
     SVC_SET_SYSTEM_MODE,
     SVC_SET_ZONE_MODE,
 )
@@ -81,6 +84,10 @@ SERVICES = {
         "custom_components.ramses_cc.broker.RamsesBroker.async_send_packet",
         SCH_SEND_PACKET,
     ),
+    SVC_RESET_DHW_MODE: (
+        "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_reset_dhw_mode",
+        dict,  # data is like {"entity_id": "climate.01_145038_hw"}
+    ),
     SVC_RESET_SYSTEM_MODE: (
         "custom_components.ramses_cc.climate.RamsesController.async_reset_system_mode",
         dict,  # data is like {"entity_id": "climate.01_145038"}
@@ -88,6 +95,10 @@ SERVICES = {
     SVC_RESET_ZONE_MODE: (
         "custom_components.ramses_cc.climate.RamsesZone.async_reset_zone_mode",
         dict,  # data is like {"entity_id": "climate.01_145038_02"}
+    ),
+    SVC_SET_DHW_MODE: (
+        "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_set_dhw_mode",
+        SCH_SET_DHW_MODE,
     ),
     SVC_SET_SYSTEM_MODE: (
         "custom_components.ramses_cc.climate.RamsesController.async_set_system_mode",
@@ -146,15 +157,18 @@ async def entry(hass: HomeAssistant) -> AsyncGenerator[Any, None]:
     rf = VirtualRf(2)
     rf.set_gateway(rf.ports[0], "18:000730")
 
-    with patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", 0):
-        entry: ConfigEntry = await _setup_via_entry_(hass, rf, TEST_CONFIG)
-
+    with patch(
+        "custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY
+    ):
+        entry: ConfigEntry = None
         try:
+            entry = await _setup_via_entry_(hass, rf, TEST_CONFIG)
             yield entry
 
         finally:
-            await hass.config_entries.async_unload(entry.entry_id)
-            await hass.async_block_till_done()
+            if entry:
+                await hass.config_entries.async_unload(entry.entry_id)
+                # await hass.async_block_till_done()
             await rf.stop()
 
 
@@ -258,8 +272,10 @@ async def _test_get_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> No
     pass
 
 
-async def _test_reset_dhw_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+async def test_reset_dhw_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    data = {"entity_id": "water_heater.01_145038_hw"}
+
+    await _test_entity_service_call(hass, SVC_RESET_DHW_MODE, data)
 
 
 async def _test_reset_dhw_params(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -287,8 +303,22 @@ async def _test_set_dhw_boost(hass: HomeAssistant, entry: ConfigEntry) -> None:
     pass
 
 
-async def _test_set_dhw_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+TESTS_SET_DHW_MODE = {
+    "00": {"mode": "follow_schedule"},
+    "01": {"mode": "permanent_override", "active": True},
+    "02": {"mode": "temporary_override", "active": True, "duration": {"minutes": 90}},
+    "03": {"mode": "temporary_override", "active": True, "duration": {"hours": 3}},
+}
+
+
+@pytest.mark.parametrize("idx", TESTS_SET_DHW_MODE)
+async def test_set_dhw_mode(hass: HomeAssistant, entry: ConfigEntry, idx: str) -> None:
+    data = {
+        "entity_id": "water_heater.01_145038_hw",
+        **TESTS_SET_DHW_MODE[idx],
+    }
+
+    await _test_entity_service_call(hass, SVC_SET_DHW_MODE, data)
 
 
 async def _test_set_dhw_params(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -326,9 +356,9 @@ async def _test_set_zone_config(hass: HomeAssistant, entry: ConfigEntry) -> None
 TESTS_SET_ZONE_MODE: dict[str, dict[str, Any]] = {
     "00": {"mode": "follow_schedule"},
     "01": {"mode": "permanent_override", "setpoint": 18.5},
-    "02": {"mode": "advanced_override", "setpoint": 19.5},
-    "03": {"mode": "temporary_override", "setpoint": 20.5, "duration": {"minutes": 90}},
-    "04": {"mode": "temporary_override", "setpoint": 21.5, "duration": {"hours": 3}},
+    "02": {"mode": "temporary_override", "setpoint": 20.5, "duration": {"minutes": 90}},
+    "03": {"mode": "temporary_override", "setpoint": 21.5, "duration": {"hours": 3}},
+    "09": {"mode": "advanced_override", "setpoint": 19.5},
 }  # need to add until...
 
 
