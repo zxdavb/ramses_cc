@@ -7,6 +7,7 @@ from unittest.mock import patch
 from custom_components.ramses_cc import (
     DOMAIN,
     SCH_BIND_DEVICE,
+    SCH_NO_SVC_PARAMS,
     SCH_SEND_PACKET,
     SVC_BIND_DEVICE,
     SVC_FORCE_UPDATE,
@@ -14,29 +15,49 @@ from custom_components.ramses_cc import (
 )
 from custom_components.ramses_cc.broker import RamsesBroker
 from custom_components.ramses_cc.schemas import (
+    SCH_NO_ENTITY_SVC_PARAMS,
     SCH_PUT_CO2_LEVEL,
     SCH_PUT_DHW_TEMP,
     SCH_PUT_INDOOR_HUMIDITY,
     SCH_PUT_ROOM_TEMP,
     SCH_SET_DHW_MODE,
+    SCH_SET_DHW_PARAMS,
+    SCH_SET_DHW_SCHEDULE,
     SCH_SET_SYSTEM_MODE,
+    SCH_SET_ZONE_CONFIG,
     SCH_SET_ZONE_MODE,
+    SCH_SET_ZONE_SCHEDULE,
+    SVC_FAKE_DHW_TEMP,
+    SVC_FAKE_ZONE_TEMP,
+    SVC_GET_DHW_SCHEDULE,
+    SVC_GET_ZONE_SCHEDULE,
     SVC_PUT_CO2_LEVEL,
     SVC_PUT_DHW_TEMP,
     SVC_PUT_INDOOR_HUMIDITY,
     SVC_PUT_ROOM_TEMP,
     SVC_RESET_DHW_MODE,
+    SVC_RESET_DHW_PARAMS,
     SVC_RESET_SYSTEM_MODE,
+    SVC_RESET_ZONE_CONFIG,
     SVC_RESET_ZONE_MODE,
+    SVC_SET_DHW_BOOST,
     SVC_SET_DHW_MODE,
+    SVC_SET_DHW_PARAMS,
+    SVC_SET_DHW_SCHEDULE,
     SVC_SET_SYSTEM_MODE,
+    SVC_SET_ZONE_CONFIG,
     SVC_SET_ZONE_MODE,
+    SVC_SET_ZONE_SCHEDULE,
+    SVCS_RAMSES_CLIMATE,  # SVCS_RAMSES_REMOTE,
+    SVCS_RAMSES_SENSOR,
+    SVCS_RAMSES_WATER_HEATER,
 )
 import pytest
 from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
     MockConfigEntry,
 )
 from ramses_rf.gateway import Gateway
+import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -71,9 +92,25 @@ SERVICES = {
         "custom_components.ramses_cc.broker.RamsesBroker.async_bind_device",
         SCH_BIND_DEVICE,
     ),
+    SVC_FAKE_DHW_TEMP: (
+        "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_fake_dhw_temp",
+        SCH_PUT_DHW_TEMP,
+    ),
+    SVC_FAKE_ZONE_TEMP: (
+        "custom_components.ramses_cc.climate.RamsesZone.async_fake_zone_temp",
+        SCH_PUT_ROOM_TEMP,
+    ),
     SVC_FORCE_UPDATE: (
         "custom_components.ramses_cc.broker.RamsesBroker.async_force_update",
-        dict,  # data is like {"entity_id": "climate.01_145038"}
+        SCH_NO_SVC_PARAMS,
+    ),
+    SVC_GET_DHW_SCHEDULE: (
+        "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_get_dhw_schedule",
+        SCH_NO_ENTITY_SVC_PARAMS,
+    ),
+    SVC_GET_ZONE_SCHEDULE: (
+        "custom_components.ramses_cc.climate.RamsesZone.async_get_zone_schedule",
+        SCH_NO_ENTITY_SVC_PARAMS,
     ),
     SVC_PUT_CO2_LEVEL: (
         "custom_components.ramses_cc.sensor.RamsesSensor.async_put_co2_level",
@@ -97,27 +134,55 @@ SERVICES = {
     ),
     SVC_RESET_DHW_MODE: (
         "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_reset_dhw_mode",
-        dict,  # data is like {"entity_id": "climate.01_145038_hw"}
+        SCH_NO_ENTITY_SVC_PARAMS,
+    ),
+    SVC_RESET_DHW_PARAMS: (
+        "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_reset_dhw_params",
+        SCH_NO_ENTITY_SVC_PARAMS,
     ),
     SVC_RESET_SYSTEM_MODE: (
         "custom_components.ramses_cc.climate.RamsesController.async_reset_system_mode",
-        dict,  # data is like {"entity_id": "climate.01_145038"}
+        SCH_NO_ENTITY_SVC_PARAMS,
+    ),
+    SVC_RESET_ZONE_CONFIG: (
+        "custom_components.ramses_cc.climate.RamsesZone.async_reset_zone_config",
+        SCH_NO_ENTITY_SVC_PARAMS,
     ),
     SVC_RESET_ZONE_MODE: (
         "custom_components.ramses_cc.climate.RamsesZone.async_reset_zone_mode",
-        dict,  # data is like {"entity_id": "climate.01_145038_02"}
+        SCH_NO_ENTITY_SVC_PARAMS,
+    ),
+    SVC_SET_DHW_BOOST: (
+        "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_set_dhw_boost",
+        SCH_NO_ENTITY_SVC_PARAMS,
     ),
     SVC_SET_DHW_MODE: (
         "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_set_dhw_mode",
         SCH_SET_DHW_MODE,
     ),
+    SVC_SET_DHW_PARAMS: (
+        "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_set_dhw_params",
+        SCH_SET_DHW_PARAMS,
+    ),
+    SVC_SET_DHW_SCHEDULE: (
+        "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_set_dhw_schedule",
+        SCH_SET_DHW_SCHEDULE,
+    ),
     SVC_SET_SYSTEM_MODE: (
         "custom_components.ramses_cc.climate.RamsesController.async_set_system_mode",
         SCH_SET_SYSTEM_MODE,
     ),
+    SVC_SET_ZONE_CONFIG: (
+        "custom_components.ramses_cc.climate.RamsesZone.async_set_zone_config",
+        SCH_SET_ZONE_CONFIG,
+    ),
     SVC_SET_ZONE_MODE: (
         "custom_components.ramses_cc.climate.RamsesZone.async_set_zone_mode",
         SCH_SET_ZONE_MODE,
+    ),
+    SVC_SET_ZONE_SCHEDULE: (
+        "custom_components.ramses_cc.climate.RamsesZone.async_set_zone_schedule",
+        SCH_SET_ZONE_SCHEDULE,
     ),
 }
 
@@ -161,7 +226,7 @@ async def _setup_via_entry_(
 
 
 @pytest.fixture()  # need hass fixture to ensure hass/rf use same event loop
-async def entry(hass: HomeAssistant) -> AsyncGenerator[Any, None]:
+async def entry(hass: HomeAssistant) -> AsyncGenerator[ConfigEntry, None]:
     """Set up the test bed."""
 
     # Utilize a virtual evofw3-compatible gateway
@@ -184,11 +249,13 @@ async def entry(hass: HomeAssistant) -> AsyncGenerator[Any, None]:
 
 
 async def _test_entity_service_call(
-    hass: HomeAssistant, service: str, data: dict[str, Any]
+    hass: HomeAssistant, service: str, data: dict[str, Any], schema: vol.Schema
 ) -> None:
     """Test an entity service call."""
 
     # should check that the entity exists, and is available
+
+    assert schema == SERVICES[service][1]
 
     with patch(SERVICES[service][0]) as mock_method:
         _ = await hass.services.async_call(
@@ -203,11 +270,13 @@ async def _test_entity_service_call(
 
 
 async def _test_service_call(
-    hass: HomeAssistant, service: str, data: dict[str, Any]
+    hass: HomeAssistant, service: str, data: dict[str, Any], schema: vol.Schema
 ) -> None:
     """Test a service call."""
 
-    # should check that any referenced entity exists, and is available
+    # should check that referenced entity, if any, exists and is available
+
+    assert schema == SERVICES[service][1]
 
     with patch(SERVICES[service][0]) as mock_method:
         _ = await hass.services.async_call(
@@ -231,7 +300,10 @@ async def test_put_co2_level(hass: HomeAssistant, entry: ConfigEntry) -> None:
         "co2_level": 600,
     }
 
-    await _test_entity_service_call(hass, SVC_PUT_CO2_LEVEL, data)
+    service = SVC_PUT_CO2_LEVEL
+    schema = SVCS_RAMSES_SENSOR[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def test_put_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -242,7 +314,10 @@ async def test_put_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
         "temperature": 56.3,
     }
 
-    await _test_entity_service_call(hass, SVC_PUT_DHW_TEMP, data)
+    service = SVC_PUT_DHW_TEMP
+    schema = SVCS_RAMSES_SENSOR[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def test_put_indoor_humidity(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -253,7 +328,10 @@ async def test_put_indoor_humidity(hass: HomeAssistant, entry: ConfigEntry) -> N
         "indoor_humidity": 56.3,
     }
 
-    await _test_entity_service_call(hass, SVC_PUT_INDOOR_HUMIDITY, data)
+    service = SVC_PUT_INDOOR_HUMIDITY
+    schema = SVCS_RAMSES_SENSOR[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def test_put_room_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -264,54 +342,102 @@ async def test_put_room_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
         "temperature": 21.3,
     }
 
-    await _test_entity_service_call(hass, SVC_PUT_ROOM_TEMP, data)
+    service = SVC_PUT_ROOM_TEMP
+    schema = SVCS_RAMSES_SENSOR[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
-async def _test_fake_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+async def test_fake_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    data = {
+        "entity_id": "water_heater.01_145038_hw",
+        "temperature": 51.3,
+    }
+
+    await _test_entity_service_call(hass, SVC_FAKE_DHW_TEMP, data, SCH_PUT_DHW_TEMP)
 
 
-async def _test_fake_zone_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+async def test_fake_zone_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    data = {
+        "entity_id": "climate.01_145038_02",
+        "temperature": 21.3,
+    }
+
+    await _test_entity_service_call(hass, SVC_FAKE_ZONE_TEMP, data, SCH_PUT_ROOM_TEMP)
 
 
-async def _test_get_dhw_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+async def test_get_dhw_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    data = {"entity_id": "water_heater.01_145038_hw"}
+
+    service = SVC_GET_DHW_SCHEDULE
+    schema = SVCS_RAMSES_WATER_HEATER[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
-async def _test_get_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+async def test_get_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    data = {"entity_id": "climate.01_145038_02"}
+
+    service = SVC_GET_ZONE_SCHEDULE
+    schema = SVCS_RAMSES_CLIMATE[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def test_reset_dhw_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
     data = {"entity_id": "water_heater.01_145038_hw"}
 
-    await _test_entity_service_call(hass, SVC_RESET_DHW_MODE, data)
+    service = SVC_RESET_DHW_MODE
+    schema = SVCS_RAMSES_WATER_HEATER[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
-async def _test_reset_dhw_params(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+async def test_reset_dhw_params(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    data = {"entity_id": "water_heater.01_145038_hw"}
+
+    service = SVC_RESET_DHW_PARAMS
+    schema = SVCS_RAMSES_WATER_HEATER[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def test_reset_system_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
     data = {"entity_id": "climate.01_145038"}
 
-    await _test_entity_service_call(hass, SVC_RESET_SYSTEM_MODE, data)
-    pass
+    service = SVC_RESET_SYSTEM_MODE
+    schema = SVCS_RAMSES_CLIMATE[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
-async def _test_reset_zone_config(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+async def test_reset_zone_config(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    data = {
+        "entity_id": "climate.01_145038_02",
+    }
+
+    service = SVC_RESET_ZONE_CONFIG
+    schema = SVCS_RAMSES_CLIMATE[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def test_reset_zone_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
     data = {"entity_id": "climate.01_145038_02"}
 
-    await _test_entity_service_call(hass, SVC_RESET_ZONE_MODE, data)
+    service = SVC_RESET_ZONE_MODE
+    schema = SVCS_RAMSES_CLIMATE[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
-async def _test_set_dhw_boost(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+async def test_set_dhw_boost(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    data = {"entity_id": "water_heater.01_145038_hw"}
+
+    service = SVC_SET_DHW_BOOST
+    schema = SVCS_RAMSES_WATER_HEATER[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 TESTS_SET_DHW_MODE = {
@@ -329,15 +455,32 @@ async def test_set_dhw_mode(hass: HomeAssistant, entry: ConfigEntry, idx: str) -
         **TESTS_SET_DHW_MODE[idx],
     }
 
-    await _test_entity_service_call(hass, SVC_SET_DHW_MODE, data)
+    service = SVC_SET_DHW_MODE
+    schema = SVCS_RAMSES_WATER_HEATER[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def _test_set_dhw_params(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+    data = {
+        "entity_id": "water_heater.01_145038_hw",
+    }
+
+    service = SVC_SET_DHW_PARAMS
+    schema = SVCS_RAMSES_WATER_HEATER[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def _test_set_dhw_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+    data = {
+        "entity_id": "water_heater.01_145038_hw",
+    }
+
+    service = SVC_SET_DHW_SCHEDULE
+    schema = SVCS_RAMSES_WATER_HEATER[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 TESTS_SET_SYSTEM_MODE: dict[str, dict[str, Any]] = {
@@ -357,11 +500,21 @@ async def test_set_system_mode(
         **TESTS_SET_SYSTEM_MODE[idx],
     }
 
-    await _test_entity_service_call(hass, SVC_SET_SYSTEM_MODE, data)
+    service = SVC_SET_SYSTEM_MODE
+    schema = SVCS_RAMSES_CLIMATE[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def _test_set_zone_config(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+    data = {
+        "entity_id": "climate.01_145038_02",
+    }
+
+    service = SVC_SET_ZONE_CONFIG
+    schema = SVCS_RAMSES_CLIMATE[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 TESTS_SET_ZONE_MODE: dict[str, dict[str, Any]] = {
@@ -380,11 +533,21 @@ async def test_set_zone_mode(hass: HomeAssistant, entry: ConfigEntry, idx: str) 
         **TESTS_SET_ZONE_MODE[idx],
     }
 
-    await _test_entity_service_call(hass, SVC_SET_ZONE_MODE, data)
+    service = SVC_SET_ZONE_MODE
+    schema = SVCS_RAMSES_CLIMATE[SVC_SET_ZONE_MODE]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def _test_set_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    pass
+    data = {
+        "entity_id": "climate.01_145038_02",
+    }
+
+    service = SVC_SET_ZONE_SCHEDULE
+    schema = SVCS_RAMSES_CLIMATE[service]
+
+    await _test_entity_service_call(hass, service, data, schema)
 
 
 async def test_svc_bind_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -395,7 +558,7 @@ async def test_svc_bind_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
         "offer": {"30C9": "00"},
     }
 
-    await _test_service_call(hass, SVC_BIND_DEVICE, data)
+    await _test_service_call(hass, SVC_BIND_DEVICE, data, SCH_BIND_DEVICE)
 
 
 async def test_svc_force_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -403,7 +566,7 @@ async def test_svc_force_update(hass: HomeAssistant, entry: ConfigEntry) -> None
 
     data: dict[str, Any] = {}
 
-    await _test_service_call(hass, SVC_FORCE_UPDATE, data)
+    await _test_service_call(hass, SVC_FORCE_UPDATE, data, SCH_NO_SVC_PARAMS)
 
 
 async def test_svc_send_packet(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -416,4 +579,4 @@ async def test_svc_send_packet(hass: HomeAssistant, entry: ConfigEntry) -> None:
         "payload": "00",
     }
 
-    await _test_service_call(hass, SVC_SEND_PACKET, data)
+    await _test_service_call(hass, SVC_SEND_PACKET, data, SCH_SEND_PACKET)

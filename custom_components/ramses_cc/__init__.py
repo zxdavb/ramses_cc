@@ -34,6 +34,7 @@ from .const import (
 )
 from .schemas import (
     SCH_BIND_DEVICE,
+    SCH_NO_SVC_PARAMS,
     SCH_SEND_PACKET,
     SVC_BIND_DEVICE,
     SVC_FORCE_UPDATE,
@@ -181,7 +182,7 @@ def async_register_domain_services(
         DOMAIN, SVC_BIND_DEVICE, async_bind_device, schema=SCH_BIND_DEVICE
     )
     hass.services.async_register(
-        DOMAIN, SVC_FORCE_UPDATE, async_force_update, schema={}
+        DOMAIN, SVC_FORCE_UPDATE, async_force_update, schema=SCH_NO_SVC_PARAMS
     )
 
     if entry.options.get(CONF_ADVANCED_FEATURES, {}).get(CONF_SEND_PACKET):
