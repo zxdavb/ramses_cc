@@ -15,12 +15,18 @@ from ramses_rf.gateway import Gateway
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
-from tests.virtual_rf import VirtualRf
 
 from .common import TEST_DIR, cast_packets_to_rf
+from .virtual_rf import VirtualRf
 
 # patched constants
 _CALL_LATER_DELAY: Final = 0  # from: custom_components.ramses_cc.broker.py
+
+
+NUM_DEVS_BEFORE = 1  # HGI (before casting packets to RF)
+NUM_DEVS_AFTER = 13  # proxy for success of cast_packets_to_rf()
+NUM_SVCS_AFTER = 6  # proxy for success
+NUM_ENTS_AFTER = 43  # proxy for success
 
 
 TEST_CONFIG = {
@@ -47,12 +53,12 @@ async def _test_common(hass: HomeAssistant, entry: ConfigEntry, rf: VirtualRf) -
     """The main tests are here."""
 
     gwy: Gateway = list(hass.data[DOMAIN].values())[0].client
-    assert len(gwy.devices) == 1
+    assert len(gwy.devices) == NUM_DEVS_BEFORE
 
     await cast_packets_to_rf(rf, f"{TEST_DIR}/system_1.log", gwy=gwy)
-    assert len(gwy.devices) == 11
+    assert len(gwy.devices) == NUM_DEVS_AFTER
 
-    assert len(hass.services.async_services_for_domain(DOMAIN)) == 6
+    assert len(hass.services.async_services_for_domain(DOMAIN)) == NUM_SVCS_AFTER
 
     broker: RamsesBroker = list(hass.data[DOMAIN].values())[0]
     assert len(broker._entities) == 1
@@ -62,7 +68,7 @@ async def _test_common(hass: HomeAssistant, entry: ConfigEntry, rf: VirtualRf) -
     assert len(broker._entities) == 36  # HA entities
 
     # ramses_rf entities
-    assert len(broker._devices) == 11
+    assert len(broker._devices) == NUM_DEVS_AFTER
     assert len(broker._dhws) == 1
     assert len(broker._remotes) == 0
     assert len(broker._systems) == 1

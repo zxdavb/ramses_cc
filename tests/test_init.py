@@ -15,7 +15,8 @@ from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
-from tests.virtual_rf import VirtualRf
+
+from .virtual_rf import VirtualRf
 
 # patched constants
 _CALL_LATER_DELAY: Final = 0  # from: custom_components.ramses_cc.broker.py

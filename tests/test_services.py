@@ -40,18 +40,29 @@ from ramses_rf.gateway import Gateway
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
-from tests.virtual_rf import VirtualRf
 
 from .common import TEST_DIR, cast_packets_to_rf
+from .virtual_rf import VirtualRf
 
 # patched constants
 _CALL_LATER_DELAY: Final = 0  # from: custom_components.ramses_cc.broker.py
+
+
+NUM_DEVS_BEFORE = 2  # HGI, faked THM (before casting packets to RF)
+NUM_DEVS_AFTER = 14  # proxy for success of cast_packets_to_rf()
+NUM_SVCS_AFTER = 7  # proxy for success
+NUM_ENTS_AFTER = 43  # proxy for success
 
 
 TEST_CONFIG = {
     "serial_port": {"port_name": None},
     "ramses_rf": {"disable_discovery": True},
     "advanced_features": {"send_packet": True},
+    "known_list": {
+        "03:123456": {"class": "THM", "faked": True},
+        "32:097710": {"class": "CO2"},
+        "32:139773": {"class": "HUM"},
+    },
 }
 
 
@@ -115,12 +126,12 @@ async def _cast_packets_to_rf(hass: HomeAssistant, rf: VirtualRf) -> None:
     """Load packets from a CH/DHW system."""
 
     gwy: Gateway = list(hass.data[DOMAIN].values())[0].client
-    assert len(gwy.devices) == 1  # the HGI status sensor
+    assert len(gwy.devices) == NUM_DEVS_BEFORE
 
     await cast_packets_to_rf(rf, f"{TEST_DIR}/system_1.log", gwy=gwy)
-    assert len(gwy.devices) == 11  # proxy for success of above
+    assert len(gwy.devices) == NUM_DEVS_AFTER  # proxy for success of above
 
-    assert len(hass.services.async_services_for_domain(DOMAIN)) == 7
+    assert len(hass.services.async_services_for_domain(DOMAIN)) == NUM_SVCS_AFTER
 
 
 async def _setup_via_entry_(
@@ -144,7 +155,7 @@ async def _setup_via_entry_(
 
     await broker.async_update()
     await hass.async_block_till_done()
-    assert len(broker._entities) == 36  # proxy for success of above (HA entities)
+    assert len(broker._entities) == NUM_ENTS_AFTER  # proxy for success of above
 
     return entry
 
@@ -212,11 +223,11 @@ async def _test_service_call(
 ########################################################################################
 
 
-async def _test_put_co2_level(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_put_co2_level(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the put_room_co2_level service call."""
 
     data = {
-        "entity_id": "sensor.07_046947_co2_level",
+        "entity_id": "sensor.32_097710_co2_level",
         "co2_level": 600,
     }
 
@@ -234,12 +245,12 @@ async def test_put_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await _test_entity_service_call(hass, SVC_PUT_DHW_TEMP, data)
 
 
-async def _test_put_indoor_humidity(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_put_indoor_humidity(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the put_indoor_humidity service call."""
 
     data = {
-        "entity_id": "sensor.07_046947_humidity",
-        "humidity": 56.3,
+        "entity_id": "sensor.32_139773_indoor_humidity",
+        "indoor_humidity": 56.3,
     }
 
     await _test_entity_service_call(hass, SVC_PUT_INDOOR_HUMIDITY, data)

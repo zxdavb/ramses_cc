@@ -24,6 +24,8 @@
         }
     },
     "known_list": {
-        "03:123456": {"class": "THM", "faked": true}
+        "03:123456": {"class": "THM", "faked": true},
+        "32:097710": {"class": "CO2"},
+        "32:139773": {"class": "HUM"}
     }
 }
