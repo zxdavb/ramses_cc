@@ -333,6 +333,7 @@ async def test_delete_command(hass: HomeAssistant, entry: ConfigEntry) -> None:
     )
 
 
+# TODO: extended test of underlying method
 async def test_learn_command(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the ramses_cc.learn_command service call."""
 
@@ -355,6 +356,7 @@ TESTS_SEND_COMMAND = {
 }
 
 
+# TODO: extended test of underlying method
 @pytest.mark.parametrize("idx", TESTS_SEND_COMMAND)
 async def test_send_command(hass: HomeAssistant, entry: ConfigEntry, idx: str) -> None:
     """Test the ramses_cc.send_command service call."""
@@ -517,6 +519,7 @@ TESTS_SET_DHW_MODE = {
 }  # TODO: need to add until...
 
 
+# TODO: extended test of underlying method (duration/until)
 @pytest.mark.parametrize("idx", TESTS_SET_DHW_MODE)
 async def test_set_dhw_mode(hass: HomeAssistant, entry: ConfigEntry, idx: str) -> None:
     data = {
@@ -571,6 +574,7 @@ TESTS_SET_SYSTEM_MODE: dict[str, dict[str, Any]] = {
 }
 
 
+# TODO: extended test of underlying method (duration/period)
 @pytest.mark.parametrize("idx", TESTS_SET_SYSTEM_MODE)
 async def test_set_system_mode(
     hass: HomeAssistant, entry: ConfigEntry, idx: str
@@ -624,6 +628,7 @@ TESTS_SET_ZONE_MODE: dict[str, dict[str, Any]] = {
 }  # TODO: need to add until...
 
 
+# TODO: extended test of underlying method (duration/until)
 @pytest.mark.parametrize("idx", TESTS_SET_ZONE_MODE)
 async def test_set_zone_mode(hass: HomeAssistant, entry: ConfigEntry, idx: str) -> None:
     data = {
