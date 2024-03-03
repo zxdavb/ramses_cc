@@ -5,6 +5,8 @@
 # for using the library
   -r requirements.txt
 
+  voluptuous >= 0.14.4
+
 # used for development
   mypy >= 1.8.0
   pre-commit >= 3.6.2
