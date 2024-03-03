@@ -14,12 +14,17 @@ from custom_components.ramses_cc import (
     SVC_SEND_PACKET,
 )
 from custom_components.ramses_cc.broker import RamsesBroker
+from custom_components.ramses_cc.climate import SVCS_RAMSES_CLIMATE
+from custom_components.ramses_cc.remote import SVCS_RAMSES_REMOTE
 from custom_components.ramses_cc.schemas import (
+    SCH_DELETE_COMMAND,
+    SCH_LEARN_COMMAND,
     SCH_NO_ENTITY_SVC_PARAMS,
     SCH_PUT_CO2_LEVEL,
     SCH_PUT_DHW_TEMP,
     SCH_PUT_INDOOR_HUMIDITY,
     SCH_PUT_ROOM_TEMP,
+    SCH_SEND_COMMAND,
     SCH_SET_DHW_MODE,
     SCH_SET_DHW_PARAMS,
     SCH_SET_DHW_SCHEDULE,
@@ -27,10 +32,12 @@ from custom_components.ramses_cc.schemas import (
     SCH_SET_ZONE_CONFIG,
     SCH_SET_ZONE_MODE,
     SCH_SET_ZONE_SCHEDULE,
+    SVC_DELETE_COMMAND,
     SVC_FAKE_DHW_TEMP,
     SVC_FAKE_ZONE_TEMP,
     SVC_GET_DHW_SCHEDULE,
     SVC_GET_ZONE_SCHEDULE,
+    SVC_LEARN_COMMAND,
     SVC_PUT_CO2_LEVEL,
     SVC_PUT_DHW_TEMP,
     SVC_PUT_INDOOR_HUMIDITY,
@@ -40,6 +47,7 @@ from custom_components.ramses_cc.schemas import (
     SVC_RESET_SYSTEM_MODE,
     SVC_RESET_ZONE_CONFIG,
     SVC_RESET_ZONE_MODE,
+    SVC_SEND_COMMAND,
     SVC_SET_DHW_BOOST,
     SVC_SET_DHW_MODE,
     SVC_SET_DHW_PARAMS,
@@ -48,10 +56,9 @@ from custom_components.ramses_cc.schemas import (
     SVC_SET_ZONE_CONFIG,
     SVC_SET_ZONE_MODE,
     SVC_SET_ZONE_SCHEDULE,
-    SVCS_RAMSES_CLIMATE,  # SVCS_RAMSES_REMOTE,
-    SVCS_RAMSES_SENSOR,
-    SVCS_RAMSES_WATER_HEATER,
 )
+from custom_components.ramses_cc.sensor import SVCS_RAMSES_SENSOR
+from custom_components.ramses_cc.water_heater import SVCS_RAMSES_WATER_HEATER
 import pytest
 from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
     MockConfigEntry,
@@ -69,10 +76,10 @@ from .virtual_rf import VirtualRf
 _CALL_LATER_DELAY: Final = 0  # from: custom_components.ramses_cc.broker.py
 
 
-NUM_DEVS_BEFORE = 2  # HGI, faked THM (before casting packets to RF)
-NUM_DEVS_AFTER = 14  # proxy for success of cast_packets_to_rf()
-NUM_SVCS_AFTER = 7  # proxy for success
-NUM_ENTS_AFTER = 43  # proxy for success
+NUM_DEVS_BEFORE = 3  # HGI, faked THM, faked REM
+NUM_DEVS_AFTER = 15  # proxy for success of cast_packets_to_rf()
+NUM_SVCS_AFTER = 10  # proxy for success
+NUM_ENTS_AFTER = 45  # proxy for success
 
 
 TEST_CONFIG = {
@@ -83,6 +90,7 @@ TEST_CONFIG = {
         "03:123456": {"class": "THM", "faked": True},
         "32:097710": {"class": "CO2"},
         "32:139773": {"class": "HUM"},
+        "40:123456": {"class": "REM", "faked": True},
     },
 }
 
@@ -91,6 +99,10 @@ SERVICES = {
     SVC_BIND_DEVICE: (
         "custom_components.ramses_cc.broker.RamsesBroker.async_bind_device",
         SCH_BIND_DEVICE,
+    ),
+    SVC_DELETE_COMMAND: (
+        "custom_components.ramses_cc.remote.RamsesRemote.async_delete_command",
+        SCH_DELETE_COMMAND,
     ),
     SVC_FAKE_DHW_TEMP: (
         "custom_components.ramses_cc.water_heater.RamsesWaterHeater.async_fake_dhw_temp",
@@ -112,6 +124,10 @@ SERVICES = {
         "custom_components.ramses_cc.climate.RamsesZone.async_get_zone_schedule",
         SCH_NO_ENTITY_SVC_PARAMS,
     ),
+    SVC_LEARN_COMMAND: (
+        "custom_components.ramses_cc.remote.RamsesRemote.async_learn_command",
+        SCH_LEARN_COMMAND,
+    ),
     SVC_PUT_CO2_LEVEL: (
         "custom_components.ramses_cc.sensor.RamsesSensor.async_put_co2_level",
         SCH_PUT_CO2_LEVEL,
@@ -127,6 +143,10 @@ SERVICES = {
     SVC_PUT_ROOM_TEMP: (
         "custom_components.ramses_cc.sensor.RamsesSensor.async_put_room_temp",
         SCH_PUT_ROOM_TEMP,
+    ),
+    SVC_SEND_COMMAND: (
+        "custom_components.ramses_cc.remote.RamsesRemote.async_send_command",
+        SCH_SEND_COMMAND,
     ),
     SVC_SEND_PACKET: (
         "custom_components.ramses_cc.broker.RamsesBroker.async_send_packet",
@@ -300,6 +320,55 @@ async def _test_service_call(
 ########################################################################################
 
 
+async def test_delete_command(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Test the ramses_cc.delete_command service call."""
+
+    data = {
+        "entity_id": "remote.40_123456",
+        "command": "boost",
+    }
+
+    await _test_entity_service_call(
+        hass, SVC_DELETE_COMMAND, data, schemas=SVCS_RAMSES_REMOTE
+    )
+
+
+async def test_learn_command(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Test the ramses_cc.learn_command service call."""
+
+    data = {
+        "entity_id": "remote.40_123456",
+        "command": "boost",
+        "timeout": 60,
+    }
+
+    await _test_entity_service_call(
+        hass, SVC_LEARN_COMMAND, data, schemas=SVCS_RAMSES_REMOTE
+    )
+
+
+TESTS_SEND_COMMAND = {
+    "01": {"command": "auto"},
+    "07": {"command": "auto", "num_repeats": 1, "delay_secs": 0.02},  # min
+    "08": {"command": "auto", "num_repeats": 3, "delay_secs": 0.05},  # default
+    "09": {"command": "auto", "num_repeats": 5, "delay_secs": 1.0},  # max
+}
+
+
+@pytest.mark.parametrize("idx", TESTS_SEND_COMMAND)
+async def test_send_command(hass: HomeAssistant, entry: ConfigEntry, idx: str) -> None:
+    """Test the ramses_cc.send_command service call."""
+
+    data = {
+        "entity_id": "remote.40_123456",
+        **TESTS_SEND_COMMAND[idx],
+    }
+
+    await _test_entity_service_call(
+        hass, SVC_SEND_COMMAND, data, schemas=SVCS_RAMSES_REMOTE
+    )
+
+
 async def test_put_co2_level(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Test the put_room_co2_level service call."""
 
@@ -445,7 +514,7 @@ TESTS_SET_DHW_MODE = {
     "01": {"mode": "permanent_override", "active": True},
     "02": {"mode": "temporary_override", "active": True, "duration": {"minutes": 90}},
     "03": {"mode": "temporary_override", "active": True, "duration": {"hours": 3}},
-}
+}  # TODO: need to add until...
 
 
 @pytest.mark.parametrize("idx", TESTS_SET_DHW_MODE)
@@ -483,9 +552,10 @@ async def test_set_dhw_params(
     )
 
 
-async def _test_set_dhw_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_set_dhw_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
     data = {
         "entity_id": "water_heater.01_145038_hw",
+        "schedule": "",
     }
 
     await _test_entity_service_call(
@@ -551,7 +621,7 @@ TESTS_SET_ZONE_MODE: dict[str, dict[str, Any]] = {
     "02": {"mode": "temporary_override", "setpoint": 20.5, "duration": {"minutes": 90}},
     "03": {"mode": "temporary_override", "setpoint": 21.5, "duration": {"hours": 3}},
     "09": {"mode": "advanced_override", "setpoint": 19.5},
-}  # need to add until...
+}  # TODO: need to add until...
 
 
 @pytest.mark.parametrize("idx", TESTS_SET_ZONE_MODE)
@@ -566,9 +636,10 @@ async def test_set_zone_mode(hass: HomeAssistant, entry: ConfigEntry, idx: str) 
     )
 
 
-async def _test_set_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_set_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
     data = {
         "entity_id": "climate.01_145038_02",
+        "schedule": "",
     }
 
     await _test_entity_service_call(
@@ -583,7 +654,6 @@ async def test_svc_bind_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
         "device_id": "22:140285",
         "offer": {"30C9": "00"},
     }
-
     schemas = {SVC_BIND_DEVICE: SCH_BIND_DEVICE}
 
     await _test_service_call(hass, SVC_BIND_DEVICE, data, schemas=schemas)
@@ -593,7 +663,6 @@ async def test_svc_force_update(hass: HomeAssistant, entry: ConfigEntry) -> None
     """Test the service call."""
 
     data: dict[str, Any] = {}
-
     schemas = {SVC_FORCE_UPDATE: SCH_NO_SVC_PARAMS}
 
     await _test_service_call(hass, SVC_FORCE_UPDATE, data, schemas=schemas)
@@ -608,7 +677,6 @@ async def test_svc_send_packet(hass: HomeAssistant, entry: ConfigEntry) -> None:
         "code": "1FC9",
         "payload": "00",
     }
-
     schemas = {SVC_SEND_PACKET: SCH_SEND_PACKET}
 
     await _test_service_call(hass, SVC_SEND_PACKET, data, schemas=schemas)
