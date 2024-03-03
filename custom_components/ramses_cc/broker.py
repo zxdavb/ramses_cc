@@ -2,12 +2,26 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable, Coroutine
 from copy import deepcopy
 from datetime import datetime as dt, timedelta
-import logging
 from threading import Semaphore
 from typing import TYPE_CHECKING, Any, Final
+
+import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_SCAN_INTERVAL, Platform
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_connect,
+    async_dispatcher_send,
+)
+from homeassistant.helpers.entity_platform import EntityPlatform
+from homeassistant.helpers.event import async_call_later, async_track_time_interval
+from homeassistant.helpers.storage import Store
 
 from ramses_rf.device import Fakeable
 from ramses_rf.device.base import Device
@@ -26,20 +40,6 @@ from ramses_tx.schemas import (
     SZ_SERIAL_PORT,
     extract_serial_port,
 )
-import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_SCAN_INTERVAL, Platform
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_connect,
-    async_dispatcher_send,
-)
-from homeassistant.helpers.entity_platform import EntityPlatform
-from homeassistant.helpers.event import async_call_later, async_track_time_interval
-from homeassistant.helpers.storage import Store
 
 from .const import (
     CONF_COMMANDS,

@@ -1,11 +1,23 @@
 """Support for RAMSES binary sensors."""
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
-import logging
 from types import UnionType
 from typing import Any
+
+from homeassistant.components.binary_sensor import (
+    ENTITY_ID_FORMAT,
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+    BinarySensorEntityDescription,
+)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_platform
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from ramses_rf.device.base import BatteryState, HgiGateway
 from ramses_rf.device.heat import (
@@ -29,18 +41,6 @@ from ramses_rf.gateway import Gateway
 from ramses_rf.schemas import SZ_BLOCK_LIST, SZ_CONFIG, SZ_KNOWN_LIST, SZ_SCHEMA
 from ramses_rf.system.heat import Logbook, System
 from ramses_tx.const import SZ_BYPASS_POSITION, SZ_IS_EVOFW3
-
-from homeassistant.components.binary_sensor import (
-    ENTITY_ID_FORMAT,
-    BinarySensorDeviceClass,
-    BinarySensorEntity,
-    BinarySensorEntityDescription,
-)
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_platform
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker

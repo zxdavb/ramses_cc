@@ -4,17 +4,17 @@ from collections.abc import AsyncGenerator
 from typing import Any, Final
 from unittest.mock import patch
 
-from custom_components.ramses_cc import DOMAIN, RamsesBroker
 import pytest
-from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
-    MockConfigEntry,
-)
-from ramses_rf.gateway import Gateway
-
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
+from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
+    MockConfigEntry,
+)
+
+from custom_components.ramses_cc import DOMAIN, RamsesBroker
+from ramses_rf.gateway import Gateway
 
 from .virtual_rf import VirtualRf
 

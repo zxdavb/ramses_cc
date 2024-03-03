@@ -1,9 +1,12 @@
 """Schemas for RAMSES integration."""
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any, Final, TypeAlias
+
+import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
+from homeassistant.helpers import config_validation as cv
 
 from ramses_rf.helpers import deep_merge, is_subset, shrink
 from ramses_rf.schemas import (
@@ -18,9 +21,6 @@ from ramses_rf.schemas import (
 )
 from ramses_tx.const import COMMAND_REGEX
 from ramses_tx.schemas import sch_global_traits_dict_factory
-import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
-
-from homeassistant.helpers import config_validation as cv
 
 from .const import (
     ATTR_ACTIVE,

@@ -5,15 +5,15 @@
 # NOTE: does not rely on ramses_rf library
 
 import asyncio
-from collections import deque
-from contextlib import ExitStack
-from io import FileIO
 import logging
 import os
 import pty
-from selectors import EVENT_READ, DefaultSelector
 import signal
 import tty
+from collections import deque
+from contextlib import ExitStack
+from io import FileIO
+from selectors import EVENT_READ, DefaultSelector
 from typing import TypeAlias, TypedDict
 
 from serial import Serial, serial_for_url  # type: ignore[import-untyped]

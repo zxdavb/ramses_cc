@@ -4,13 +4,10 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
-
-from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_tx.exceptions import TransportSerialError
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
@@ -23,6 +20,9 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType
+
+from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_tx.exceptions import TransportSerialError
 
 from .broker import RamsesBroker
 from .const import (

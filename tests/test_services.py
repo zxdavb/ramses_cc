@@ -4,6 +4,14 @@ from collections.abc import AsyncGenerator
 from typing import Any, Final
 from unittest.mock import patch
 
+import pytest
+import voluptuous as vol
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, ServiceCall
+from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
+    MockConfigEntry,
+)
+
 from custom_components.ramses_cc import (
     DOMAIN,
     SCH_BIND_DEVICE,
@@ -59,15 +67,7 @@ from custom_components.ramses_cc.schemas import (
 )
 from custom_components.ramses_cc.sensor import SVCS_RAMSES_SENSOR
 from custom_components.ramses_cc.water_heater import SVCS_RAMSES_WATER_HEATER
-import pytest
-from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
-    MockConfigEntry,
-)
 from ramses_rf.gateway import Gateway
-import voluptuous as vol
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
 
 from .common import TEST_DIR, cast_packets_to_rf
 from .virtual_rf import VirtualRf

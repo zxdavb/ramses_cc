@@ -2,15 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
-import logging
 from typing import Any
-
-from ramses_rf.device.hvac import HvacRemote
-from ramses_tx.command import Command
-from ramses_tx.const import Priority
 
 from homeassistant.components.remote import (
     ENTITY_ID_FORMAT,
@@ -25,6 +21,10 @@ from homeassistant.helpers.entity_platform import (
     EntityPlatform,
     async_get_current_platform,
 )
+
+from ramses_rf.device.hvac import HvacRemote
+from ramses_tx.command import Command
+from ramses_tx.const import Priority
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker

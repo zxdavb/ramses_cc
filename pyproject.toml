@@ -101,8 +101,8 @@
   "pytz".msg = "use zoneinfo instead"
 
 [tool.ruff.lint.isort]
-  force-sort-within-sections = true
-  known-first-party = ["homeassistant"]
+  force-sort-within-sections = false
+  known-first-party = ["custom_components", "ramses_rf", "ramses_tx"]
   combine-as-imports = true
   split-on-trailing-comma = false
 

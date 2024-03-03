@@ -1,10 +1,25 @@
 """Config flow to configure Ramses integration."""
 
-from abc import abstractmethod
-from copy import deepcopy
 import logging
 import re
+from abc import abstractmethod
+from copy import deepcopy
 from typing import Any, Final
+
+import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
+from homeassistant.components import usb
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigEntryState,
+    ConfigFlow,
+    OptionsFlow,
+)
+from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.data_entry_flow import FlowHandler, FlowResult
+from homeassistant.helpers import config_validation as cv, selector
+from homeassistant.helpers.storage import Store
+from serial.tools import list_ports  # type: ignore[import-untyped, unused-ignore]
 
 from ramses_rf.schemas import SCH_GATEWAY_DICT, SCH_GLOBAL_SCHEMAS, SZ_SCHEMA
 from ramses_tx.const import Code
@@ -20,21 +35,6 @@ from ramses_tx.schemas import (
     SZ_ROTATE_BYTES,
     SZ_SERIAL_PORT,
 )
-from serial.tools import list_ports  # type: ignore[import-untyped, unused-ignore]
-import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
-
-from homeassistant.components import usb
-from homeassistant.config_entries import (
-    ConfigEntry,
-    ConfigEntryState,
-    ConfigFlow,
-    OptionsFlow,
-)
-from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.data_entry_flow import FlowHandler, FlowResult
-from homeassistant.helpers import config_validation as cv, selector
-from homeassistant.helpers.storage import Store
 
 from .const import (
     CONF_ADVANCED_FEATURES,
