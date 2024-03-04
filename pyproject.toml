@@ -101,9 +101,9 @@
   "pytz".msg = "use zoneinfo instead"
 
 [tool.ruff.lint.isort]
+  combine-as-imports = true
   force-sort-within-sections = false
   known-first-party = ["custom_components", "ramses_rf", "ramses_tx"]
-  combine-as-imports = true
   split-on-trailing-comma = false
 
 [tool.ruff.lint.mccabe]
