@@ -4,17 +4,17 @@
 
 # for using the library
   # -r requirements.txt
-  voluptuous >= 0.14.2
+  # voluptuous>=0.14.2
 
 # used for development
-  mypy >= 1.8.0
-  pre-commit >= 3.6.2
-  ruff >= 0.2.1
+  mypy>=1.8.0
+  pre-commit>=3.6.2
+  ruff>=0.2.1
 
 # used for testing
-  pytest >= 8.0.2
-  pytest-asyncio >= 0.23.5
-  pytest-xdist >= 3.3.1
+  pytest>=8.0.2
+  pytest-asyncio>=0.23.5
+  pytest-xdist>=3.3.1
 
 # used for testing at runtime
-  debugpy >= 1.8.1
+  debugpy>=1.8.1
