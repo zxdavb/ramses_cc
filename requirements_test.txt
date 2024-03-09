@@ -1,0 +1,35 @@
+# last updated 2024-03-09, based on HA 2024.3.x
+#  - to check against pyproject.toml, github workflows
+#
+
+
+# Pre-requisities...
+#   rm -rf venv
+#   python3.12 -m venv --prompt ramses_cc venv
+#   source venv/bin/activate.fish
+#   pip install -e ~/clients/ramses_rf
+#   pip install -r requirements.txt
+#
+
+
+# for running the tests (includes HA)
+  pytest_homeassistant_custom_component>=0.13.107
+#
+
+
+# for use with ramses_cc - default
+# voluptuous>=0.13.1            # 0.14.x has typing support
+
+# for use with ramses_cc - required (in manifest.yaml)
+# paho-mqtt>=1.6.1,<2.0.0       # breaking change in v2
+  pyserial-asyncio>=0.6         # incl. pyserial==3.5
+# pyserial-asyncio-fast==0.11   # TBA: HA uses (written by HA)
+  ramses_rf==0.31.9             # -e ~/clients/ramses_rf
+
+# for use with ramses_cc - optional
+  colorlog>=6.8.2               # incl. colorama 0.4.6, if Windows/WSL
+#
+
+
+# used for testing at runtime
+  debugpy>=1.8.1

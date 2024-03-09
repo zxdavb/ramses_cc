@@ -6,15 +6,9 @@
   # -r requirements.txt
   # voluptuous>=0.14.2
 
-# used for development
+# used for development (in addition to pytest, debugpy)
   mypy>=1.8.0
-  pre-commit>=3.6.2
-  ruff>=0.2.1
+  types-paho-mqtt==1.6.0.20240106
+# voluptuous>=0.14.2
 
-# used for testing
-  pytest>=8.0.2
-  pytest-asyncio>=0.23.5
-  pytest-xdist>=3.3.1
-
-# used for testing at runtime
-  debugpy>=1.8.1
+  pre-commit>=3.6.2  # will have ruff, isort, etc.
