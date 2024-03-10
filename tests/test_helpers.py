@@ -2,13 +2,10 @@
 
 from custom_components.ramses_cc.schemas import deep_merge
 
-# I had a quick look at HAC dev docs - it is not clear how to include tests, e.g.
-# location of tests folder, etc.
-
 
 def test_deep_merge() -> None:
-    XXX = {"a": 10, "b": 20}
-    YYY = {"a": 11, "c": 31}
+    XXX: dict[str, int | dict[str, int]] = {"a": 10, "b": 20}
+    YYY: dict[str, int | dict[str, int]] = {"a": 11, "c": 31}
 
     assert deep_merge(XXX, YYY) == YYY | XXX  # TODO: == x | y
     assert deep_merge(YYY, XXX) == XXX | YYY  # TODO: == y | x

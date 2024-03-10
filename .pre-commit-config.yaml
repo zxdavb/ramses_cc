@@ -1,20 +1,14 @@
 # .pre-commit-config.yaml file for https://github.com/zxdavb/ramses_cc
-# last updated 2024-01-21
+# last updated 2024-02-22, based on HA 2024.03.dev0
 
 # exclude: (^.secrets/|^docs/|^misc)
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.8  # same as HA
+    rev: v0.3.2
     hooks:
       - id: ruff         # linter
       - id: ruff-format  # formatter
-
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.8.0
-  #   hooks:
-  #   - id: mypy
-  #     additional_dependencies: [voluptuous==0.14.1]
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
@@ -37,22 +31,34 @@ repos:
       # entry: '[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'  # email address
 
     - id: debugs
-      name: check DEBUG flags
+      name: check for DEBUG flags
       entry: '_DBG_.*=.*True'
       language: pygrep
       args: [-i]
       exclude: (.pre-commit-config.yaml|^tests/.*\.py$)  # avoid false +ve
 
     # - id: fixme
-    #   name: check FIXME flags
+    #   name: check for FIXME flags
     #   entry: '#.*(FIXME)'  # |TODO)'
     #   language: pygrep
     #   args: [-i]
     #   exclude: (.pre-commit-config.yaml|^tests/.*\.py$)  # avoid false +ve
 
     - id: secrets
-      name: check secrets
+      name: check for secrets
       entry: '#.*(secret|password|pwd)'
       language: pygrep
       args: [-i]
       exclude: .pre-commit-config.yaml  # avoid false +ve
+
+  # We do not use pre-commit/mirrors-mypy, as it comes with opinionated defaults
+  # (like --ignore-missing-imports) and is difficult to configure to run
+  # with the dependencies correctly installed.
+
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.8.0
+  #   hooks:
+  #   - id: mypy
+  #     additional_dependencies:
+  #       - voluptuous==0.13.1
+  #       - pytest-homeassistant-custom-component==0.13.100

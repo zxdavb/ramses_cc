@@ -1,0 +1,184 @@
+{
+    "config": {
+        "abort": {
+            "single_instance_allowed": "Already configured. Only a single configuration possible."
+        },
+        "error": {
+            "invalid_gateway_config": "Invalid ramses_rf config: {error_detail}",
+            "invalid_port_config": "Invalid serial port config: {error_detail}",
+            "invalid_regex": "Invalid regular expression: {error_detail}",
+            "invalid_schema": "Invalid schema: {error_detail}",
+            "invalid_traits": "Invalid device traits: {error_detail}"
+        },
+        "step": {
+            "init": {
+                "menu_options": {
+                    "choose_serial_port": "Serial port",
+                    "config": "Gateway configuration",
+                    "schema": "System schema and known devices",
+                    "advanced_features": "Advanced features",
+                    "packet_log": "Packet log",
+                    "clear_cache": "Clear cache"
+                }
+            },
+            "choose_serial_port": {
+                "title": "Choose serial port",
+                "data": {
+                    "port_name": "Serial device path"
+                }
+            },
+            "configure_serial_port": {
+                "title": "Serial port config",
+                "data": {
+                    "port_name": "Serial device path",
+                    "serial_port": "Advanced serial port config"
+                },
+                "data_description": {
+                    "serial_port": "Not required for typical use."
+                }
+            },
+            "config": {
+                "title": "Gateway configuration",
+                "data": {
+                    "scan_interval": "Scan interval",
+                    "ramses_rf": "Advanced ramses_rf gateway configuration"
+                },
+                "data_description": {
+                    "scan_interval": "How often to poll for changes in state. Values below 60 or above 180 are not recommended.",
+                    "ramses_rf": "Not required for typical use."
+                }
+            },
+            "schema": {
+                "title": "System schema and known devices",
+                "description": "Refer to the configuration section in the [wiki](https://github.com/zxdavb/ramses_cc/wiki/) for further details and examples of system schema configuration.",
+                "data": {
+                    "schema": "System schema(s)",
+                    "known_list": "Known device IDs",
+                    "enforce_known_list": "Accept packets from known devices IDs only"
+                },
+                "data_description": {
+                    "schema": "A mapping of system device IDs to their respective schemas. This should be kept minimal and only contain devices that are not automatically discovered.",
+                    "known_list": "A mapping of known device IDs and optionally their traits.",
+                    "enforce_known_list": "Recommended once you have entered all your device IDs as the RAMSES II protocol does not include error correction and corrupt device IDs are common."
+                }
+            },
+            "advanced_features": {
+                "title": "Advanced features",
+                "data": {
+                    "send_packet": "Enable send_packet service for broadcasting bespoke packets",
+                    "message_events": "Emit events for messages matching regular expression"
+                },
+                "data_description": {
+                    "message_events": "Enter a regular expression against which to match messages. For example `RP.* 10:` will emit events for all messages sent by an OTB."
+                }
+            },
+            "packet_log": {
+                "title": "Packet log",
+                "description": "Optional packet log to aid troubleshooting and help development.",
+                "data": {
+                    "file_name": "Packet log file name",
+                    "rotate_bytes": "Maximum size of each packet log",
+                    "rotate_backups": "Number of packet logs to keep"
+                },
+                "data_description": {
+                    "file_name": "Path to a packet log file. Retained backups will use this filename with a suffix."
+                }
+            }
+        }
+    },
+    "options": {
+        "abort": {
+            "cache_cleared": "Cache cleared."
+        },
+        "error": {
+            "invalid_gateway_config": "Invalid ramses_rf config: {error_detail}",
+            "invalid_port_config": "Invalid serial port config: {error_detail}",
+            "invalid_regex": "Invalid regular expression: {error_detail}",
+            "invalid_schema": "Invalid schema: {error_detail}",
+            "invalid_traits": "Invalid device traits: {error_detail}"
+        },
+        "step": {
+            "init": {
+                "menu_options": {
+                    "choose_serial_port": "Serial port",
+                    "config": "Gateway configuration",
+                    "schema": "System schema and known devices",
+                    "advanced_features": "Advanced features",
+                    "packet_log": "Packet log",
+                    "clear_cache": "Clear cache"
+                }
+            },
+            "choose_serial_port": {
+                "title": "Choose serial port",
+                "data": {
+                    "port_name": "Serial device path"
+                }
+            },
+            "configure_serial_port": {
+                "title": "Serial port config",
+                "data": {
+                    "port_name": "Serial device path",
+                    "serial_port": "Advanced serial port config"
+                },
+                "data_description": {
+                    "serial_port": "Not required for typical use."
+                }
+            },
+            "config": {
+                "title": "Gateway configuration",
+                "data": {
+                    "scan_interval": "Scan interval",
+                    "ramses_rf": "Advanced ramses_rf gateway configuration"
+                },
+                "data_description": {
+                    "scan_interval": "How often to poll for changes in state. Values below 60 or above 180 are not recommended.",
+                    "ramses_rf": "Not required for typical use."
+                }
+            },
+            "schema": {
+                "title": "System schema and known devices",
+                "description": "Refer to the configuration section in the [wiki](https://github.com/zxdavb/ramses_cc/wiki/) for further details and examples of system schema configuration.",
+                "data": {
+                    "schema": "System schema(s)",
+                    "known_list": "Known device IDs",
+                    "enforce_known_list": "Accept packets from known devices IDs only"
+                },
+                "data_description": {
+                    "schema": "A mapping of system device IDs to their respective schemas. This should be kept minimal and only contain devices that are not automatically discovered.",
+                    "known_list": "A mapping of known device IDs and optionally their traits.",
+                    "enforce_known_list": "Recommended once you have entered all your device IDs as the RAMSES II protocol does not include error correction and corrupt device IDs are common."
+                }
+            },
+            "advanced_features": {
+                "title": "Advanced features",
+                "data": {
+                    "send_packet": "Enable send_packet service for broadcasting bespoke packets",
+                    "message_events": "Emit events for messages matching regular expression"
+                },
+                "data_description": {
+                    "message_events": "Enter a regular expression against which to match messages. For example `RP.* 10:` will emit events for all messages sent by an OTB."
+                }
+            },
+            "packet_log": {
+                "title": "Packet log",
+                "description": "Optional packet log to aid troubleshooting and help development.",
+                "data": {
+                    "file_name": "Packet log file name",
+                    "rotate_bytes": "Maximum size of each packet log",
+                    "rotate_backups": "Number of packet logs to keep"
+                },
+                "data_description": {
+                    "file_name": "Path to a packet log file. Retained backups will use this filename with a suffix."
+                }
+            },
+            "clear_cache": {
+                "title": "Clear cache",
+                "description": "Choose items below to immediately clear the cache and reload the integration after significant changes to your system schema or configuration.",
+                "data": {
+                    "clear_schema": "Clear discovered system schema(s)",
+                    "clear_packets": "Clear system state (recent packets)"
+                }
+            }
+        }
+    }
+}

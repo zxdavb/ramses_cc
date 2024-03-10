@@ -1,10 +1,34 @@
 """Support for RAMSES sensors."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from types import UnionType
 from typing import Any
+
+from homeassistant.components.sensor import (
+    ENTITY_ID_FORMAT,
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    CONCENTRATION_PARTS_PER_MILLION,
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfPressure,
+    UnitOfTemperature,
+    UnitOfTime,
+)
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    EntityPlatform,
+    async_get_current_platform,
+)
 
 from ramses_rf.const import (
     SZ_AIR_QUALITY,
@@ -61,66 +85,36 @@ from ramses_tx.const import (
     SZ_TEMPERATURE,
 )
 
-from homeassistant.components.sensor import (
-    DOMAIN as PLATFORM,
-    ENTITY_ID_FORMAT,
-    SensorDeviceClass,
-    SensorEntity,
-    SensorEntityDescription,
-    SensorStateClass,
-)
-from homeassistant.const import (
-    CONCENTRATION_PARTS_PER_MILLION,
-    PERCENTAGE,
-    EntityCategory,
-    UnitOfPressure,
-    UnitOfTemperature,
-    UnitOfTime,
-)
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import (
-    AddEntitiesCallback,
-    EntityPlatform,
-    async_get_current_platform,
-)
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
-from .const import ATTR_SETPOINT, BROKER, DOMAIN, UnitOfVolumeFlowRate
+from .const import ATTR_SETPOINT, DOMAIN, UnitOfVolumeFlowRate
 from .schemas import SVCS_RAMSES_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    _: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType = None,
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Create sensors for CH/DHW (heat) & HVAC."""
+    """Set up the sensor platform."""
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    platform: EntityPlatform = async_get_current_platform()
 
-    if discovery_info is None:
-        return
+    for k, v in SVCS_RAMSES_SENSOR.items():
+        platform.async_register_entity_service(k, v, f"async_{k}")
 
-    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
+    @callback
+    def add_devices(devices: list[RamsesRFEntity]) -> None:
+        entities = [
+            description.ramses_cc_class(broker, device, description)
+            for device in devices
+            for description in SENSOR_DESCRIPTIONS
+            if isinstance(device, description.ramses_rf_class)
+            and hasattr(device, description.ramses_rf_attr)
+        ]
+        async_add_entities(entities)
 
-    if not broker._services.get(PLATFORM):
-        broker._services[PLATFORM] = True
-        platform: EntityPlatform = async_get_current_platform()
-
-        for k, v in SVCS_RAMSES_SENSOR.items():
-            platform.async_register_entity_service(k, v, f"async_{k}")
-
-    entities = [
-        description.ramses_cc_class(broker, device, description)
-        for device in discovery_info["devices"]
-        for description in SENSOR_DESCRIPTIONS
-        if isinstance(device, description.ramses_rf_class)
-        and hasattr(device, description.ramses_rf_attr)
-    ]
-    async_add_entities(entities)
+    broker.async_register_platform(platform, add_devices)
 
 
 class RamsesSensor(RamsesEntity, SensorEntity):
@@ -165,17 +159,6 @@ class RamsesSensor(RamsesEntity, SensorEntity):
         if self.entity_description.ramses_cc_icon_off and not self.native_value:
             return self.entity_description.ramses_cc_icon_off
         return super().icon
-
-    # TODO: Remove this when we have config entries and devices.
-    @property
-    def name(self) -> str:
-        """Return name temporarily prefixed with device name/id."""
-        prefix = (
-            self._device.name
-            if hasattr(self._device, "name") and self._device.name
-            else self._device.id
-        )
-        return f"{prefix} {super().name}"
 
     # the following methods are integration-specific service calls
 
@@ -250,27 +233,16 @@ class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescrip
     # integration-specific attributes
     ramses_cc_class: type[RamsesSensor] = RamsesSensor
     ramses_cc_icon_off: str | None = None  # no SensorEntityDescription.icon_off attr
-    ramses_rf_attr: str = None  # type: ignore[assignment]
     ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
-
-    def __post_init__(self) -> None:
-        """Default values for descriptor attrs.
-
-        Is a convenience to avoid having to specify the values in the DESCRIPTOR table.
-        """
-
-        # HACK: may not be acceptible to HA core devs (should just complete the table)
-        object.__setattr__(self, "ramses_rf_attr", self.ramses_rf_attr or self.key)
-        object.__setattr__(
-            self, "ramses_cc_class", self.ramses_cc_class or RamsesSensor
-        )
+    ramses_rf_attr: str
 
 
 SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     RamsesSensorEntityDescription(
         key=SZ_TEMPERATURE,
-        device_class=SensorDeviceClass.TEMPERATURE,
         ramses_rf_class=HvacHumiditySensor | TrvActuator,
+        ramses_rf_attr=SZ_TEMPERATURE,
+        device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         ramses_cc_extra_attributes={
             ATTR_SETPOINT: SZ_SETPOINT,
@@ -278,8 +250,9 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_TEMPERATURE,
-        device_class=SensorDeviceClass.TEMPERATURE,
         ramses_rf_class=DhwSensor | OutSensor | Thermostat,
+        ramses_rf_attr=SZ_TEMPERATURE,
+        device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         entity_category=None,
         ramses_cc_extra_attributes={
@@ -288,31 +261,35 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_DEWPOINT_TEMP,
+        ramses_rf_class=HvacHumiditySensor,
+        ramses_rf_attr=SZ_DEWPOINT_TEMP,
         name="Dewpoint temperature",
         icon="mdi:water-thermometer",
         device_class=SensorDeviceClass.TEMPERATURE,
-        ramses_rf_class=HvacHumiditySensor,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_HEAT_DEMAND,
+        ramses_rf_class=OtbGateway,
+        ramses_rf_attr=SZ_HEAT_DEMAND,
         name="Heat demand",
         icon="mdi:radiator",
         ramses_cc_icon_off="mdi:radiator-off",
-        ramses_rf_class=OtbGateway,
         native_unit_of_measurement=PERCENTAGE,
     ),
     RamsesSensorEntityDescription(  # not OtbGateway
         key=SZ_HEAT_DEMAND,
+        ramses_rf_class=SystemBase | TrvActuator | UfhController | ZoneBase,
+        ramses_rf_attr=SZ_HEAT_DEMAND,
         name="Heat demand",
         icon="mdi:radiator",
         ramses_cc_icon_off="mdi:radiator-off",
-        ramses_rf_class=SystemBase | TrvActuator | UfhController | ZoneBase,
         native_unit_of_measurement=PERCENTAGE,
         entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_RELAY_DEMAND,
+        ramses_rf_attr=SZ_RELAY_DEMAND,
         name="Relay demand",
         icon="mdi:power-plug",
         ramses_cc_icon_off="mdi:power-plug-off",
@@ -320,6 +297,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=f"{SZ_RELAY_DEMAND}_fa",
+        ramses_rf_attr=f"{SZ_RELAY_DEMAND}_fa",
         name="Relay demand (FA)",
         icon="mdi:power-plug",
         ramses_cc_icon_off="mdi:power-plug-off",
@@ -328,106 +306,124 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_BOILER_OUTPUT_TEMP,
+        ramses_rf_attr=SZ_BOILER_OUTPUT_TEMP,
         name="Boiler output temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_BOILER_RETURN_TEMP,
+        ramses_rf_attr=SZ_BOILER_RETURN_TEMP,
         name="Boiler return temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_BOILER_SETPOINT,
+        ramses_rf_attr=SZ_BOILER_SETPOINT,
         name="Boiler setpoint",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_CH_SETPOINT,
+        ramses_rf_attr=SZ_CH_SETPOINT,
         name="CH setpoint",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_CH_MAX_SETPOINT,
+        ramses_rf_attr=SZ_CH_MAX_SETPOINT,
         name="CH max setpoint",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_CH_WATER_PRESSURE,
+        ramses_rf_attr=SZ_CH_WATER_PRESSURE,
         name="CH water pressure",
         device_class=SensorDeviceClass.PRESSURE,
         native_unit_of_measurement=UnitOfPressure.BAR,
     ),
     RamsesSensorEntityDescription(
         key=SZ_DHW_FLOW_RATE,
+        ramses_rf_attr=SZ_DHW_FLOW_RATE,
         name="DHW flow rate",
         native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
     ),
     RamsesSensorEntityDescription(
         key=SZ_DHW_SETPOINT,
+        ramses_rf_attr=SZ_DHW_SETPOINT,
         name="DHW setpoint",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_DHW_TEMP,
+        ramses_rf_attr=SZ_DHW_TEMP,
         name="DHW temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_OUTSIDE_TEMP,
+        ramses_rf_attr=SZ_OUTSIDE_TEMP,
         name="Outside temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_REL_MODULATION_LEVEL,
+        ramses_rf_attr=SZ_REL_MODULATION_LEVEL,
         name="Relative modulation level",
         native_unit_of_measurement=PERCENTAGE,
         entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_MAX_REL_MODULATION,
+        ramses_rf_attr=SZ_MAX_REL_MODULATION,
         name="Max relative modulation level",
         native_unit_of_measurement=PERCENTAGE,
     ),
     # HVAC (mostly ventilation units)
     RamsesSensorEntityDescription(
         key=SZ_AIR_QUALITY,
+        ramses_rf_attr=SZ_AIR_QUALITY,
         name="Air quality",
         native_unit_of_measurement=PERCENTAGE,
         entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_AIR_QUALITY_BASIS,
+        ramses_rf_attr=SZ_AIR_QUALITY_BASIS,
         name="Air quality basis",
         native_unit_of_measurement=PERCENTAGE,
     ),
     RamsesSensorEntityDescription(
         key=SZ_CO2_LEVEL,
+        ramses_rf_attr=SZ_CO2_LEVEL,
         device_class=SensorDeviceClass.CO2,
         native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_EXHAUST_FAN_SPEED,
+        ramses_rf_attr=SZ_EXHAUST_FAN_SPEED,
         name="Exhaust fan speed",
         native_unit_of_measurement=PERCENTAGE,
         entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_EXHAUST_FLOW,
+        ramses_rf_attr=SZ_EXHAUST_FLOW,
         name="Exhaust flow",
         native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_SECOND,
         entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_EXHAUST_TEMP,
+        ramses_rf_attr=SZ_EXHAUST_TEMP,
         name="Exhaust temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -435,16 +431,19 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_FAN_INFO,
+        ramses_rf_attr=SZ_FAN_INFO,
         name="Fan info",
         state_class=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_FILTER_REMAINING,
+        ramses_rf_attr=SZ_FILTER_REMAINING,
         name="Filter remaining",
         native_unit_of_measurement=UnitOfTime.DAYS,
     ),
     RamsesSensorEntityDescription(
         key=SZ_INDOOR_HUMIDITY,
+        ramses_rf_attr=SZ_INDOOR_HUMIDITY,
         name="Indoor humidity",
         device_class=SensorDeviceClass.HUMIDITY,
         native_unit_of_measurement=PERCENTAGE,
@@ -452,6 +451,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_INDOOR_TEMP,
+        ramses_rf_attr=SZ_INDOOR_TEMP,
         name="Indoor temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -459,6 +459,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_OUTDOOR_HUMIDITY,
+        ramses_rf_attr=SZ_OUTDOOR_HUMIDITY,
         name="Outdoor humidity",
         device_class=SensorDeviceClass.HUMIDITY,
         native_unit_of_measurement=PERCENTAGE,
@@ -466,6 +467,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_OUTDOOR_TEMP,
+        ramses_rf_attr=SZ_OUTDOOR_TEMP,
         name="Outdoor temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -473,39 +475,46 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key=SZ_POST_HEAT,
+        ramses_rf_attr=SZ_POST_HEAT,
         name="Post heat",
         native_unit_of_measurement=PERCENTAGE,
         entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_PRE_HEAT,
+        ramses_rf_attr=SZ_PRE_HEAT,
         name="Pre heat",
         native_unit_of_measurement=PERCENTAGE,
         entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_REMAINING_MINS,
+        ramses_rf_attr=SZ_REMAINING_MINS,
         name="Remaining time",
         native_unit_of_measurement=UnitOfTime.MINUTES,
     ),
     RamsesSensorEntityDescription(
         key=SZ_SPEED_CAPABILITIES,
+        ramses_rf_attr=SZ_SPEED_CAPABILITIES,
         name="Speed cap",
         native_unit_of_measurement="units",
     ),
     RamsesSensorEntityDescription(
         key=SZ_SUPPLY_FAN_SPEED,
+        ramses_rf_attr=SZ_SUPPLY_FAN_SPEED,
         name="Supply fan speed",
         native_unit_of_measurement=PERCENTAGE,
     ),
     RamsesSensorEntityDescription(
         key=SZ_SUPPLY_FLOW,
+        ramses_rf_attr=SZ_SUPPLY_FLOW,
         name="Supply flow",
         native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_SECOND,
         entity_category=None,
     ),
     RamsesSensorEntityDescription(
         key=SZ_SUPPLY_TEMP,
+        ramses_rf_attr=SZ_SUPPLY_TEMP,
         name="Supply temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -514,15 +523,17 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     # Special projects
     RamsesSensorEntityDescription(
         key=SZ_OEM_CODE,
-        name="OEM code",
         ramses_rf_class=OtbGateway,
+        ramses_rf_attr=SZ_OEM_CODE,
+        name="OEM code",
         state_class=None,
         entity_registry_enabled_default=False,
     ),
     RamsesSensorEntityDescription(
         key="percent",
-        name="Percent",
         ramses_rf_class=OtbGateway,
+        ramses_rf_attr="percent",
+        name="Percent",
         icon="mdi:power-plug",
         ramses_cc_icon_off="mdi:power-plug-off",
         native_unit_of_measurement=PERCENTAGE,
@@ -530,8 +541,9 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(
         key="value",
-        name="Value",
         ramses_rf_class=OtbGateway,
+        ramses_rf_attr="value",
+        name="Value",
         native_unit_of_measurement="units",
         entity_registry_enabled_default=False,
     ),

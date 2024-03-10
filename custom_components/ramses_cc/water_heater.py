@@ -1,18 +1,14 @@
 """Support for RAMSES water_heater entities."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime as dt, timedelta
 import json
 import logging
+from dataclasses import dataclass
+from datetime import datetime as dt, timedelta
 from typing import Any, Final
 
-from ramses_rf.system.heat import StoredHw
-from ramses_rf.system.zones import DhwZone
-from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
-
 from homeassistant.components.water_heater import (
-    DOMAIN as PLATFORM,
     ENTITY_ID_FORMAT,
     STATE_OFF,
     STATE_ON,
@@ -20,6 +16,7 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntityEntityDescription,
     WaterHeaterEntityFeature,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import (
@@ -27,11 +24,14 @@ from homeassistant.helpers.entity_platform import (
     EntityPlatform,
     async_get_current_platform,
 )
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+
+from ramses_rf.system.heat import StoredHw
+from ramses_rf.system.zones import DhwZone
+from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
-from .const import BROKER, DOMAIN, SystemMode, ZoneMode
+from .const import DOMAIN, SystemMode, ZoneMode
 from .schemas import SVCS_RAMSES_WATER_HEATER
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,33 +48,27 @@ MODE_HA_TO_RAMSES: Final[dict[str, str]] = {
 }
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    _: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType = None,
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Create DHW controllers for CH/DHW (heat)."""
+    """Set up the water heater platform."""
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    platform: EntityPlatform = async_get_current_platform()
 
-    if discovery_info is None:
-        return
+    for k, v in SVCS_RAMSES_WATER_HEATER.items():
+        platform.async_register_entity_service(k, v, f"async_{k}")
 
-    broker: RamsesBroker = hass.data[DOMAIN][BROKER]
+    @callback
+    def add_devices(devices: list[DhwZone]) -> None:
+        entities = [
+            description.ramses_cc_class(broker, device, description)
+            for device in devices
+            for description in WATER_HEATER_DESCRIPTIONS
+            if isinstance(device, description.ramses_rf_class)
+        ]
+        async_add_entities(entities)
 
-    if not broker._services.get(PLATFORM):
-        broker._services[PLATFORM] = True
-        platform: EntityPlatform = async_get_current_platform()
-
-        for k, v in SVCS_RAMSES_WATER_HEATER.items():
-            platform.async_register_entity_service(k, v, f"async_{k}")
-
-    entites = [
-        RamsesWaterHeaterEntityDescription.ramses_cc_class(
-            broker, device, RamsesWaterHeaterEntityDescription()
-        )
-        for device in discovery_info["devices"]
-    ]
-    async_add_entities(entites)
+    broker.async_register_platform(platform, add_devices)
 
 
 class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
@@ -140,11 +134,6 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
             return self._device.tcs.system_mode[SZ_SYSTEM_MODE] == SystemMode.AWAY
         except TypeError:
             return None  # unable to determine
-
-    @property
-    def name(self) -> str | None:
-        """Return the name of the zone."""
-        return self._device.name
 
     @property
     def target_temperature(self) -> float | None:
@@ -242,7 +231,16 @@ class RamsesWaterHeaterEntityDescription(
 ):
     """Class describing Ramses water heater entities."""
 
-    key = "dhwzone"
-
     # integration-specific attributes
-    ramses_cc_class: type[RamsesWaterHeater] = RamsesWaterHeater
+    ramses_cc_class: type[RamsesWaterHeater]
+    ramses_rf_class: type[DhwZone]
+
+
+WATER_HEATER_DESCRIPTIONS: tuple[RamsesWaterHeaterEntityDescription, ...] = (
+    RamsesWaterHeaterEntityDescription(
+        key="dhwzone",
+        name=None,
+        ramses_rf_class=DhwZone,
+        ramses_cc_class=RamsesWaterHeater,
+    ),
+)

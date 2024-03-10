@@ -1,6 +1,6 @@
 #
 ### project ##########################################################################
-# ramses_cc, updated: 2023-11-11
+# ramses_cc, updated: 2024-02-22
 #
 
 #
@@ -14,14 +14,23 @@
 ### mypy ############################################################################
 
 [tool.mypy]
-  # exclude = "tests"
-  files = ["custom_components"]
+  files = [
+    "custom_components"
+  ]
+  exclude = "tests/virtual_rf/*"
+
   follow_imports = "skip"  # TODO: don't use this feature
+  # no_implicit_optional = false
+
+  # see: https://mypy.readthedocs.io/en/stable/existing_code.html#introduce-stricter-options
 
   # Start off with these
   warn_unused_configs = true
   warn_redundant_casts = true  # this is not per-module
   warn_unused_ignores = true
+
+  # Getting these passing should be easy
+  # extra_checks = true  # was: strict_equality, strict_concatenate = true
 
   # Strongly recommend enabling this one as soon as you can
   check_untyped_defs = true
@@ -75,7 +84,7 @@
   ignore = ["E501"]
   # E501  - Line too long
 
-[tool.ruff.flake8-import-conventions.extend-aliases]
+[tool.ruff.lint.flake8-import-conventions.extend-aliases]
   voluptuous = "vol"
   "homeassistant.helpers.area_registry" = "ar"
   "homeassistant.helpers.config_validation" = "cv"
@@ -84,18 +93,18 @@
   "homeassistant.helpers.issue_registry" = "ir"
   "homeassistant.util.dt" = "dt_util"
 
-[tool.ruff.flake8-pytest-style]
+[tool.ruff.lint.flake8-pytest-style]
   fixture-parentheses = false
 
-[tool.ruff.flake8-tidy-imports.banned-api]
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
   "async_timeout".msg = "use asyncio.timeout instead"
   "pytz".msg = "use zoneinfo instead"
 
-[tool.ruff.isort]
-  force-sort-within-sections = true
-  known-first-party = ["homeassistant"]
+[tool.ruff.lint.isort]
   combine-as-imports = true
+  force-sort-within-sections = false
+  known-first-party = ["custom_components", "ramses_rf", "ramses_tx"]
   split-on-trailing-comma = false
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
   max-complexity = 25

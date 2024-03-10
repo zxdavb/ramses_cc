@@ -2,29 +2,31 @@
 
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 
-from ramses_rf.device import Fakeable
-from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_tx.address import pkt_addrs
-from ramses_tx.command import Command
-from ramses_tx.exceptions import PacketAddrSetInvalid, TransportSerialError
-import voluptuous as vol  # type: ignore[import-untyped]
-
+from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType
 
+from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_tx.exceptions import TransportSerialError
+
 from .broker import RamsesBroker
 from .const import (
-    BROKER,
     CONF_ADVANCED_FEATURES,
     CONF_MESSAGE_EVENTS,
     CONF_SEND_PACKET,
@@ -33,7 +35,7 @@ from .const import (
 )
 from .schemas import (
     SCH_BIND_DEVICE,
-    SCH_DOMAIN_CONFIG,
+    SCH_NO_SVC_PARAMS,
     SCH_SEND_PACKET,
     SVC_BIND_DEVICE,
     SVC_FORCE_UPDATE,
@@ -47,7 +49,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-CONFIG_SCHEMA = vol.Schema({DOMAIN: SCH_DOMAIN_CONFIG}, extra=vol.ALLOW_EXTRA)
+CONFIG_SCHEMA = cv.deprecated(DOMAIN, raise_if_present=False)
 
 PLATFORMS: Final[Platform] = (
     Platform.BINARY_SENSOR,
@@ -59,34 +61,87 @@ PLATFORMS: Final[Platform] = (
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the Ramses integration."""
+
+    hass.data[DOMAIN] = {}
+
+    # One-off import of entry from config yaml
+    if DOMAIN in config and not hass.config_entries.async_entries(DOMAIN):
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": config_entries.SOURCE_IMPORT},
+                data=config[DOMAIN],
+            )
+        )
+
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
 
-    broker = RamsesBroker(hass, config)
+    _LOGGER.debug("Setting up entry %s...", entry.entry_id)
+
+    broker = RamsesBroker(hass, entry)  # KeyError: 'serial_port'
+
     try:
-        await broker.start()
+        await broker.async_setup()
     except TransportSerialError as exc:
-        _LOGGER.error("There is a problem with the serial port: %s", exc)
+        msg = f"There is a problem with the serial port: {exc}"
+        _LOGGER.debug("Failed to set up entry %s (will retry): %s", entry.entry_id, msg)
+        raise ConfigEntryNotReady(msg) from exc
+
+    # Setup is complete and config is valid, so start polling
+    hass.data[DOMAIN][entry.entry_id] = broker
+    await broker.async_start()
+
+    async_register_domain_services(hass, entry, broker)
+    async_register_domain_events(hass, entry, broker)
+
+    entry.async_on_unload(entry.add_update_listener(async_update_listener))
+
+    _LOGGER.debug("Successfully set up entry %s", entry.entry_id)
+    return True
+
+
+async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+
+    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    if not await broker.async_unload_platforms():
         return False
 
-    hass.data.setdefault(DOMAIN, {})[BROKER] = broker
+    for svc in hass.services.async_services_for_domain(DOMAIN):
+        hass.services.async_remove(DOMAIN, svc)
 
-    register_domain_services(hass, broker)
-    register_domain_events(hass, broker)
+    hass.data[DOMAIN].pop(entry.entry_id)
 
     return True
 
 
 @callback  # TODO: the following is a mess - to add register/deregister of clients
-def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
+def async_register_domain_events(
+    hass: HomeAssistant, entry: ConfigEntry, broker: RamsesBroker
+) -> None:
     """Set up the handlers for the system-wide events."""
+
+    features: dict[str, Any] = entry.options.get(CONF_ADVANCED_FEATURES, {})
+    if message_events := features.get(CONF_MESSAGE_EVENTS):
+        message_events_regex = re.compile(message_events)
+    else:
+        message_events_regex = None
 
     @callback
     def async_process_msg(msg: Message, *args: Any, **kwargs: Any) -> None:
         """Process a message from the event bus as pass it on."""
 
-        if (
-            regex := broker.config[CONF_ADVANCED_FEATURES][CONF_MESSAGE_EVENTS]
-        ) and regex.search(f"{msg!r}"):
+        if message_events_regex and message_events_regex.search(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
                 "src": msg.src.id,
@@ -110,69 +165,31 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
 
 
 @callback
-def register_domain_services(hass: HomeAssistant, broker: RamsesBroker) -> None:
+def async_register_domain_services(
+    hass: HomeAssistant, entry: ConfigEntry, broker: RamsesBroker
+) -> None:
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)  # TODO: is a work in progress
     async def async_bind_device(call: ServiceCall) -> None:
-        device: Fakeable
-
-        try:
-            device = broker.client.fake_device(call.data["device_id"])
-        except LookupError as exc:
-            _LOGGER.error("%s", exc)
-            return
-
-        if call.data["device_info"]:
-            cmd = Command(call.data["device_info"])
-        else:
-            cmd = None
-
-        await device._initiate_binding_process(  # may: BindingFlowFailed
-            list(call.data["offer"].keys()),
-            confirm_code=list(call.data["confirm"].keys()),
-            ratify_cmd=cmd,
-        )  # TODO: will need to re-discover schema
-        hass.helpers.event.async_call_later(5, broker.async_update)
+        await broker.async_bind_device(call)
 
     @verify_domain_control(hass, DOMAIN)
-    async def async_force_update(_: ServiceCall) -> None:
-        await broker.async_update()
+    async def async_force_update(call: ServiceCall) -> None:
+        await broker.async_force_update(call)
 
     @verify_domain_control(hass, DOMAIN)
     async def async_send_packet(call: ServiceCall) -> None:
-        kwargs = dict(call.data.items())  # is ReadOnlyDict
-        if (
-            call.data["device_id"] == "18:000730"
-            and kwargs.get("from_id", "18:000730") == "18:000730"
-            and broker.client.hgi.id
-        ):
-            kwargs["device_id"] = broker.client.hgi.id
-
-        cmd = broker.client.create_cmd(**kwargs)
-
-        # HACK: to fix the device_id when GWY announcing, will be:
-        #    I --- 18:000730 18:006402 --:------ 0008 002 00C3  # because src != dst
-        # ... should be:
-        #    I --- 18:000730 --:------ 18:006402 0008 002 00C3  # 18:730 is sentinel
-        if cmd.src.id == "18:000730" and cmd.dst.id == broker.client.hgi.id:
-            try:
-                pkt_addrs(broker.client.hgi.id + cmd._frame[16:37])
-            except PacketAddrSetInvalid:
-                cmd._addrs[1], cmd._addrs[2] = cmd._addrs[2], cmd._addrs[1]
-                cmd._repr = None
-
-        broker.client.send_cmd(cmd)
-        hass.helpers.event.async_call_later(5, broker.async_update)
+        await broker.async_send_packet(call)
 
     hass.services.async_register(
         DOMAIN, SVC_BIND_DEVICE, async_bind_device, schema=SCH_BIND_DEVICE
     )
     hass.services.async_register(
-        DOMAIN, SVC_FORCE_UPDATE, async_force_update, schema={}
+        DOMAIN, SVC_FORCE_UPDATE, async_force_update, schema=SCH_NO_SVC_PARAMS
     )
 
-    if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
+    if entry.options.get(CONF_ADVANCED_FEATURES, {}).get(CONF_SEND_PACKET):
         hass.services.async_register(
             DOMAIN, SVC_SEND_PACKET, async_send_packet, schema=SCH_SEND_PACKET
         )
@@ -201,6 +218,7 @@ class RamsesEntity(Entity):
         self.entity_description = entity_description
 
         self._attr_unique_id = device.id
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, device.id)})
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -229,8 +247,10 @@ class RamsesEntity(Entity):
     def async_write_ha_state_delayed(self, delay: int = 3) -> None:
         """Write to the state machine after a short delay to allow system to quiesce."""
 
-        # FIXME: doesn't work, as injects `_now: dt``, where only self is expected
-        # async_call_later(self.hass, delay, self.async_write_ha_state)
+        # NOTE: this doesn't work (below), as call_later injects `_now: dt`
+        #     async_call_later(self.hass, delay, self.async_write_ha_state)
+        # but only self is expected:
+        #     def async_write_ha_state(self) -> None:
 
         self.hass.loop.call_later(delay, self.async_write_ha_state)
 
