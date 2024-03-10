@@ -1,17 +1,13 @@
 """Support for RAMSES HVAC RF remotes."""
+
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime as dt, timedelta
-import logging
 from typing import Any
-
-from ramses_rf.device.hvac import HvacRemote
-from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_tx.command import Command
-from ramses_tx.const import Priority
 
 from homeassistant.components.remote import (
     DOMAIN as PLATFORM,
@@ -28,6 +24,11 @@ from homeassistant.helpers.entity_platform import (
     async_get_current_platform,
 )
 from homeassistant.helpers.typing import DiscoveryInfoType
+
+from ramses_rf.device.hvac import HvacRemote
+from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_tx.command import Command
+from ramses_tx.const import Priority
 
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker

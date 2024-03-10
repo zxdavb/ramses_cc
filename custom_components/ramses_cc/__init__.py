@@ -2,25 +2,26 @@
 
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 
-from ramses_rf.device import Fakeable
-from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_tx.address import pkt_addrs
-from ramses_tx.command import Command
-from ramses_tx.exceptions import PacketAddrSetInvalid, TransportSerialError
 import voluptuous as vol  # type: ignore[import-untyped]
-
 from homeassistant.const import ATTR_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType
+
+from ramses_rf.device import Fakeable
+from ramses_rf.entity_base import Entity as RamsesRFEntity
+from ramses_tx.address import pkt_addrs
+from ramses_tx.command import Command
+from ramses_tx.exceptions import PacketAddrSetInvalid, TransportSerialError
 
 from .broker import RamsesBroker
 from .const import (
