@@ -7,7 +7,8 @@
     "requirements": [
       "paho-mqtt==1.6.1",
       "pyserial-asyncio==0.6",
-      "ramses-rf==0.31.11"
+      "ramses-rf==0.31.11",
+      "voluptuous==0.13.1"
     ],
     "dependencies": [],
     "config_flow": true,
