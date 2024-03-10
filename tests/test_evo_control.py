@@ -1,17 +1,17 @@
 """Test the compatibility of the interface (/api/states) with EvoControl.
 
-    See: https://www.amazon.co.uk/dp/B0BL1CN6WS
+See: https://www.amazon.co.uk/dp/B0BL1CN6WS
 
-    The intention here is to confirm the namespace remains consistent, so that the
-    interface with EvoControl is not broken from one version of this integration to
-    the next.
+The intention here is to confirm the namespace remains consistent, so that the
+interface with EvoControl is not broken from one version of this integration to
+the next.
 
-    The test will check schema JSON, entity_id, attributes (attr_id and values).
+The test will check schema JSON, entity_id, attributes (attr_id and values).
 
-    Note that EvoControl uses the /api/states endpoint to get its data (and that is
-    tested only indirectly here).
+Note that EvoControl uses the /api/states endpoint to get its data (and that is
+tested only indirectly here).
 
-    This does not test any service calls, or any other endpoints.
+This does not test any service calls, or any other endpoints.
 """
 
 import json
@@ -193,7 +193,7 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     climate: ClimateEntity = [e for e in climates if e.entity_id == id][0]
     assert climate.unique_id == CTL_ID
-    # assert climate.name is None or True  # FIXME
+    # assert climate.name == f"Controller {CTL_ID}"  # TODO
 
     assert climate.state == HVACMode.HEAT
     assert climate.preset_mode == PRESET_ECO
@@ -209,7 +209,7 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
         climate = [e for e in climates if e.entity_id == id][0]
         assert climate.unique_id == f"{CTL_ID}_{zon_idx}"
-        # assert climate._device.name == SCHEMA["zones"][zon_idx]["_name"]  # FIXME
+        # assert climate.name == SCHEMA["zones"][zon_idx]["_name"]  # TODO
 
         if zon_idx == "02":
             assert climate.extra_state_attributes["mode"] == {
@@ -236,7 +236,7 @@ async def test_namespace(hass: HomeAssistant) -> None:
 
     heater: WaterHeaterEntity = [e for e in water_heaters if e.entity_id == id][0]
     assert heater.unique_id == f"{CTL_ID}_HW"
-    # assert heater.name == "Stored HW"  # FIXME
+    # assert heater.name == f"{CTL_ID} XXX"  # TODO
 
     assert heater.extra_state_attributes["mode"] == {
         "mode": "temporary_override",
