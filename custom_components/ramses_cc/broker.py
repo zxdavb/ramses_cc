@@ -9,13 +9,14 @@ from typing import TYPE_CHECKING, Any, Final
 
 import voluptuous as vol  # type: ignore[import-untyped]
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
+from ramses_rf.device import Fakeable
 from ramses_rf.device.base import Device
 from ramses_rf.device.hvac import HvacRemoteBase, HvacVentilator
 from ramses_rf.entity_base import Entity as RamsesRFEntity
@@ -28,6 +29,9 @@ from ramses_rf.schemas import (
     SZ_SCHEMA,
 )
 from ramses_rf.system import Evohome, System, Zone
+from ramses_tx.address import pkt_addrs
+from ramses_tx.command import Command
+from ramses_tx.exceptions import PacketAddrSetInvalid
 from ramses_tx.schemas import SZ_PACKET_LOG, SZ_PORT_CONFIG
 
 from .const import (
@@ -158,6 +162,7 @@ class RamsesBroker:
             self._ser_name, loop=self.hass.loop, **client_config, **config_schema
         )
 
+    @callback
     async def async_save_client_state(self, _: dt | None = None) -> None:
         """Save the client state to the application store."""
 
@@ -175,6 +180,7 @@ class RamsesBroker:
             }
         )
 
+    @callback
     async def async_update(self, _: dt | None = None) -> None:
         """Retrieve the latest state data from the client library."""
 
@@ -229,3 +235,59 @@ class RamsesBroker:
 
         # Trigger state updates of all entities
         async_dispatcher_send(self.hass, SIGNAL_UPDATE)
+
+    # The service handlers are class methods to facilitate mocking...
+    async def async_bind_device(self, call: ServiceCall) -> None:
+        """Handle the bind_device service call."""
+
+        device: Fakeable
+
+        try:
+            device = self.client.fake_device(call.data["device_id"])
+        except LookupError as exc:
+            _LOGGER.error("%s", exc)
+            return
+
+        if call.data["device_info"]:
+            cmd = Command(call.data["device_info"])
+        else:
+            cmd = None
+
+        await device._initiate_binding_process(  # may: BindingFlowFailed
+            list(call.data["offer"].keys()),
+            confirm_code=list(call.data["confirm"].keys()),
+            ratify_cmd=cmd,
+        )  # TODO: will need to re-discover schema
+        self.hass.helpers.event.async_call_later(5, self.async_update)
+
+    async def async_force_update(self, _: ServiceCall) -> None:
+        """Handle the force_update service call."""
+
+        await self.async_update()
+
+    async def async_send_packet(self, call: ServiceCall) -> None:
+        """Create a command packet and send it via the transport."""
+
+        kwargs = dict(call.data.items())  # is ReadOnlyDict
+        if (
+            call.data["device_id"] == "18:000730"
+            and kwargs.get("from_id", "18:000730") == "18:000730"
+            and self.client.hgi.id
+        ):
+            kwargs["device_id"] = self.client.hgi.id
+
+        cmd = self.client.create_cmd(**kwargs)
+
+        # HACK: to fix the device_id when GWY announcing, will be:
+        #    I --- 18:000730 18:006402 --:------ 0008 002 00C3  # because src != dst
+        # ... should be:
+        #    I --- 18:000730 --:------ 18:006402 0008 002 00C3  # 18:730 is sentinel
+        if cmd.src.id == "18:000730" and cmd.dst.id == self.client.hgi.id:
+            try:
+                pkt_addrs(self.client.hgi.id + cmd._frame[16:37])
+            except PacketAddrSetInvalid:
+                cmd._addrs[1], cmd._addrs[2] = cmd._addrs[2], cmd._addrs[1]
+                cmd._repr = None
+
+        self.client.send_cmd(cmd)
+        self.hass.helpers.event.async_call_later(5, self.async_update)

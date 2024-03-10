@@ -56,18 +56,18 @@ from .schemas import SVCS_RAMSES_CLIMATE
 
 _LOGGER = logging.getLogger(__name__)
 
-MODE_TCS_TO_HA: Final[dict[str, str]] = {
+MODE_TCS_TO_HA: Final[dict[SystemMode, HVACMode]] = {
     SystemMode.AUTO: HVACMode.HEAT,  # NOTE: don't use AUTO
     SystemMode.HEAT_OFF: HVACMode.OFF,
     SystemMode.RESET: HVACMode.HEAT,
 }
-MODE_HA_TO_TCS: Final[dict[str, str]] = {
+MODE_HA_TO_TCS: Final[dict[HVACMode, SystemMode]] = {
     HVACMode.HEAT: SystemMode.AUTO,
     HVACMode.OFF: SystemMode.HEAT_OFF,
     HVACMode.AUTO: SystemMode.RESET,  # not all systems support this
 }
 
-PRESET_TCS_TO_HA: Final[dict[str, str]] = {
+PRESET_TCS_TO_HA: Final[dict[SystemMode, str]] = {
     SystemMode.AUTO: PRESET_NONE,
     SystemMode.AWAY: PRESET_AWAY,
     SystemMode.CUSTOM: PRESET_CUSTOM,
@@ -77,7 +77,7 @@ PRESET_TCS_TO_HA: Final[dict[str, str]] = {
     SystemMode.HEAT_OFF: PRESET_NONE,
     SystemMode.RESET: PRESET_NONE,
 }
-PRESET_HA_TO_TCS: Final[dict[str, str]] = {
+PRESET_HA_TO_TCS: Final[dict[str, SystemMode]] = {
     PRESET_NONE: SystemMode.AUTO,
     PRESET_AWAY: SystemMode.AWAY,
     PRESET_CUSTOM: SystemMode.CUSTOM,
@@ -85,23 +85,25 @@ PRESET_HA_TO_TCS: Final[dict[str, str]] = {
     PRESET_ECO: SystemMode.ECO_BOOST,
 }
 
-MODE_ZONE_TO_HA: Final[dict[str, str]] = {
+MODE_ZONE_TO_HA: Final[dict[ZoneMode, HVACMode]] = {
     ZoneMode.ADVANCED: HVACMode.HEAT,
     ZoneMode.SCHEDULE: HVACMode.AUTO,
     ZoneMode.PERMANENT: HVACMode.HEAT,
     ZoneMode.TEMPORARY: HVACMode.HEAT,
 }
-MODE_HA_TO_ZONE: Final[dict[str, str]] = {
+MODE_HA_TO_ZONE: Final[dict[HVACMode, ZoneMode]] = {
     HVACMode.HEAT: ZoneMode.PERMANENT,
     HVACMode.AUTO: ZoneMode.SCHEDULE,
 }
 
-PRESET_ZONE_TO_HA: Final[dict[str, str]] = {
+PRESET_ZONE_TO_HA: Final[dict[ZoneMode, str]] = {
     ZoneMode.SCHEDULE: PRESET_NONE,
     ZoneMode.TEMPORARY: PRESET_TEMPORARY,
     ZoneMode.PERMANENT: PRESET_PERMANENT,
 }
-PRESET_HA_TO_ZONE: Final[dict[str, str]] = {v: k for k, v in PRESET_ZONE_TO_HA.items()}
+PRESET_HA_TO_ZONE: Final[dict[str, ZoneMode]] = {
+    v: k for k, v in PRESET_ZONE_TO_HA.items()
+}
 
 
 async def async_setup_platform(
@@ -139,13 +141,19 @@ class RamsesController(RamsesEntity, ClimateEntity):
     _device: Evohome
 
     _attr_icon: str = "mdi:thermostat"
-    _attr_hvac_modes: list[str] = list(MODE_HA_TO_TCS)
+    _attr_hvac_modes: list[HVACMode] = list(MODE_HA_TO_TCS)
     _attr_max_temp: None = None
     _attr_min_temp: None = None
     _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_HA_TO_TCS)
-    _attr_supported_features: int = ClimateEntityFeature.PRESET_MODE
+    _attr_supported_features: ClimateEntityFeature = (
+        ClimateEntityFeature.PRESET_MODE
+        | ClimateEntityFeature.TURN_ON
+        | ClimateEntityFeature.TURN_OFF
+    )
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
+
+    _enable_turn_on_off_backwards_compatibility: bool = False  # remove when HA 2025.1
 
     def __init__(
         self,
@@ -262,12 +270,19 @@ class RamsesController(RamsesEntity, ClimateEntity):
         duration: timedelta | None = None,
     ) -> None:
         """Set the (native) operating mode of the Controller."""
-        if period is not None:
-            until = datetime.now() + period  # Period in days TODO: round down
-        elif duration is not None:
-            until = datetime.now() + duration  # Duration in hours/minutes for eco_boost
-        else:
+
+        if duration is not None:
+            # evohome controllers uitilse whole hours
+            until = datetime.now() + duration  # <=24 hours
+        elif period is None:
             until = None
+        elif period.seconds == period.microseconds == 0:
+            # this is the behaviour of an evohome controller
+            date_ = datetime.now().date() + timedelta(days=1) + period
+            until = datetime(date_.year, date_.month, date_.day)
+        else:
+            until = datetime.now() + period
+
         self._device.set_mode(system_mode=mode, until=until)
         self.async_write_ha_state_delayed()
 
@@ -278,10 +293,10 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     _device: Zone
 
     _attr_icon: str = "mdi:radiator"
-    _attr_hvac_modes: list[str] = list(MODE_HA_TO_ZONE)
+    _attr_hvac_modes: list[HVACMode] = list(MODE_HA_TO_ZONE)
     _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] = list(PRESET_HA_TO_ZONE)
-    _attr_supported_features: int = (
+    _attr_supported_features: ClimateEntityFeature = (
         ClimateEntityFeature.PRESET_MODE | ClimateEntityFeature.TARGET_TEMPERATURE
     )
     _attr_target_temperature_step: float = PRECISION_TENTHS
@@ -487,7 +502,7 @@ class RamsesHvac(RamsesEntity, ClimateEntity):
     _attr_hvac_modes: list[HVACMode] | list[str] = [HVACMode.AUTO, HVACMode.OFF]
     _attr_precision: float = PRECISION_TENTHS
     _attr_preset_modes: list[str] | None = None
-    _attr_supported_features: int = (
+    _attr_supported_features: ClimateEntityFeature = (
         ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.PRESET_MODE
     )
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS

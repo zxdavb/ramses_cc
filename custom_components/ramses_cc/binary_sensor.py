@@ -119,16 +119,19 @@ class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
             else self.entity_description.icon_off
         )
 
-    # TODO: Remove this when we have config entries and devices.
+
+class RamsesBatteryBinarySensor(RamsesBinarySensor):
+    """Representation of a generic binary sensor."""
+
     @property
-    def name(self) -> str:
-        """Return name temporarily prefixed with device name/id."""
-        prefix = (
-            self._device.name
-            if hasattr(self._device, "name") and self._device.name
-            else self._device.id
-        )
-        return f"{prefix} {super().name}"
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the integration-specific state attributes."""
+        if self._device.battery_state is None:
+            level = None
+        else:
+            level = self._device.battery_state[ATTR_BATTERY_LEVEL]
+
+        return super().extra_state_attributes | {ATTR_BATTERY_LEVEL: level}
 
 
 class RamsesLogbookBinarySensor(RamsesBinarySensor):
@@ -261,10 +264,9 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     ),
     RamsesBinarySensorEntityDescription(
         key=BatteryState.BATTERY_LOW,
+        ramses_rf_attr=BatteryState.BATTERY_LOW,
+        ramses_cc_class=RamsesBatteryBinarySensor,
         device_class=BinarySensorDeviceClass.BATTERY,
-        ramses_cc_extra_attributes={
-            ATTR_BATTERY_LEVEL: BatteryState.BATTERY_STATE,
-        },
     ),
     RamsesBinarySensorEntityDescription(
         key="active_fault",

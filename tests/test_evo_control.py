@@ -28,8 +28,7 @@ from custom_components.ramses_cc.binary_sensor import BINARY_SENSOR_DESCRIPTIONS
 from custom_components.ramses_cc.broker import RamsesBroker
 from custom_components.ramses_cc.climate import CLIMATE_DESCRIPTIONS
 from custom_components.ramses_cc.sensor import SENSOR_DESCRIPTIONS
-
-# from custom_components.ramses_cc.water_heater import WATER_HEATER_DESCRIPTIONS
+from custom_components.ramses_cc.water_heater import WATER_HEATER_DESCRIPTIONS
 from ramses_rf.gateway import Gateway
 from ramses_rf.system import Evohome
 
@@ -74,12 +73,12 @@ async def instantiate_entities(
     # water_heater entities (DHW)
     rf_heaters = [s.dhw for s in gwy.systems if s.dhw if isinstance(s, Evohome)]
 
-    water_heaters: list[WaterHeaterEntity] = []
-    #     description.ramses_cc_class(broker, device, description)
-    #     for device in rf_heaters
-    #     for description in WATER_HEATER_DESCRIPTIONS
-    #     if isinstance(device, description.ramses_rf_class)
-    # ]
+    water_heaters: list[WaterHeaterEntity] = [
+        description.ramses_cc_class(broker, device, description)
+        for device in rf_heaters
+        for description in WATER_HEATER_DESCRIPTIONS
+        if isinstance(device, description.ramses_rf_class)
+    ]
 
     # binary_sensors & sensors entities
     rf_devices = gwy.devices + rf_climates + rf_heaters
@@ -142,10 +141,8 @@ async def test_namespace(hass: HomeAssistant) -> None:
         assert binary.unique_id == f"{dev_id}-battery_low"
         assert binary.state in (STATE_ON, STATE_OFF, None)
 
-        _ = binary.extra_state_attributes["battery_level"]
-        # assert (
-        #     battery_level is None or 0.0 < battery_level < 1.0
-        # )  # TODO: check values, not types
+        battery_level = binary.extra_state_attributes["battery_level"]
+        assert battery_level is None or 0.0 <= battery_level <= 1.0
 
     #
     # evo_control uses: binary_sensor.${cid}_${haZid}_window_open
@@ -235,15 +232,13 @@ async def test_namespace(hass: HomeAssistant) -> None:
     # evo_control uses: water_heater.${cid}_hw
     id = f"water_heater.{CTL_ID}_HW"  # ctl_id via a webform, from the user
 
-    # heater: WaterHeaterEntity = [e for e in water_heaters if e.entity_id == id][0]
-    # assert heater.unique_id == f"{CTL_ID}_HW"
-    # # assert heater.name == f"{CTL_ID} XXX"  # TODO
+    heater: WaterHeaterEntity = [e for e in water_heaters if e.entity_id == id][0]
+    assert heater.unique_id == f"{CTL_ID}_HW"
+    # assert heater.name == f"{CTL_ID} XXX"  # TODO
 
-    # assert heater.extra_state_attributes["mode"] == {
-    #     "mode": "temporary_override",
-    #     "active": True,
-    #     "until": "2022-02-10T22:00:00",
-    # }
-    # assert heater.current_temperature == 61.87
-
-    assert True
+    assert heater.extra_state_attributes["mode"] == {
+        "mode": "temporary_override",
+        "active": True,
+        "until": "2022-02-10T22:00:00",
+    }
+    assert heater.current_temperature == 61.87

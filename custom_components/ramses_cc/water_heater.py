@@ -41,7 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 STATE_AUTO: Final = "auto"
 STATE_BOOST: Final = "boost"
 
-MODE_HA_TO_RAMSES: Final[dict[str, str]] = {
+MODE_HA_TO_RAMSES: Final[dict[str, ZoneMode]] = {
     STATE_AUTO: ZoneMode.SCHEDULE,
     STATE_BOOST: ZoneMode.TEMPORARY,
     STATE_OFF: ZoneMode.PERMANENT,
@@ -69,13 +69,13 @@ async def async_setup_platform(
         for k, v in SVCS_RAMSES_WATER_HEATER.items():
             platform.async_register_entity_service(k, v, f"async_{k}")
 
-    entites = [
-        RamsesWaterHeaterEntityDescription.ramses_cc_class(
-            broker, device, RamsesWaterHeaterEntityDescription()
-        )
+    entities = [
+        description.ramses_cc_class(broker, device, description)
         for device in discovery_info["devices"]
+        for description in WATER_HEATER_DESCRIPTIONS
+        if isinstance(device, description.ramses_rf_class)
     ]
-    async_add_entities(entites)
+    async_add_entities(entities)
 
 
 class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
@@ -243,7 +243,15 @@ class RamsesWaterHeaterEntityDescription(
 ):
     """Class describing Ramses water heater entities."""
 
-    key = "dhwzone"
-
     # integration-specific attributes
-    ramses_cc_class: type[RamsesWaterHeater] = RamsesWaterHeater
+    ramses_cc_class: type[RamsesWaterHeater]
+    ramses_rf_class: type[DhwZone]
+
+
+WATER_HEATER_DESCRIPTIONS: tuple[RamsesWaterHeaterEntityDescription, ...] = (
+    RamsesWaterHeaterEntityDescription(
+        key="dhwzone",
+        ramses_cc_class=RamsesWaterHeater,
+        ramses_rf_class=DhwZone,
+    ),
+)
