@@ -2,6 +2,7 @@
 
 Requires a Honeywell HGI80 (or compatible) gateway.
 """
+
 from __future__ import annotations
 
 import logging
@@ -80,14 +81,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
 
+    _LOGGER.debug("Setting up entry %s...", entry.entry_id)
+
     broker = RamsesBroker(hass, entry)  # KeyError: 'serial_port'
 
     try:
         await broker.async_setup()
     except TransportSerialError as exc:
-        raise ConfigEntryNotReady(
-            f"There is a problem with the serial port: {exc}"
-        ) from exc
+        msg = f"There is a problem with the serial port: {exc}"
+        _LOGGER.debug("Failed to set up entry %s (will retry): %s", entry.entry_id, msg)
+        raise ConfigEntryNotReady(msg) from exc
 
     # Setup is complete and config is valid, so start polling
     hass.data[DOMAIN][entry.entry_id] = broker
@@ -98,6 +101,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.async_on_unload(entry.add_update_listener(async_update_listener))
 
+    _LOGGER.debug("Successfully set up entry %s", entry.entry_id)
     return True
 
 
@@ -243,7 +247,7 @@ class RamsesEntity(Entity):
     def async_write_ha_state_delayed(self, delay: int = 3) -> None:
         """Write to the state machine after a short delay to allow system to quiesce."""
 
-        # FIXME: doesn't work, as call_later injects `_now: dt`
+        # NOTE: this doesn't work (below), as call_later injects `_now: dt`
         #     async_call_later(self.hass, delay, self.async_write_ha_state)
         # but only self is expected:
         #     def async_write_ha_state(self) -> None:
