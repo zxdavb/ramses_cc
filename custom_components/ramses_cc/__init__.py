@@ -6,6 +6,7 @@ Requires a Honeywell HGI80 (or compatible) gateway.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 
@@ -35,6 +36,7 @@ from .const import (
 from .schemas import (
     SCH_BIND_DEVICE,
     SCH_DOMAIN_CONFIG,
+    SCH_NO_SVC_PARAMS,
     SCH_SEND_PACKET,
     SVC_BIND_DEVICE,
     SVC_FORCE_UPDATE,
@@ -71,23 +73,27 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[BROKER] = broker
 
-    register_domain_services(hass, broker)
-    register_domain_events(hass, broker)
+    async_register_domain_services(hass, broker)
+    async_register_domain_events(hass, broker)
 
     return True
 
 
 @callback  # TODO: the following is a mess - to add register/deregister of clients
-def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
+def async_register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
     """Set up the handlers for the system-wide events."""
+
+    features: dict[str, Any] = broker.config[CONF_ADVANCED_FEATURES]
+    if message_events := features.get(CONF_MESSAGE_EVENTS):
+        message_events_regex = re.compile(message_events)
+    else:
+        message_events_regex = None
 
     @callback
     def async_process_msg(msg: Message, *args: Any, **kwargs: Any) -> None:
         """Process a message from the event bus as pass it on."""
 
-        if (
-            regex := broker.config[CONF_ADVANCED_FEATURES][CONF_MESSAGE_EVENTS]
-        ) and regex.search(f"{msg!r}"):
+        if message_events_regex and message_events_regex.search(f"{msg!r}"):
             event_data = {
                 "dtm": msg.dtm.isoformat(),
                 "src": msg.src.id,
@@ -111,7 +117,7 @@ def register_domain_events(hass: HomeAssistant, broker: RamsesBroker) -> None:
 
 
 @callback
-def register_domain_services(hass: HomeAssistant, broker: RamsesBroker) -> None:
+def async_register_domain_services(hass: HomeAssistant, broker: RamsesBroker) -> None:
     """Set up the handlers for the domain-wide services."""
 
     @verify_domain_control(hass, DOMAIN)  # TODO: is a work in progress
@@ -170,7 +176,7 @@ def register_domain_services(hass: HomeAssistant, broker: RamsesBroker) -> None:
         DOMAIN, SVC_BIND_DEVICE, async_bind_device, schema=SCH_BIND_DEVICE
     )
     hass.services.async_register(
-        DOMAIN, SVC_FORCE_UPDATE, async_force_update, schema={}
+        DOMAIN, SVC_FORCE_UPDATE, async_force_update, schema=SCH_NO_SVC_PARAMS
     )
 
     if broker.config[CONF_ADVANCED_FEATURES].get(CONF_SEND_PACKET):
@@ -230,8 +236,10 @@ class RamsesEntity(Entity):
     def async_write_ha_state_delayed(self, delay: int = 3) -> None:
         """Write to the state machine after a short delay to allow system to quiesce."""
 
-        # FIXME: doesn't work, as injects `_now: dt``, where only self is expected
-        # async_call_later(self.hass, delay, self.async_write_ha_state)
+        # NOTE: this doesn't work (below), as call_later injects `_now: dt`
+        #     async_call_later(self.hass, delay, self.async_write_ha_state)
+        # but only self is expected:
+        #     def async_write_ha_state(self) -> None:
 
         self.hass.loop.call_later(delay, self.async_write_ha_state)
 

@@ -5,17 +5,12 @@ from typing import Any, Final
 from unittest.mock import patch
 
 import pytest
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
-    MockConfigEntry,
-)
 
 from custom_components.ramses_cc import DOMAIN, RamsesEntity
 from custom_components.ramses_cc.broker import RamsesBroker
-from custom_components.ramses_cc.climate import RamsesController, RamsesHvac, RamsesZone
 from ramses_rf.gateway import Gateway
 
 from .common import TEST_DIR, cast_packets_to_rf
@@ -51,7 +46,7 @@ async def rf(hass: HomeAssistant) -> AsyncGenerator[Any, None]:
             await rf.stop()
 
 
-async def _test_common(hass: HomeAssistant, entry: ConfigEntry, rf: VirtualRf) -> None:
+async def _test_common(hass: HomeAssistant, rf: VirtualRf) -> None:
     """The main tests are here."""
 
     gwy: Gateway = list(hass.data[DOMAIN].values())[0].client
@@ -82,76 +77,21 @@ def find_entities(hass: HomeAssistant, platform: Platform) -> list[RamsesEntity]
     return list(hass.data["domain_platform_entities"][platform, DOMAIN].values())
 
 
-async def _test_names(hass: HomeAssistant, entry: ConfigEntry, rf: VirtualRf) -> None:
-    """The main tests are here."""
-
-    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
-    await broker.async_update()
-
-    for entity in find_entities(hass, Platform.CLIMATE):
-        if isinstance(entity, RamsesController):
-            assert entity.name == f"Controller {entity._device.id}"
-        elif isinstance(entity, RamsesZone):
-            assert entity.name == entity._device.name
-        elif isinstance(entity, RamsesHvac):
-            assert entity.name
-        else:
-            raise AssertionError()
-
-    for entity in find_entities(hass, Platform.WATER_HEATER):
-        assert entity.name
-
-    for entity in find_entities(hass, Platform.REMOTE):
-        assert entity.name
-
-    for entity in find_entities(hass, Platform.BINARY_SENSOR):
-        assert entity.name
-
-    for entity in find_entities(hass, Platform.SENSOR):
-        assert entity.name
-
-
 @patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY)
-async def test_services_entry_(
-    hass: HomeAssistant, rf: VirtualRf, config: dict[str, Any] = TEST_CONFIG
-) -> None:
-    """Test ramses_cc via config entry."""
-
-    config["serial_port"]["port_name"] = rf.ports[0]
-
-    assert len(hass.config_entries.async_entries(DOMAIN)) == 0
-    entry = MockConfigEntry(domain=DOMAIN, options=config)
-    entry.add_to_hass(hass)
-
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    # await hass.async_block_till_done()  # ?clear hass._tasks
-
-    #
-    try:
-        await _test_common(hass, entry, rf)
-        # await _test_names(hass, entry, rf)
-    finally:
-        assert await hass.config_entries.async_unload(entry.entry_id)
-
-
-@patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY)
-async def test_services_import(
+async def test_services_config(
     hass: HomeAssistant, rf: VirtualRf, config: dict[str, Any] = TEST_CONFIG
 ) -> None:
     """Test ramses_cc via importing a configuration."""
 
     config["serial_port"]["port_name"] = rf.ports[0]
 
-    #
-    #
-    #
-
     assert await async_setup_component(hass, DOMAIN, {DOMAIN: config})
-    # await hass.async_block_till_done()  # ?clear hass._tasks
+    await hass.async_block_till_done()  # ?clear hass._tasks
 
-    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert hass.data["setup_tasks"] == {}
     try:
-        await _test_common(hass, entry, rf)
-        # await _test_names(hass, entry, rf)
+        await _test_common(hass, rf)
+        # await _test_names(hass, rf)
     finally:
-        assert await hass.config_entries.async_unload(entry.entry_id)
+        await list(hass.data[DOMAIN].values())[0].client.stop()
+        await rf.stop()

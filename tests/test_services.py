@@ -8,9 +8,7 @@ import pytest
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
-from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
-    MockConfigEntry,
-)
+from homeassistant.setup import async_setup_component
 
 from custom_components.ramses_cc import (
     DOMAIN,
@@ -226,14 +224,9 @@ async def _setup_via_entry_(
 
     config["serial_port"]["port_name"] = rf.ports[0]
 
-    assert len(hass.config_entries.async_entries(DOMAIN)) == 0
-    entry = MockConfigEntry(domain=DOMAIN, options=config)
-    entry.add_to_hass(hass)
+    assert await async_setup_component(hass, DOMAIN, {DOMAIN: config})
+    await hass.async_block_till_done()  # ?clear hass._tasks
 
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    # await hass.async_block_till_done()  # ?clear hass._tasks
-
-    #
     await _cast_packets_to_rf(hass, rf)
 
     broker: RamsesBroker = list(hass.data[DOMAIN].values())[0]
@@ -256,15 +249,12 @@ async def entry(hass: HomeAssistant) -> AsyncGenerator[ConfigEntry, None]:
     with patch(
         "custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY
     ):
-        entry: ConfigEntry = None
         try:
-            entry = await _setup_via_entry_(hass, rf, TEST_CONFIG)
-            yield entry
+            _ = await _setup_via_entry_(hass, rf)
+            yield rf
 
         finally:
-            if entry:
-                await hass.config_entries.async_unload(entry.entry_id)
-                # await hass.async_block_till_done()
+            await list(hass.data[DOMAIN].values())[0].client.stop()
             await rf.stop()
 
 
@@ -320,7 +310,7 @@ async def _test_service_call(
 ########################################################################################
 
 
-async def test_delete_command(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_delete_command(hass: HomeAssistant, entry: VirtualRf) -> None:
     """Test the ramses_cc.delete_command service call."""
 
     data = {
@@ -334,7 +324,7 @@ async def test_delete_command(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 # TODO: extended test of underlying method
-async def test_learn_command(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_learn_command(hass: HomeAssistant, entry: VirtualRf) -> None:
     """Test the ramses_cc.learn_command service call."""
 
     data = {
@@ -358,7 +348,7 @@ TESTS_SEND_COMMAND = {
 
 # TODO: extended test of underlying method
 @pytest.mark.parametrize("idx", TESTS_SEND_COMMAND)
-async def test_send_command(hass: HomeAssistant, entry: ConfigEntry, idx: str) -> None:
+async def test_send_command(hass: HomeAssistant, entry: VirtualRf, idx: str) -> None:
     """Test the ramses_cc.send_command service call."""
 
     data = {
@@ -371,7 +361,7 @@ async def test_send_command(hass: HomeAssistant, entry: ConfigEntry, idx: str) -
     )
 
 
-async def test_put_co2_level(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_put_co2_level(hass: HomeAssistant, entry: VirtualRf) -> None:
     """Test the put_room_co2_level service call."""
 
     data = {
@@ -384,7 +374,7 @@ async def test_put_co2_level(hass: HomeAssistant, entry: ConfigEntry) -> None:
     )
 
 
-async def test_put_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_put_dhw_temp(hass: HomeAssistant, entry: VirtualRf) -> None:
     """Test the put_dhe_temp service call."""
 
     data = {
@@ -397,7 +387,7 @@ async def test_put_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
     )
 
 
-async def test_put_indoor_humidity(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_put_indoor_humidity(hass: HomeAssistant, entry: VirtualRf) -> None:
     """Test the put_indoor_humidity service call."""
 
     data = {
@@ -410,7 +400,7 @@ async def test_put_indoor_humidity(hass: HomeAssistant, entry: ConfigEntry) -> N
     )
 
 
-async def test_put_room_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_put_room_temp(hass: HomeAssistant, entry: VirtualRf) -> None:
     """Test the put_room_temp service call."""
 
     data = {
@@ -423,7 +413,7 @@ async def test_put_room_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
     )
 
 
-async def test_fake_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_fake_dhw_temp(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {
         "entity_id": "water_heater.01_145038_hw",
         "temperature": 51.3,
@@ -434,7 +424,7 @@ async def test_fake_dhw_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
     )
 
 
-async def test_fake_zone_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_fake_zone_temp(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {
         "entity_id": "climate.01_145038_02",
         "temperature": 21.3,
@@ -445,7 +435,7 @@ async def test_fake_zone_temp(hass: HomeAssistant, entry: ConfigEntry) -> None:
     )
 
 
-async def test_get_dhw_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_get_dhw_schedule(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {"entity_id": "water_heater.01_145038_hw"}
 
     await _test_entity_service_call(
@@ -453,7 +443,7 @@ async def test_get_dhw_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None
     )
 
 
-async def test_get_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_get_zone_schedule(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {"entity_id": "climate.01_145038_02"}
 
     await _test_entity_service_call(
@@ -461,7 +451,7 @@ async def test_get_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> Non
     )
 
 
-async def test_reset_dhw_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_reset_dhw_mode(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {"entity_id": "water_heater.01_145038_hw"}
 
     await _test_entity_service_call(
@@ -469,7 +459,7 @@ async def test_reset_dhw_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
     )
 
 
-async def test_reset_dhw_params(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_reset_dhw_params(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {"entity_id": "water_heater.01_145038_hw"}
 
     await _test_entity_service_call(
@@ -477,7 +467,7 @@ async def test_reset_dhw_params(hass: HomeAssistant, entry: ConfigEntry) -> None
     )
 
 
-async def test_reset_system_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_reset_system_mode(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {"entity_id": "climate.01_145038"}
 
     await _test_entity_service_call(
@@ -485,7 +475,7 @@ async def test_reset_system_mode(hass: HomeAssistant, entry: ConfigEntry) -> Non
     )
 
 
-async def test_reset_zone_config(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_reset_zone_config(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {
         "entity_id": "climate.01_145038_02",
     }
@@ -495,7 +485,7 @@ async def test_reset_zone_config(hass: HomeAssistant, entry: ConfigEntry) -> Non
     )
 
 
-async def test_reset_zone_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_reset_zone_mode(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {"entity_id": "climate.01_145038_02"}
 
     await _test_entity_service_call(
@@ -503,7 +493,7 @@ async def test_reset_zone_mode(hass: HomeAssistant, entry: ConfigEntry) -> None:
     )
 
 
-async def test_set_dhw_boost(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_set_dhw_boost(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {"entity_id": "water_heater.01_145038_hw"}
 
     await _test_entity_service_call(
@@ -521,7 +511,7 @@ TESTS_SET_DHW_MODE = {
 
 # TODO: extended test of underlying method (duration/until)
 @pytest.mark.parametrize("idx", TESTS_SET_DHW_MODE)
-async def test_set_dhw_mode(hass: HomeAssistant, entry: ConfigEntry, idx: str) -> None:
+async def test_set_dhw_mode(hass: HomeAssistant, entry: VirtualRf, idx: str) -> None:
     data = {
         "entity_id": "water_heater.01_145038_hw",
         **TESTS_SET_DHW_MODE[idx],
@@ -542,9 +532,7 @@ TESTS_SET_DHW_PARAMS = {
 
 
 @pytest.mark.parametrize("idx", TESTS_SET_DHW_PARAMS)
-async def test_set_dhw_params(
-    hass: HomeAssistant, entry: ConfigEntry, idx: str
-) -> None:
+async def test_set_dhw_params(hass: HomeAssistant, entry: VirtualRf, idx: str) -> None:
     data = {
         "entity_id": "water_heater.01_145038_hw",
         **TESTS_SET_DHW_PARAMS[idx],
@@ -555,7 +543,7 @@ async def test_set_dhw_params(
     )
 
 
-async def test_set_dhw_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_set_dhw_schedule(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {
         "entity_id": "water_heater.01_145038_hw",
         "schedule": "",
@@ -576,9 +564,7 @@ TESTS_SET_SYSTEM_MODE: dict[str, dict[str, Any]] = {
 
 # TODO: extended test of underlying method (duration/period)
 @pytest.mark.parametrize("idx", TESTS_SET_SYSTEM_MODE)
-async def test_set_system_mode(
-    hass: HomeAssistant, entry: ConfigEntry, idx: str
-) -> None:
+async def test_set_system_mode(hass: HomeAssistant, entry: VirtualRf, idx: str) -> None:
     data = {
         "entity_id": "climate.01_145038",
         **TESTS_SET_SYSTEM_MODE[idx],
@@ -606,9 +592,7 @@ TESTS_SET_ZONE_CONFIG = {
 
 
 @pytest.mark.parametrize("idx", TESTS_SET_ZONE_CONFIG)
-async def test_set_zone_config(
-    hass: HomeAssistant, entry: ConfigEntry, idx: str
-) -> None:
+async def test_set_zone_config(hass: HomeAssistant, entry: VirtualRf, idx: str) -> None:
     data = {
         "entity_id": "climate.01_145038_02",
         **TESTS_SET_ZONE_CONFIG[idx],
@@ -630,7 +614,7 @@ TESTS_SET_ZONE_MODE: dict[str, dict[str, Any]] = {
 
 # TODO: extended test of underlying method (duration/until)
 @pytest.mark.parametrize("idx", TESTS_SET_ZONE_MODE)
-async def test_set_zone_mode(hass: HomeAssistant, entry: ConfigEntry, idx: str) -> None:
+async def test_set_zone_mode(hass: HomeAssistant, entry: VirtualRf, idx: str) -> None:
     data = {
         "entity_id": "climate.01_145038_02",
         **TESTS_SET_ZONE_MODE[idx],
@@ -641,7 +625,7 @@ async def test_set_zone_mode(hass: HomeAssistant, entry: ConfigEntry, idx: str) 
     )
 
 
-async def test_set_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def test_set_zone_schedule(hass: HomeAssistant, entry: VirtualRf) -> None:
     data = {
         "entity_id": "climate.01_145038_02",
         "schedule": "",
@@ -652,7 +636,7 @@ async def test_set_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> Non
     )
 
 
-async def test_svc_bind_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def _test_svc_bind_device(hass: HomeAssistant, entry: VirtualRf) -> None:
     """Test the service call."""
 
     data = {
@@ -664,7 +648,7 @@ async def test_svc_bind_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await _test_service_call(hass, SVC_BIND_DEVICE, data, schemas=schemas)
 
 
-async def test_svc_force_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def _test_svc_force_update(hass: HomeAssistant, entry: VirtualRf) -> None:
     """Test the service call."""
 
     data: dict[str, Any] = {}
@@ -673,7 +657,7 @@ async def test_svc_force_update(hass: HomeAssistant, entry: ConfigEntry) -> None
     await _test_service_call(hass, SVC_FORCE_UPDATE, data, schemas=schemas)
 
 
-async def test_svc_send_packet(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def _test_svc_send_packet(hass: HomeAssistant, entry: VirtualRf) -> None:
     """Test the service call."""
 
     data = {

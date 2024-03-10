@@ -9,7 +9,6 @@ from typing import Any, Final, TypeAlias
 
 import voluptuous as vol  # type: ignore[import-untyped]
 from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 
 from ramses_rf.helpers import deep_merge, is_subset, shrink
@@ -136,7 +135,6 @@ SCH_MINIMUM_TCS = vol.Schema(
 )
 
 
-@callback
 def normalise_config(config: _SchemaT) -> tuple[str, _SchemaT, _SchemaT]:
     """Return a port/client_config/broker_config for the library."""
 
@@ -162,7 +160,6 @@ def normalise_config(config: _SchemaT) -> tuple[str, _SchemaT, _SchemaT]:
     )
 
 
-@callback
 def merge_schemas(config_schema: _SchemaT, cached_schema: _SchemaT) -> _SchemaT | None:
     """Return the config schema deep merged into the cached schema."""
 
@@ -180,7 +177,6 @@ def merge_schemas(config_schema: _SchemaT, cached_schema: _SchemaT) -> _SchemaT 
     return None
 
 
-@callback
 def schema_is_minimal(schema: _SchemaT) -> bool:
     """Return True if the schema is minimal (i.e. no optional keys)."""
 
@@ -200,6 +196,13 @@ def schema_is_minimal(schema: _SchemaT) -> bool:
             return False
 
     return True
+
+
+SCH_NO_SVC_PARAMS = vol.Schema({}, extra=vol.PREVENT_EXTRA)
+SCH_NO_ENTITY_SVC_PARAMS = cv.make_entity_service_schema(
+    {},
+    extra=vol.PREVENT_EXTRA,
+)
 
 
 # services for ramses_cc integration
@@ -304,30 +307,31 @@ SVCS_RAMSES_SENSOR = {
 
 # services for climate platform
 
+SCH_DURATION = vol.All(  # of time (<=24h)
+    cv.time_period,
+    vol.Range(min=timedelta(hours=1), max=timedelta(hours=24)),
+)
+SCH_PERIOD = vol.All(  # of days (0-99)
+    cv.time_period, vol.Range(min=timedelta(days=0), max=timedelta(days=99))
+)
+
 SVC_SET_SYSTEM_MODE: Final[str] = "set_system_mode"
 SCH_SET_SYSTEM_MODE = vol.Schema(
     vol.Any(
-        cv.make_entity_service_schema(
-            {
+        cv.make_entity_service_schema(  # canBeTemporary: false
+            {  # also: Off, Heat, Cool (for pre-evohome)
                 vol.Required(ATTR_MODE): vol.In(
-                    [
-                        SystemMode.AUTO,
-                        SystemMode.HEAT_OFF,
-                        SystemMode.RESET,
-                    ]
+                    [SystemMode.AUTO, SystemMode.HEAT_OFF, SystemMode.RESET]
                 )
             }
         ),
-        cv.make_entity_service_schema(
+        cv.make_entity_service_schema(  # canBeTemporary: true, timingMode: Duration
             {
                 vol.Required(ATTR_MODE): vol.In([SystemMode.ECO_BOOST]),
-                vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(hours=1), max=timedelta(hours=24)),
-                ),
+                vol.Optional(ATTR_DURATION): vol.Any(SCH_DURATION, None),
             }
-        ),
-        cv.make_entity_service_schema(
+        ),  # Duration: : None is indefinitely; 0 is invalid
+        cv.make_entity_service_schema(  # canBeTemporary: true, timingMode: Period
             {
                 vol.Required(ATTR_MODE): vol.In(
                     [
@@ -337,13 +341,11 @@ SCH_SET_SYSTEM_MODE = vol.Schema(
                         SystemMode.DAY_OFF_ECO,
                     ]
                 ),
-                vol.Optional(ATTR_PERIOD, default=timedelta(days=0)): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(days=0), max=timedelta(days=99)),
-                ),  # 0 means until the end of the day
+                vol.Optional(ATTR_PERIOD): vol.Any(SCH_PERIOD, None),
             }
-        ),
-    )
+        ),  # Period: None is indefinitely; 0 is the end of today, 1 is end of tomorrow
+        extra=vol.PREVENT_EXTRA,
+    ),
 )
 
 DEFAULT_MIN_TEMP: Final[float] = 5
@@ -421,10 +423,10 @@ SVCS_RAMSES_CLIMATE = {
     SVC_SET_SYSTEM_MODE: SCH_SET_SYSTEM_MODE,
     SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
     SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,
-    SVC_RESET_SYSTEM_MODE: {},
-    SVC_RESET_ZONE_CONFIG: {},
-    SVC_RESET_ZONE_MODE: {},
-    SVC_GET_ZONE_SCHEDULE: {},
+    SVC_RESET_SYSTEM_MODE: SCH_NO_ENTITY_SVC_PARAMS,
+    SVC_RESET_ZONE_CONFIG: SCH_NO_ENTITY_SVC_PARAMS,
+    SVC_RESET_ZONE_MODE: SCH_NO_ENTITY_SVC_PARAMS,
+    SVC_GET_ZONE_SCHEDULE: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_SET_ZONE_SCHEDULE: SCH_SET_ZONE_SCHEDULE,
 }
 
@@ -445,16 +447,16 @@ SCH_SET_DHW_MODE = cv.make_entity_service_schema(
     }
 )
 
-DEFAULT_DHW_SETPOINT: Final[float] = 50
+DEFAULT_DHW_SETPOINT: Final[float] = 50  # degrees celsius, float
 MIN_DHW_SETPOINT: Final[float] = 30
 MAX_DHW_SETPOINT: Final[float] = 85
 
-DEFAULT_OVERRUN: Final[int] = 5
-MIN_OVERRUN: Final[int] = 1  # TODO: check minimum value, and if int
+DEFAULT_OVERRUN: Final[int] = 5  # minutes, int
+MIN_OVERRUN: Final[int] = 0
 MAX_OVERRUN: Final[int] = 10
 
-DEFAULT_DIFFERENTIAL: Final[float] = 60
-MIN_DIFFERENTIAL: Final[float] = 1  # TODO: check minimum value
+DEFAULT_DIFFERENTIAL: Final[float] = 10  # degrees celsius, float
+MIN_DIFFERENTIAL: Final[float] = 1
 MAX_DIFFERENTIAL: Final[float] = 10
 
 SVC_SET_DHW_PARAMS: Final[str] = "set_dhw_params"
@@ -487,12 +489,12 @@ SVC_SET_DHW_BOOST: Final[str] = "set_dhw_boost"
 
 SVCS_RAMSES_WATER_HEATER = {
     SVC_FAKE_DHW_TEMP: SCH_PUT_DHW_TEMP,  # a convenience for SVC_PUT_DHW_TEMP
-    SVC_RESET_DHW_MODE: {},
-    SVC_RESET_DHW_PARAMS: {},
-    SVC_SET_DHW_BOOST: {},
+    SVC_RESET_DHW_MODE: SCH_NO_ENTITY_SVC_PARAMS,
+    SVC_RESET_DHW_PARAMS: SCH_NO_ENTITY_SVC_PARAMS,
+    SVC_SET_DHW_BOOST: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,
     SVC_SET_DHW_PARAMS: SCH_SET_DHW_PARAMS,
-    SVC_GET_DHW_SCHEDULE: {},
+    SVC_GET_DHW_SCHEDULE: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_SET_DHW_SCHEDULE: SCH_SET_DHW_SCHEDULE,
 }
 

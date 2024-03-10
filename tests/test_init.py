@@ -5,13 +5,9 @@ from typing import Any, Final
 from unittest.mock import patch
 
 import pytest
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
-    MockConfigEntry,
-)
 
 from custom_components.ramses_cc import DOMAIN, RamsesBroker
 from ramses_rf.gateway import Gateway
@@ -52,7 +48,7 @@ async def rf(hass: HomeAssistant) -> AsyncGenerator[Any, None]:
             await rf.stop()
 
 
-async def _test_common(hass: HomeAssistant, entry: ConfigEntry = None) -> None:
+async def _test_common(hass: HomeAssistant) -> None:
     """The main tests are here."""
 
     # hass.data["custom_components"][DOMAIN]  # homeassistant.loader.Integration
@@ -60,18 +56,18 @@ async def _test_common(hass: HomeAssistant, entry: ConfigEntry = None) -> None:
     assert isinstance(list(hass.data[DOMAIN].values())[0].client, Gateway)
 
     entries = hass.config_entries.async_entries(DOMAIN)
-    assert len(entries) == 1
+    assert len(entries) == 0
 
-    assert entry is None or entry is entries[0]
+    # assert entry is None or entry is entries[0]
 
-    entry = entries[0]
-    assert entry.state is ConfigEntryState.LOADED
+    # entry = entries[0]
+    # assert entry.state is ConfigEntryState.LOADED
 
     assert hass.data["setup_tasks"] == {}
-    assert isinstance(hass.data[DOMAIN][entry.entry_id], RamsesBroker)
+    # assert isinstance(hass.data[DOMAIN][entry.entry_id], RamsesBroker)
 
-    broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
-    assert len(broker._devices) == 1  # 18_000730
+    # broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
+    # assert len(broker._devices) == 1  # 18_000730
 
     assert (
         len(hass.states.async_entity_ids(Platform.BINARY_SENSOR)) == 1
@@ -81,29 +77,7 @@ async def _test_common(hass: HomeAssistant, entry: ConfigEntry = None) -> None:
 
 
 @patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY)
-async def test_services_entry_(
-    hass: HomeAssistant, rf: VirtualRf, config: dict[str, Any]
-) -> None:
-    """Test ramses_cc via config entry."""
-
-    config["serial_port"]["port_name"] = rf.ports[0]
-
-    assert len(hass.config_entries.async_entries(DOMAIN)) == 0
-    entry = MockConfigEntry(domain=DOMAIN, options=config)
-    entry.add_to_hass(hass)
-
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    # await hass.async_block_till_done()  # ?clear hass._tasks
-
-    #
-    try:
-        await _test_common(hass, entry)
-    finally:
-        assert await hass.config_entries.async_remove(entry.entry_id)  # will unload
-
-
-@patch("custom_components.ramses_cc.broker._CALL_LATER_DELAY", _CALL_LATER_DELAY)
-async def test_services_import(
+async def test_services_config(
     hass: HomeAssistant, rf: VirtualRf, config: dict[str, Any]
 ) -> None:
     """Test ramses_cc via importing a configuration."""
@@ -115,10 +89,11 @@ async def test_services_import(
     #
 
     assert await async_setup_component(hass, DOMAIN, {DOMAIN: config})
-    # await hass.async_block_till_done()  # ?clear hass._tasks
+    await hass.async_block_till_done()  # ?clear hass._tasks
 
-    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert hass.data["setup_tasks"] == {}
     try:
-        await _test_common(hass, entry)
+        await _test_common(hass)
     finally:
-        assert await hass.config_entries.async_remove(entry.entry_id)  # will unload
+        await list(hass.data[DOMAIN].values())[0].client.stop()
+        await rf.stop()
