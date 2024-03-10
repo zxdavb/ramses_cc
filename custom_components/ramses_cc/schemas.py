@@ -235,9 +235,9 @@ SCH_SEND_PACKET = vol.Schema(
     }
 )
 
-SVC_BIND_DEVICE: Final[str] = "bind_device"
-SVC_FORCE_UPDATE: Final[str] = "force_update"
-SVC_SEND_PACKET: Final[str] = "send_packet"
+SVC_BIND_DEVICE: Final = "bind_device"
+SVC_FORCE_UPDATE: Final = "force_update"
+SVC_SEND_PACKET: Final = "send_packet"
 
 
 # services for sensor platform
@@ -245,7 +245,7 @@ SVC_SEND_PACKET: Final[str] = "send_packet"
 MIN_CO2_LEVEL: Final[int] = 300
 MAX_CO2_LEVEL: Final[int] = 9999
 
-SVC_PUT_CO2_LEVEL: Final[str] = "put_co2_level"
+SVC_PUT_CO2_LEVEL: Final = "put_co2_level"
 SCH_PUT_CO2_LEVEL = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_CO2_LEVEL): vol.All(
@@ -259,7 +259,7 @@ SCH_PUT_CO2_LEVEL = cv.make_entity_service_schema(
 MIN_DHW_TEMP: Final[float] = 0
 MAX_DHW_TEMP: Final[float] = 99
 
-SVC_PUT_DHW_TEMP: Final[str] = "put_dhw_temp"
+SVC_PUT_DHW_TEMP: Final = "put_dhw_temp"
 SCH_PUT_DHW_TEMP = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_TEMPERATURE): vol.All(
@@ -273,7 +273,7 @@ SCH_PUT_DHW_TEMP = cv.make_entity_service_schema(
 MIN_INDOOR_HUMIDITY: Final[float] = 0
 MAX_INDOOR_HUMIDITY: Final[float] = 100
 
-SVC_PUT_INDOOR_HUMIDITY: Final[str] = "put_indoor_humidity"
+SVC_PUT_INDOOR_HUMIDITY: Final = "put_indoor_humidity"
 SCH_PUT_INDOOR_HUMIDITY = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_INDOOR_HUMIDITY): vol.All(
@@ -287,7 +287,7 @@ SCH_PUT_INDOOR_HUMIDITY = cv.make_entity_service_schema(
 MIN_ROOM_TEMP: Final[float] = -20
 MAX_ROOM_TEMP: Final[float] = 60
 
-SVC_PUT_ROOM_TEMP: Final[str] = "put_room_temp"
+SVC_PUT_ROOM_TEMP: Final = "put_room_temp"
 SCH_PUT_ROOM_TEMP = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_TEMPERATURE): vol.All(
@@ -315,7 +315,7 @@ SCH_PERIOD = vol.All(  # of days (0-99)
     cv.time_period, vol.Range(min=timedelta(days=0), max=timedelta(days=99))
 )
 
-SVC_SET_SYSTEM_MODE: Final[str] = "set_system_mode"
+SVC_SET_SYSTEM_MODE: Final = "set_system_mode"
 SCH_SET_SYSTEM_MODE = vol.Schema(
     vol.Any(
         cv.make_entity_service_schema(  # canBeTemporary: false
@@ -356,7 +356,7 @@ DEFAULT_MAX_TEMP: Final[float] = 35
 MIN_MAX_TEMP: Final[float] = 21
 MAX_MAX_TEMP: Final[float] = 35
 
-SVC_SET_ZONE_CONFIG: Final[str] = "set_zone_config"
+SVC_SET_ZONE_CONFIG: Final = "set_zone_config"
 SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
     {
         vol.Optional(ATTR_MAX_TEMP, default=DEFAULT_MAX_TEMP): vol.All(
@@ -371,7 +371,7 @@ SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
     }
 )
 
-SVC_SET_ZONE_MODE: Final[str] = "set_zone_mode"
+SVC_SET_ZONE_MODE: Final = "set_zone_mode"
 SCH_SET_ZONE_MODE = vol.Schema(
     vol.Any(
         cv.make_entity_service_schema(
@@ -405,18 +405,18 @@ SCH_SET_ZONE_MODE = vol.Schema(
     )
 )
 
-SVC_SET_ZONE_SCHEDULE: Final[str] = "set_zone_schedule"
+SVC_SET_ZONE_SCHEDULE: Final = "set_zone_schedule"
 SCH_SET_ZONE_SCHEDULE = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_SCHEDULE): cv.string,
     }
 )
 
-SVC_FAKE_ZONE_TEMP: Final[str] = "fake_zone_temp"
-SVC_GET_ZONE_SCHEDULE: Final[str] = "get_zone_schedule"
-SVC_RESET_SYSTEM_MODE: Final[str] = "reset_system_mode"
-SVC_RESET_ZONE_CONFIG: Final[str] = "reset_zone_config"
-SVC_RESET_ZONE_MODE: Final[str] = "reset_zone_mode"
+SVC_FAKE_ZONE_TEMP: Final = "fake_zone_temp"
+SVC_GET_ZONE_SCHEDULE: Final = "get_zone_schedule"
+SVC_RESET_SYSTEM_MODE: Final = "reset_system_mode"
+SVC_RESET_ZONE_CONFIG: Final = "reset_zone_config"
+SVC_RESET_ZONE_MODE: Final = "reset_zone_mode"
 
 SVCS_RAMSES_CLIMATE = {
     SVC_FAKE_ZONE_TEMP: SCH_PUT_ROOM_TEMP,  # a convenience for SVC_PUT_ROOM_TEMP
@@ -432,7 +432,7 @@ SVCS_RAMSES_CLIMATE = {
 
 # services for water_heater platform
 
-SVC_SET_DHW_MODE: Final[str] = "set_dhw_mode"
+SVC_SET_DHW_MODE: Final = "set_dhw_mode"
 SCH_SET_DHW_MODE = cv.make_entity_service_schema(
     {
         vol.Optional(ATTR_MODE): vol.In(
@@ -459,7 +459,7 @@ DEFAULT_DIFFERENTIAL: Final[float] = 10  # degrees celsius, float
 MIN_DIFFERENTIAL: Final[float] = 1
 MAX_DIFFERENTIAL: Final[float] = 10
 
-SVC_SET_DHW_PARAMS: Final[str] = "set_dhw_params"
+SVC_SET_DHW_PARAMS: Final = "set_dhw_params"
 SCH_SET_DHW_PARAMS = cv.make_entity_service_schema(
     {
         vol.Optional(ATTR_SETPOINT, default=DEFAULT_DHW_SETPOINT): vol.All(
@@ -474,18 +474,18 @@ SCH_SET_DHW_PARAMS = cv.make_entity_service_schema(
     }
 )
 
-SVC_SET_DHW_SCHEDULE: Final[str] = "set_dhw_schedule"
+SVC_SET_DHW_SCHEDULE: Final = "set_dhw_schedule"
 SCH_SET_DHW_SCHEDULE = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_SCHEDULE): cv.string,
     }
 )
 
-SVC_FAKE_DHW_TEMP: Final[str] = "fake_dhw_temp"
-SVC_GET_DHW_SCHEDULE: Final[str] = "get_dhw_schedule"
-SVC_RESET_DHW_MODE: Final[str] = "reset_dhw_mode"
-SVC_RESET_DHW_PARAMS: Final[str] = "reset_dhw_params"
-SVC_SET_DHW_BOOST: Final[str] = "set_dhw_boost"
+SVC_FAKE_DHW_TEMP: Final = "fake_dhw_temp"
+SVC_GET_DHW_SCHEDULE: Final = "get_dhw_schedule"
+SVC_RESET_DHW_MODE: Final = "reset_dhw_mode"
+SVC_RESET_DHW_PARAMS: Final = "reset_dhw_params"
+SVC_SET_DHW_BOOST: Final = "set_dhw_boost"
 
 SVCS_RAMSES_WATER_HEATER = {
     SVC_FAKE_DHW_TEMP: SCH_PUT_DHW_TEMP,  # a convenience for SVC_PUT_DHW_TEMP
@@ -504,7 +504,7 @@ DEFAULT_TIMEOUT: Final[int] = 60
 MIN_TIMEOUT: Final[int] = 30
 MAX_TIMEOUT: Final[int] = 300
 
-SVC_LEARN_COMMAND: Final[str] = "learn_command"
+SVC_LEARN_COMMAND: Final = "learn_command"
 SCH_LEARN_COMMAND = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_COMMAND): cv.string,
@@ -522,7 +522,7 @@ DEFAULT_DELAY_SECS: Final[float] = 0.05
 MIN_DELAY_SECS: Final[float] = 0.02
 MAX_DELAY_SECS: Final[float] = 1.0
 
-SVC_SEND_COMMAND: Final[str] = "send_command"
+SVC_SEND_COMMAND: Final = "send_command"
 SCH_SEND_COMMAND = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_COMMAND): cv.string,
@@ -537,7 +537,7 @@ SCH_SEND_COMMAND = cv.make_entity_service_schema(
     },
 )
 
-SVC_DELETE_COMMAND: Final[str] = "delete_command"
+SVC_DELETE_COMMAND: Final = "delete_command"
 SCH_DELETE_COMMAND = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_COMMAND): cv.string,
