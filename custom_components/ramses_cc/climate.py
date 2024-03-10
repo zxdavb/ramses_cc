@@ -262,8 +262,9 @@ class RamsesController(RamsesEntity, ClimateEntity):
         elif period is None:
             until = None
         elif period.seconds == period.microseconds == 0:
-            # this is teh behaviour of an evohome controller
-            until = datetime.now().date() + timedelta(days=1) + period
+            # this is the behaviour of an evohome controller
+            date_ = datetime.now().date() + timedelta(days=1) + period
+            until = datetime(date_.year, date_.month, date_.day)
         else:
             until = datetime.now() + period
 
