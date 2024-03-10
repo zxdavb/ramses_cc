@@ -1,13 +1,16 @@
 {
     "domain": "ramses_cc",
     "name": "RAMSES RF",
+    "codeowners": ["@zxdavb"],
     "documentation": "https://github.com/zxdavb/ramses_cc",
+    "issue_tracker": "https://github.com/zxdavb/ramses_cc/issues",
     "requirements": [
-      "ramses-rf==0.31.7",
-      "pyserial-asyncio==0.6"
+      "paho-mqtt==1.6.1",
+      "pyserial-asyncio==0.6",
+      "ramses-rf==0.31.11",
+      "voluptuous==0.13.1"
     ],
     "dependencies": [],
-    "issue_tracker": "https://github.com/zxdavb/ramses_cc/issues",
-    "codeowners": ["@zxdavb"],
-    "version": "0.31.7"
+    "config_flow": true,
+    "version": "0.31.11"
   }
