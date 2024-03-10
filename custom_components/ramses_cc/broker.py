@@ -129,11 +129,17 @@ class RamsesBroker:
         # Perform initial update, then poll at intervals
         await self.async_update()
         async_track_time_interval(
-            self.hass, self.async_update, self.hass_config[DOMAIN][CONF_SCAN_INTERVAL]
+            self.hass,
+            self.async_update,
+            self.hass_config[DOMAIN][CONF_SCAN_INTERVAL],
+            cancel_on_shutdown=True,
         )
 
         async_track_time_interval(
-            self.hass, self.async_save_client_state, SAVE_STATE_INTERVAL
+            self.hass,
+            self.async_save_client_state,
+            SAVE_STATE_INTERVAL,
+            cancel_on_shutdown=True,
         )
 
     def _create_client(

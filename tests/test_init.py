@@ -96,4 +96,5 @@ async def test_services_config(
         await _test_common(hass)
     finally:
         await list(hass.data[DOMAIN].values())[0].client.stop()
+        hass.stop()
         await rf.stop()

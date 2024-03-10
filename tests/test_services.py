@@ -255,6 +255,7 @@ async def entry(hass: HomeAssistant) -> AsyncGenerator[ConfigEntry, None]:
 
         finally:
             await list(hass.data[DOMAIN].values())[0].client.stop()
+            hass.stop()
             await rf.stop()
 
 
