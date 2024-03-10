@@ -1,4 +1,5 @@
 """Constants for RAMSES integration."""
+
 from __future__ import annotations
 
 from enum import StrEnum

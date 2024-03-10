@@ -1,4 +1,5 @@
 """Support for RAMSES HVAC RF remotes."""
+
 from __future__ import annotations
 
 import asyncio

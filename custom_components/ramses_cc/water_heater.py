@@ -1,4 +1,5 @@
 """Support for RAMSES water_heater entities."""
+
 from __future__ import annotations
 
 import json

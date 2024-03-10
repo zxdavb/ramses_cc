@@ -1,4 +1,5 @@
 """Support for RAMSES climate entities."""
+
 from __future__ import annotations
 
 import json

@@ -1,4 +1,5 @@
 """Broker for RAMSES integration."""
+
 from __future__ import annotations
 
 import asyncio

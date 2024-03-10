@@ -1,4 +1,5 @@
 """Support for RAMSES binary sensors."""
+
 from __future__ import annotations
 
 import logging

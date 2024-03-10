@@ -1,4 +1,5 @@
 """Support for RAMSES sensors."""
+
 from __future__ import annotations
 
 import logging
