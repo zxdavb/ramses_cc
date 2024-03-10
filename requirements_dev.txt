@@ -1,0 +1,23 @@
+# Setup venv for ramses_cc under Hass
+
+# last updated 2024-03-09, based on HA 2024.3.x
+#  - to check against manifest.json, github workflows
+#
+
+# Pre-requisites & install...
+#   deactivate & rm -rf venv
+#   script/setup  # python3.12 -m venv --prompt hass venv
+#   source venv/bin/activate.fish
+#
+
+# used for testing
+  #
+  ramses_rf>=0.31.11            # -e ~/clients/ramses_rf
+
+# used for linting/typing (included in HA)
+# pre-commit>=3.6.2
+# ruff>=0.2.1
+
+# mypy>=1.8.0
+# types-paho-mqtt>=1.6.0.20240106
+# voluptuous>=0.13.1
