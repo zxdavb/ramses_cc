@@ -1,6 +1,7 @@
 """Test the setup."""
 
 from collections.abc import AsyncGenerator
+from datetime import datetime as dt, timedelta as td
 from typing import Any, Final
 from unittest.mock import patch
 
@@ -78,6 +79,12 @@ NUM_DEVS_BEFORE = 3  # HGI, faked THM, faked REM
 NUM_DEVS_AFTER = 15  # proxy for success of cast_packets_to_rf()
 NUM_SVCS_AFTER = 10  # proxy for success
 NUM_ENTS_AFTER = 45  # proxy for success
+
+
+# until an hour from now as "2024-03-16 14:00:00"
+_UNTIL = (dt.now().replace(minute=0, second=0, microsecond=0) + td(hours=2)).strftime(
+    "%Y-%m-%d %H:%M:%S"
+)
 
 
 TEST_CONFIG = {
@@ -502,25 +509,72 @@ async def test_set_dhw_boost(hass: HomeAssistant, entry: VirtualRf) -> None:
     )
 
 
-TESTS_SET_DHW_MODE = {
-    "00": {"mode": "follow_schedule"},
-    "01": {"mode": "permanent_override", "active": True},
-    "02": {"mode": "temporary_override", "active": True, "duration": {"minutes": 90}},
-    "03": {"mode": "temporary_override", "active": True, "duration": {"hours": 3}},
-}  # TODO: need to add until...
+# See: https://github.com/zxdavb/ramses_cc/issues/163
+TESTS_SET_DHW_MODE_GOOD = {
+    "11": {"mode": "follow_schedule"},
+    "21": {"mode": "permanent_override", "active": True},
+    "31": {"mode": "advanced_override", "active": True},
+    "41": {"mode": "temporary_override", "active": True},  # default duration 1 hour
+    "52": {"mode": "temporary_override", "active": True, "duration": {"hours": 5}},
+    "62": {"mode": "temporary_override", "active": True, "until": _UNTIL},
+}
+TESTS_SET_DHW_MODE_FAIL: dict[str, dict[str, Any]] = {
+    "00": {},  # #                                                     missing mode
+    "12": {"mode": "follow_schedule", "active": True},  # #            *extra* active
+    "20": {"mode": "permanent_override"},  # #                         missing active
+    "22": {"mode": "permanent_override", "active": True, "duration": {"hours": 5}},
+    "23": {"mode": "permanent_override", "active": True, "until": _UNTIL},
+    "29": {"active": True},  # #                                       missing mode
+    "30": {"mode": "advanced_override"},  # #                          missing active
+    "32": {"mode": "advanced_override", "active": True, "duration": {"hours": 5}},
+    "33": {"mode": "advanced_override", "active": True, "until": _UNTIL},
+    "40": {"mode": "temporary_override"},  # #                         missing active
+    "42": {"mode": "temporary_override", "active": False},  # #        missing duration
+    "50": {"mode": "temporary_override", "duration": {"hours": 5}},  # missing active
+    "59": {"active": True, "duration": {"hours": 5}},  # #             missing mode
+    "60": {"mode": "temporary_override", "until": _UNTIL},  # #        missing active
+    "69": {"active": True, "until": _UNTIL},  # #                      missing mode
+    "79": {
+        "mode": "temporary_override",
+        "active": True,
+        "duration": {"hours": 5},
+        "until": _UNTIL,
+    },
+}
 
 
 # TODO: extended test of underlying method (duration/until)
-@pytest.mark.parametrize("idx", TESTS_SET_DHW_MODE)
-async def test_set_dhw_mode(hass: HomeAssistant, entry: VirtualRf, idx: str) -> None:
+@pytest.mark.parametrize("idx", TESTS_SET_DHW_MODE_GOOD)
+async def test_set_dhw_mode_good(
+    hass: HomeAssistant, entry: ConfigEntry, idx: str
+) -> None:
     data = {
         "entity_id": "water_heater.01_145038_hw",
-        **TESTS_SET_DHW_MODE[idx],
+        **TESTS_SET_DHW_MODE_GOOD[idx],
     }
 
     await _test_entity_service_call(
         hass, SVC_SET_DHW_MODE, data, schemas=SVCS_RAMSES_WATER_HEATER
     )
+
+
+@pytest.mark.parametrize("idx", TESTS_SET_DHW_MODE_FAIL)
+async def test_set_dhw_mode_fail(
+    hass: HomeAssistant, entry: ConfigEntry, idx: str
+) -> None:
+    data = {
+        "entity_id": "water_heater.01_145038_hw",
+        **TESTS_SET_DHW_MODE_FAIL[idx],
+    }
+
+    try:
+        await _test_entity_service_call(
+            hass, SVC_SET_DHW_MODE, data, schemas=SVCS_RAMSES_WATER_HEATER
+        )
+    except vol.MultipleInvalid:
+        pass
+    else:
+        raise AssertionError("Expected vol.MultipleInvalid")
 
 
 TESTS_SET_DHW_PARAMS = {
@@ -604,21 +658,47 @@ async def test_set_zone_config(hass: HomeAssistant, entry: VirtualRf, idx: str) 
     )
 
 
-TESTS_SET_ZONE_MODE: dict[str, dict[str, Any]] = {
-    "00": {"mode": "follow_schedule"},
-    "01": {"mode": "permanent_override", "setpoint": 18.5},
-    "02": {"mode": "temporary_override", "setpoint": 20.5, "duration": {"minutes": 90}},
-    "03": {"mode": "temporary_override", "setpoint": 21.5, "duration": {"hours": 3}},
-    "09": {"mode": "advanced_override", "setpoint": 19.5},
-}  # TODO: need to add until...
+# https://github.com/zxdavb/ramses_cc/issues/163
+TESTS_SET_ZONE_MODE_GOOD: dict[str, dict[str, Any]] = {
+    "11": {"mode": "follow_schedule"},
+    "21": {"mode": "permanent_override", "setpoint": 12.1},
+    "31": {"mode": "advanced_override", "setpoint": 13.1},
+    "41": {"mode": "temporary_override", "setpoint": 14.1},  # default duration 1 hour
+    "52": {"mode": "temporary_override", "setpoint": 15.1, "duration": {"hours": 5}},
+    "62": {"mode": "temporary_override", "setpoint": 16.1, "until": _UNTIL},
+}
+TESTS_SET_ZONE_MODE_FAIL: dict[str, dict[str, Any]] = {
+    "00": {},  # #                                                     missing mode
+    "12": {"mode": "follow_schedule", "setpoint": 11.2},  # #          *extra* setpoint
+    "20": {"mode": "permanent_override"},  # #                         missing setpoint
+    "22": {"mode": "permanent_override", "setpoint": 12.2, "duration": {"hours": 5}},
+    "23": {"mode": "permanent_override", "setpoint": 12.3, "until": _UNTIL},
+    "29": {"setpoint": 12.9},  # #                                     missing mode
+    "30": {"mode": "advanced_override"},  # #                          missing setpoint
+    "32": {"mode": "advanced_override", "setpoint": 13.2, "duration": {"hours": 5}},
+    "33": {"mode": "advanced_override", "setpoint": 13.3, "until": _UNTIL},
+    "40": {"mode": "temporary_override"},  # #                         missing setpoint
+    "50": {"mode": "temporary_override", "duration": {"hours": 5}},  # missing setpoint
+    "59": {"setpoint": 15.9, "duration": {"hours": 5}},  # #           missing mode
+    "60": {"mode": "temporary_override", "until": _UNTIL},  # #        missing setpoint
+    "69": {"setpoint": 16.9, "until": _UNTIL},  # #                    missing mode
+    "79": {
+        "mode": "temporary_override",
+        "setpoint": 16.9,
+        "duration": {"hours": 5},
+        "until": _UNTIL,
+    },
+}
 
 
 # TODO: extended test of underlying method (duration/until)
-@pytest.mark.parametrize("idx", TESTS_SET_ZONE_MODE)
-async def test_set_zone_mode(hass: HomeAssistant, entry: VirtualRf, idx: str) -> None:
+@pytest.mark.parametrize("idx", TESTS_SET_ZONE_MODE_GOOD)
+async def test_set_zone_mode_good(
+    hass: HomeAssistant, entry: ConfigEntry, idx: str
+) -> None:
     data = {
         "entity_id": "climate.01_145038_02",
-        **TESTS_SET_ZONE_MODE[idx],
+        **TESTS_SET_ZONE_MODE_GOOD[idx],
     }
 
     await _test_entity_service_call(
@@ -626,7 +706,26 @@ async def test_set_zone_mode(hass: HomeAssistant, entry: VirtualRf, idx: str) ->
     )
 
 
-async def test_set_zone_schedule(hass: HomeAssistant, entry: VirtualRf) -> None:
+@pytest.mark.parametrize("idx", TESTS_SET_ZONE_MODE_FAIL)
+async def test_set_zone_mode_fail(
+    hass: HomeAssistant, entry: ConfigEntry, idx: str
+) -> None:
+    data = {
+        "entity_id": "climate.01_145038_02",
+        **TESTS_SET_ZONE_MODE_FAIL[idx],
+    }
+
+    try:
+        await _test_entity_service_call(
+            hass, SVC_SET_ZONE_MODE, data, schemas=SVCS_RAMSES_CLIMATE
+        )
+    except vol.MultipleInvalid:
+        pass
+    else:
+        raise AssertionError("Expected vol.MultipleInvalid")
+
+
+async def test_set_zone_schedule(hass: HomeAssistant, entry: ConfigEntry) -> None:
     data = {
         "entity_id": "climate.01_145038_02",
         "schedule": "",

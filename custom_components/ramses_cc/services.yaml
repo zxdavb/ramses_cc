@@ -250,9 +250,9 @@ set_zone_mode:
     mode:
       name: Zone Mode
       description: >-
-        The permanency of the override. Optional, one of: follow_schedule,
-        advanced_override (until next scheduled setpoint), temporary_override (see:
-        duration and until), or permanent_override (indefinitely).
+        The permanency of the override. Required, one of: follow_schedule,
+        advanced_override (until next scheduled setpoint), temporary_override (must
+        specify duration or until), or permanent_override (indefinitely).
       default: follow_schedule
       example: advanced_override
       required: true
@@ -268,9 +268,9 @@ set_zone_mode:
     setpoint:
       name: Setpoint
       description: >-
-        The target temperature in degrees Celsius. Default is 21.0.
-      default: 19.5
-      example: 21.0
+        The target temperature in degrees Celsius. Required by all modes except for
+        follow_schedule. There is no default value.
+      example: 19.5
       selector:
         number:
           min: 5
@@ -287,7 +287,6 @@ set_zone_mode:
         hours: 1
         minutes: 30
       example: '{"hours": 1, "minutes": 30}'
-      required: true
       selector:
         duration:
 
@@ -296,7 +295,6 @@ set_zone_mode:
       description: >-
         The end of the temporary_override. Mutually exclusive with duration.
       example: '"YYYY-MM-DD HH:MM:SS"'
-      required: true
       selector:
         datetime:
 
@@ -377,7 +375,7 @@ set_dhw_mode:
     mode:
       name: DHW mode
       description: >-
-        The permanency of the override. Optional, one of: follow_schedule,
+        The permanency of the override. Required, one of: follow_schedule,
         advanced_override (until next scheduled setpoint), temporary_override (see:
         duration and until), or permanent_override (indefinitely).
       default: follow_schedule
@@ -395,8 +393,9 @@ set_dhw_mode:
     active:
       name: DHW state
       description: >-
-        The state of the water heater. If active, the system will heat the water until
-        the current temperature exceeds the setpoint.
+        The state of the water heater. If active is true, the system will heat the
+        water until the current temperature exceeds the target setpoint. Required by
+        all modes except for follow_schedule. There is no default value.
       example: true
       selector:
         boolean:
