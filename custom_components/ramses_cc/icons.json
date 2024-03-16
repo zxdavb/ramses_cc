@@ -1,0 +1,38 @@
+{
+    "services": {
+        "bind_device": "mdi:connection",
+        "force_update": "mdi:reload",
+        "send_packet": "mdi:send",
+
+        "reset_system_mode": "mdi:restore",
+        "set_system_mode": "mdi:pencil",
+
+        "get_zone_schedule": "mdi:home-clock",
+        "put_zone_temp": "mdi:home-thermometer",
+        "reset_zone_config": "mdi:restore",
+        "reset_zone_mode": "mdi:restore",
+        "set_zone_config": "mdi:pencil",
+        "set_zone_mode": "mdi:pencil",
+        "set_zone_schedule": "mdi:home-clock",
+
+        "get_dhw_schedule": "mdi:home-clock",
+        "reset_dhw_mode": "mdi:restore",
+        "reset_dhw_params": "mdi:restore",
+        "set_dhw_boost": "mdi:pencil",
+        "set_dhw_params": "mdi:pencil",
+        "set_dhw_mode": "mdi:pencil",
+        "set_dhw_schedule": "mdi:home-clock",
+
+        "fake_zone_temp": "mdi:home-thermometer",
+        "fake_dhw_temp": "mdi:water-thermometer",
+
+        "put_room_temp": "mdi:home-thermometer",
+        "put_dhw_temp": "mdi:water-thermometer",
+        "put_co2_level": "mdi:molecule-co2",
+        "put_indoor_humidity": "mdi:water-percent",
+
+        "delete_command": "mdi:file-document-remove",
+        "learn_command": "mdi:file-document-edit",
+        "send_command": "mdi:file-document-arrow-right"
+    }
+}
