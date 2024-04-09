@@ -56,6 +56,7 @@ async def instantiate_entities(
             port_name=None, input_file=f, config={"disable_discovery": True}
         )
         await gwy.start()
+        await gwy.stop()  # have to stop MessageIndex thread, aka: gwy._zzz.stop()
 
     broker: RamsesBroker = MockRamsesBroker(hass)
 
