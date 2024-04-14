@@ -240,8 +240,7 @@ async def _setup_via_entry_(
     assert await hass.config_entries.async_setup(entry.entry_id)
     # await hass.async_block_till_done()  # ?clear hass._tasks
 
-    #
-    await _cast_packets_to_rf(hass, rf)
+    await _cast_packets_to_rf(hass, rf)  # FIXME: how to wait until last pkt Tx'd?
 
     broker: RamsesBroker = list(hass.data[DOMAIN].values())[0]
 
