@@ -19,7 +19,7 @@ from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.typing import ConfigType
 
 from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_tx.exceptions import TransportSerialError
+from ramses_tx import exceptions as exc
 
 from .broker import RamsesBroker
 from .const import (
@@ -64,8 +64,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     broker = RamsesBroker(hass, config)
     try:
         await broker.start()
-    except TransportSerialError as exc:
-        _LOGGER.error("There is a problem with the serial port: %s", exc)
+    except exc.TransportError as err:
+        _LOGGER.error("Unrecoverable problem with the serial port: %s", err)
         return False
 
     hass.data.setdefault(DOMAIN, {})[BROKER] = broker
