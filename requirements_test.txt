@@ -11,5 +11,5 @@
 #
 
 # used for testing (includes HA)
-  pytest_homeassistant_custom_component>=0.13.109
-  ramses_rf>=0.31.16            # -e ~/clients/ramses_rf
+  pytest_homeassistant_custom_component>=0.13.113
+  ramses_rf>=0.31.17            # -e ~/clients/ramses_rf
