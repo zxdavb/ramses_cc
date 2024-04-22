@@ -77,7 +77,7 @@ class RamsesBroker:
         self.hass = hass
         self.entry = entry
         self.options = deepcopy(dict(entry.options))
-        self._store = Store(STORAGE_VERSION, STORAGE_KEY)
+        self._store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
 
         _LOGGER.debug("Config = %s", entry.options)
 
