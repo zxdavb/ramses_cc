@@ -77,7 +77,7 @@ class RamsesBroker:
         self.hass = hass
         self.entry = entry
         self.options = deepcopy(dict(entry.options))
-        self._store: Store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
+        self._store = Store(STORAGE_VERSION, STORAGE_KEY)
 
         _LOGGER.debug("Config = %s", entry.options)
 
@@ -349,7 +349,7 @@ class RamsesBroker:
             confirm_code=list(call.data["confirm"].keys()),
             ratify_cmd=cmd,
         )  # TODO: will need to re-discover schema
-        self.hass.helpers.event.async_call_later(5, self.async_update)
+        async_call_later(self.hass, 5, self.async_update)
 
     async def async_force_update(self, _: ServiceCall) -> None:
         """Handle the force_update service call."""
@@ -381,4 +381,4 @@ class RamsesBroker:
                 cmd._repr = None
 
         self.client.send_cmd(cmd)
-        self.hass.helpers.event.async_call_later(5, self.async_update)
+        async_call_later(self.hass, 5, self.async_update)
