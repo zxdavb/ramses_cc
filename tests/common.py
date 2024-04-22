@@ -37,7 +37,7 @@ async def no_data_left_to_read(gwy: Gateway) -> None:
     """Wait until all pending data frames are read."""
 
     while gwy._transport.serial.in_waiting:
-        await asyncio.sleep(0.001)
+        await asyncio.sleep(0.01)
 
 
 async def cast_packets_to_rf(
@@ -54,6 +54,7 @@ async def cast_packets_to_rf(
                 frames.append(str(cmd).encode() + b"\r\n")
 
     await rf.dump_frames_to_rf(frames)
+    await asyncio.sleep(0.05)  # BUG: so give the system time to process the packets
 
     if gwy:
         await asyncio.wait_for(no_data_left_to_read(gwy), timeout=0.5)
