@@ -9,10 +9,10 @@
     "requirements": [
       "paho-mqtt==1.6.1",
       "pyserial-asyncio==0.6",
-      "ramses-rf==0.31.17"
+      "ramses-rf==0.31.19"
     ],
     "config_flow": true,
     "single_config_entry": true,
     "type": "hub",
-    "version": "0.41.17"
+    "version": "0.41.19"
   }
