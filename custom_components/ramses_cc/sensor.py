@@ -97,6 +97,7 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up the sensor platform."""
+
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
     platform: EntityPlatform = async_get_current_platform()
 
@@ -233,8 +234,8 @@ class RamsesSensorEntityDescription(RamsesEntityDescription, SensorEntityDescrip
     # integration-specific attributes
     ramses_cc_class: type[RamsesSensor] = RamsesSensor
     ramses_cc_icon_off: str | None = None  # no SensorEntityDescription.icon_off attr
-    ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
     ramses_rf_attr: str
+    ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
 
 
 SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (

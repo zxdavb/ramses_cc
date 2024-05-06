@@ -61,17 +61,18 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up the binary sensor platform."""
+
     broker: RamsesBroker = hass.data[DOMAIN][entry.entry_id]
     platform = entity_platform.async_get_current_platform()
 
     @callback
     def add_devices(devices: list[RamsesRFEntity]) -> None:
         entities = [
-            description.ramses_cc_class(broker, device, description)
-            for device in devices
+            description.ramses_cc_class(broker, rf_device, description)
+            for rf_device in devices
             for description in BINARY_SENSOR_DESCRIPTIONS
-            if isinstance(device, description.ramses_rf_class)
-            and hasattr(device, description.ramses_rf_attr)
+            if isinstance(rf_device, description.ramses_rf_class)
+            and hasattr(rf_device, description.ramses_rf_attr)
         ]
         async_add_entities(entities)
 
@@ -212,8 +213,8 @@ class RamsesBinarySensorEntityDescription(
 
     # integration-specific attributes
     ramses_cc_class: type[RamsesBinarySensor] = RamsesBinarySensor
-    ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
     ramses_rf_attr: str
+    ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
 
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
@@ -258,9 +259,9 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     ),
     RamsesBinarySensorEntityDescription(
         key="active_fault",
+        name="Active fault",
         ramses_rf_class=Logbook,
         ramses_rf_attr="active_faults",
-        name="Active fault",
         ramses_cc_class=RamsesLogbookBinarySensor,
         device_class=BinarySensorDeviceClass.PROBLEM,
         ramses_cc_extra_attributes={
