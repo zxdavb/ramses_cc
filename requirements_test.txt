@@ -1,6 +1,6 @@
 # Setup venv for pytest of ramses_cc
 
-# last updated 2024-03-16, based on HA 2024.3.1
+# last updated 2024-05-06, based on HA 2024.5.0
 #  - to check against manifest.json, github workflows
 #
 
@@ -11,5 +11,5 @@
 #
 
 # used for testing (includes HA)
-  pytest_homeassistant_custom_component>=0.13.113
-  ramses_rf>=0.31.17            # -e ~/clients/ramses_rf
+  pytest_homeassistant_custom_component>=0.13.121
+  ramses_rf>=0.31.20            # -e ~/clients/ramses_rf
