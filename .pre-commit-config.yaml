@@ -37,6 +37,13 @@ repos:
       args: [-i]
       exclude: (.pre-commit-config.yaml|^tests/.*\.py$)  # avoid false +ve
 
+    - id: style_1
+      name: check for 'as exc:' (should be 'as err:')
+      entry: ' as exc:'
+      language: pygrep
+      args: [-i]
+      exclude: .pre-commit-config.yaml  # avoid false +ve
+
     # - id: fixme
     #   name: check for FIXME flags
     #   entry: '#.*(FIXME)'  # |TODO)'
@@ -50,6 +57,13 @@ repos:
       language: pygrep
       args: [-i]
       exclude: .pre-commit-config.yaml  # avoid false +ve
+
+    # - id: private imports
+    #   name: check for private imports
+    #   entry: 'from .* import _.*'
+    #   language: pygrep
+    #   args: [-i]
+    #   exclude: .pre-commit-config.yaml  # avoid false +ve
 
   # We do not use pre-commit/mirrors-mypy, as it comes with opinionated defaults
   # (like --ignore-missing-imports) and is difficult to configure to run
