@@ -47,7 +47,7 @@
 2023-01-09T21:37:03.007019 ...  I --- 13:081775 --:------ 13:081775 1100 008 00180404007FFF01  # {'cycle_rate': 6, 'min_on_time': 1.0, 'min_off_time': 1.0, '_unknown_0': '00', 'proportional_band_width': None, '_unknown_1': '01'}
 2024-01-19T05:08:53.591447 043  I --- 13:120242 --:------ 13:120242 3EF0 003 0000FF            # {'modulation_level': 0.0, '_flags_2': 'FF'}
 2024-01-19T05:23:36.192077 046  I --- 13:120242 --:------ 13:120242 3EF0 003 00C8FF            # {'modulation_level': 1.0, '_flags_2': 'FF'}
-2024-01-19T06:52:20.374809 048 RP --- 13:202850 18:198929 --:------ 3EF1 007 0003DC03DCC8FF    # {'modulation_level': 1.0, 'actuator_countdown': 988, 'cycle_countdown': 988, '_unknown_0': 'FF'}
+2024-01-19T06:52:20.374809 048 RP --- 13:202850 18:006402 --:------ 3EF1 007 0003DC03DCC8FF    # {'modulation_level': 1.0, 'actuator_countdown': 988, 'cycle_countdown': 988, '_unknown_0': 'FF'}
 
 2024-01-01T00:00:09.004000 045  I --- 22:140285 --:------ 22:140285 30C9 003 00072D            # {'temperature': 18.37}
 
