@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-#
 """A virtual RF network useful for testing."""
 
 # NOTE: does not rely on ramses_rf library
 
 import asyncio
+import contextlib
 import logging
 import os
 import pty
+import re
 import signal
 import tty
 from collections import deque
-from contextlib import ExitStack
 from io import FileIO
 from selectors import EVENT_READ, DefaultSelector
-from typing import TypeAlias, TypedDict
+from typing import Any, Final, TypeAlias, TypedDict
 
 from serial import Serial, serial_for_url  # type: ignore[import-untyped]
 
@@ -25,7 +25,7 @@ _PN: TypeAlias = str  # port name
 
 # _FILEOBJ: TypeAlias = int | Any  # int | HasFileno
 
-_GwyAttrsT = TypedDict(  # noqa: UP013
+_GwyAttrsT = TypedDict(
     "_GwyAttrsT",
     {
         "manufacturer": str,
@@ -41,13 +41,22 @@ _GwyAttrsT = TypedDict(  # noqa: UP013
     },
 )
 
+
+DEVICE_ID: Final = "device_id"
+FW_TYPE: Final = "fw_type"
+DEVICE_ID_BYTES: Final = "device_id_bytes"
+
+
+class _GatewaysT(TypedDict):
+    device_id: str
+    fw_type: HgiFwTypes
+    device_id_bytes: bytes
+
+
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
 
 DEFAULT_GWY_ID = bytes("18:000730", "ascii")
-DEVICE_ID = "device_id"
-DEVICE_ID_BYTES = "device_id_bytes"
-FW_VERSION = "fw_version"
 
 MAX_NUM_PORTS = 6
 
@@ -156,7 +165,9 @@ class VirtualRfBase:
             self._create_port(idx)
 
         self._log: deque[tuple[_PN, str, bytes]] = deque([], log_size)
-        self._task: asyncio.Task = None  # type: ignore[assignment]
+        self._task: asyncio.Task[None] | None = None
+
+        self._replies: dict[str, bytes] = {}
 
     def _create_port(self, port_idx: int, dev_type: HgiFwTypes | None = None) -> None:
         """Create a port without a HGI80 attached."""
@@ -170,12 +181,14 @@ class VirtualRfBase:
 
         self._master_to_port[master_fd] = port_name
         self._port_to_master[port_name] = master_fd
-        self._port_to_object[port_name] = open(master_fd, "rb+", buffering=0)
+        self._port_to_object[port_name] = open(master_fd, "rb+", buffering=0)  # noqa: SIM115
         self._port_to_slave_[port_name] = slave_fd
 
         self._set_comport_info(port_name, dev_type=dev_type)
 
-    def comports(self, include_links=False) -> list[VirtualComPortInfo]:  # unsorted
+    def comports(
+        self, include_links: bool = False
+    ) -> list[VirtualComPortInfo]:  # unsorted
         """Use this method to monkey patch serial.tools.list_ports.comports()."""
         return list(self._port_info_list.values())
 
@@ -198,10 +211,8 @@ class VirtualRfBase:
         if not self._task or self._task.done():
             return
         self._task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await self._task
-        except asyncio.CancelledError:
-            pass
 
         self._cleanup()
 
@@ -213,7 +224,7 @@ class VirtualRfBase:
         for fd in self._port_to_slave_.values():
             os.close(fd)  # else this slave fd will persist
 
-    def start(self) -> asyncio.Task:
+    def start(self) -> asyncio.Task[None]:
         """Start polling ports and distributing data, calls `pull_data_from_port()`."""
 
         self._task = self._loop.create_task(self._poll_ports_for_data())
@@ -222,7 +233,7 @@ class VirtualRfBase:
     async def _poll_ports_for_data(self) -> None:
         """Send data received from any one port (as .write(data)) to all other ports."""
 
-        with ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             for fo in self._port_to_object.values():
                 stack.enter_context(fo)
 
@@ -250,8 +261,33 @@ class VirtualRfBase:
         """Pull the frame from the source port and cast it to the RF."""
 
         _LOGGER.info(f"{src_port:<11} cast:  {frame!r}")
-        for dst_port in self._port_to_master.keys():
+        for dst_port in self._port_to_master:
             self._push_frame_to_dst_port(dst_port, frame)
+
+        # see if there is a faked reponse (RP/I) for a given command (RQ/W)
+        if not (reply := self._find_reply_for_cmd(frame)):
+            return
+
+        _LOGGER.info(f"{src_port:<11} rply:  {reply!r}")
+        for dst_port in self._port_to_master:
+            self._push_frame_to_dst_port(dst_port, reply)  # is not echo only
+
+    def add_reply_for_cmd(self, cmd: str, reply: str) -> None:
+        """Add a reply packet for a given command frame (for a mocked device).
+
+        For example (note no RSSI, \\r\\n in reply pkt):
+          cmd regex: r"RQ.* 18:.* 01:.* 0006 001 00"
+          reply pkt: "RP --- 01:145038 18:013393 --:------ 0006 004 00050135",
+        """
+
+        self._replies[cmd] = reply.encode() + b"\r\n"
+
+    def _find_reply_for_cmd(self, cmd: bytes) -> bytes | None:
+        """Return a reply packet for a given command frame (for a mocked device)."""
+        for pattern, reply in self._replies.items():
+            if re.match(pattern, cmd.decode()):
+                return reply
+        return None
 
     def _push_frame_to_dst_port(self, dst_port: _PN, frame: bytes) -> None:
         """Push the frame to a single destination port."""
@@ -269,7 +305,9 @@ class VirtualRfBase:
         return frame
 
     def _setup_event_handlers(self) -> None:
-        def handle_exception(loop, context: dict):
+        def handle_exception(
+            loop: asyncio.BaseEventLoop, context: dict[str, Any]
+        ) -> None:
             """Handle exceptions on any platform."""
             _LOGGER.error("Caught an exception: %s, cleaning up...", context["message"])
             self._cleanup()
@@ -277,20 +315,21 @@ class VirtualRfBase:
             if err:
                 raise err
 
-        async def handle_sig_posix(sig) -> None:
+        async def handle_sig_posix(sig: signal.Signals) -> None:
             """Handle signals on posix platform."""
             _LOGGER.error("Received a signal: %s, cleaning up...", sig.name)
             self._cleanup()
             signal.raise_signal(sig)
 
         _LOGGER.debug("Creating exception handler...")
-        self._loop.set_exception_handler(handle_exception)
+        self._loop.set_exception_handler(handle_exception)  # type: ignore[arg-type]
 
         _LOGGER.debug("Creating signal handlers...")
         if os.name == "posix":  # signal.SIGKILL people?
             for sig in (signal.SIGABRT, signal.SIGINT, signal.SIGTERM):
                 self._loop.add_signal_handler(
-                    sig, lambda sig=sig: self._loop.create_task(handle_sig_posix(sig))
+                    sig,
+                    lambda sig=sig: self._loop.create_task(handle_sig_posix(sig)),  # type: ignore[misc]
                 )
         else:  # unsupported OS
             raise RuntimeError(f"Unsupported OS for this module: {os.name} (termios)")
@@ -309,7 +348,7 @@ class VirtualRf(VirtualRfBase):
         Each port has the option of a HGI80 or evofw3-based gateway device.
         """
 
-        self._gateways: dict[_PN, dict] = {}
+        self._gateways: dict[_PN, _GatewaysT] = {}
 
         super().__init__(num_ports, log_size)
 
@@ -342,7 +381,7 @@ class VirtualRf(VirtualRfBase):
 
         self._gateways[port_name] = {
             DEVICE_ID: device_id,
-            FW_VERSION: fw_type,
+            FW_TYPE: fw_type,
             DEVICE_ID_BYTES: bytes(device_id, "ascii"),
         }
 
@@ -376,10 +415,10 @@ class VirtualRf(VirtualRfBase):
         if frame[:1] != b"!":
             return b"000 " + frame
 
-        # The type of Gateway will inform next steps...
-        gwy = self._gateways.get(rcv_port, {})  # not a ramses_rf gwy
+        # The type of Gateway will inform next steps (NOTE: is not a ramses_rf.Gateway)
+        gwy: _GatewaysT | None = self._gateways.get(rcv_port)
 
-        if gwy.get(FW_VERSION) != HgiFwTypes.EVOFW3:
+        if gwy is None or gwy.get(FW_TYPE) != HgiFwTypes.EVOFW3:
             return None
 
         if frame == b"!V":
@@ -395,20 +434,20 @@ class VirtualRf(VirtualRfBase):
         HGI80-based gateways will silently drop frames with addr0 other than 18:000730.
         """
 
-        # The type of Gateway will inform next steps...
-        gwy = self._gateways.get(src_port, {})  # not a ramses_rf gwy
+        # The type of Gateway will inform next steps (NOTE: is not a ramses_rf.Gateway)
+        gwy: _GatewaysT | None = self._gateways.get(src_port)
 
         # Handle trace flags (evofw3 only)
         if frame[:1] == b"!":  # never to be cast, but may be echo'd, or other response
-            if gwy.get(FW_VERSION) == HgiFwTypes.EVOFW3:
-                self._push_frame_to_dst_port(src_port, frame)
-            return None  # do not Tx the frame
+            if gwy is None or gwy.get(FW_TYPE) != HgiFwTypes.EVOFW3:
+                return None  # do not Tx the frame
+            self._push_frame_to_dst_port(src_port, frame)
 
-        if not gwy:  # TODO: ?should raise: but is probably from test suite
+        if gwy is None:  # TODO: ?should raise: but is probably from test suite
             return frame
 
         # Real HGI80s will silently drop cmds if addr0 is not the 18:000730 sentinel
-        if gwy[FW_VERSION] == HgiFwTypes.HGI_80 and frame[7:16] != DEFAULT_GWY_ID:
+        if gwy[FW_TYPE] == HgiFwTypes.HGI_80 and frame[7:16] != DEFAULT_GWY_ID:
             return None
 
         # Both (HGI80 & evofw3) will swap out addr0 (and only addr0)
@@ -426,7 +465,7 @@ async def main() -> None:
     rf = VirtualRf(num_ports)
     print(f"Ports are: {rf.ports}")
 
-    sers: list[Serial] = [serial_for_url(rf.ports[i]) for i in range(num_ports)]
+    sers: list[Serial] = [serial_for_url(rf.ports[i]) for i in range(num_ports)]  # type: ignore[no-any-unimported]
 
     for i in range(num_ports):
         sers[i].write(bytes(f"Hello World {i}! ", "utf-8"))
