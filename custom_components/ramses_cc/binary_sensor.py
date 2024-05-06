@@ -63,7 +63,7 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType = None,
 ) -> None:
-    """Create binary sensors for CH/DHW (heat) & HVAC."""
+    """Set up the binary sensor platform."""
 
     if discovery_info is None:
         return
@@ -71,11 +71,11 @@ async def async_setup_platform(
     broker: RamsesBroker = hass.data[DOMAIN][BROKER]
 
     entities = [
-        description.ramses_cc_class(broker, device, description)
-        for device in discovery_info["devices"]
+        description.ramses_cc_class(broker, rf_device, description)
+        for rf_device in discovery_info["devices"]
         for description in BINARY_SENSOR_DESCRIPTIONS
-        if isinstance(device, description.ramses_rf_class)
-        and hasattr(device, description.key)
+        if isinstance(rf_device, description.ramses_rf_class)
+        and hasattr(rf_device, description.ramses_rf_attr)
     ]
     async_add_entities(entities)
 
@@ -213,21 +213,9 @@ class RamsesBinarySensorEntityDescription(
     icon_off: str | None = None
 
     # integration-specific attributes
-    ramses_cc_class: type[RamsesBinarySensor] = None  # type: ignore[assignment]
-    ramses_rf_attr: str = None  # type: ignore[assignment]
+    ramses_cc_class: type[RamsesBinarySensor] = RamsesBinarySensor
+    ramses_rf_attr: str
     ramses_rf_class: type[RamsesRFEntity] | UnionType = RamsesRFEntity
-
-    def __post_init__(self) -> None:
-        """Default values for descriptor attrs.
-
-        Is a convenience to avoid having to specify the values in the DESCRIPTOR table.
-        """
-
-        # HACK: may not be acceptible to HA core devs (should just complete the table)
-        object.__setattr__(self, "ramses_rf_attr", self.ramses_rf_attr or self.key)
-        object.__setattr__(
-            self, "ramses_cc_class", self.ramses_cc_class or RamsesBinarySensor
-        )
 
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
@@ -252,11 +240,13 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     ),
     RamsesBinarySensorEntityDescription(
         key=TrvActuator.WINDOW_OPEN,
+        ramses_rf_attr=TrvActuator.WINDOW_OPEN,
         name="Window open",
         device_class=BinarySensorDeviceClass.WINDOW,
     ),
     RamsesBinarySensorEntityDescription(
         key=BdrSwitch.ACTIVE,
+        ramses_rf_attr=BdrSwitch.ACTIVE,
         name="Active",
         icon="mdi:electric-switch-closed",
         icon_off="mdi:electric-switch",
@@ -269,9 +259,10 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         device_class=BinarySensorDeviceClass.BATTERY,
     ),
     RamsesBinarySensorEntityDescription(
-        key="active_faults",
+        key="active_fault",
         name="Active fault",
         ramses_rf_class=Logbook,
+        ramses_rf_attr="active_faults",
         ramses_cc_class=RamsesLogbookBinarySensor,
         device_class=BinarySensorDeviceClass.PROBLEM,
         ramses_cc_extra_attributes={
@@ -282,104 +273,122 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_CH_ACTIVE,
+        ramses_rf_attr=SZ_CH_ACTIVE,
         name="CH active",
         icon="mdi:radiator",
         icon_off="mdi:radiator-off",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_CH_ENABLED,
+        ramses_rf_attr=SZ_CH_ENABLED,
         name="CH enabled",
         icon="mdi:radiator",
         icon_off="mdi:radiator-off",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_COOLING_ACTIVE,
+        ramses_rf_attr=SZ_COOLING_ACTIVE,
         name="Cooling active",
         icon="mdi:snowflake",
         icon_off="mdi:snowflake-off",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_COOLING_ENABLED,
+        ramses_rf_attr=SZ_COOLING_ENABLED,
         name="Cooling enabled",
         icon_off="mdi:snowflake-off",
         icon="mdi:snowflake",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_DHW_ACTIVE,
+        ramses_rf_attr=SZ_DHW_ACTIVE,
         name="DHW active",
         icon_off="mdi:water-off",
         icon="mdi:water",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_DHW_ENABLED,
+        ramses_rf_attr=SZ_DHW_ENABLED,
         name="DHW enabled",
         icon_off="mdi:water-off",
         icon="mdi:water",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_FLAME_ACTIVE,
+        ramses_rf_attr=SZ_FLAME_ACTIVE,
         name="Flame active",
         icon="mdi:fire",
         icon_off="mdi:fire-off",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_DHW_BLOCKING,
+        ramses_rf_attr=SZ_DHW_BLOCKING,
         name="DHW blocking",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_OTC_ACTIVE,
+        ramses_rf_attr=SZ_OTC_ACTIVE,
         name="OTC active",
         icon="mdi:weather-snowy-heavy",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_SUMMER_MODE,
+        ramses_rf_attr=SZ_SUMMER_MODE,
         name="Summer mode",
         icon="mdi:sun-clock",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_FAULT_PRESENT,
+        ramses_rf_attr=SZ_FAULT_PRESENT,
         icon="mdi:alert",
         name="Fault present",
     ),
     RamsesBinarySensorEntityDescription(
         key=SZ_BYPASS_POSITION,
+        ramses_rf_attr=SZ_BYPASS_POSITION,
         name="Bypass position",
     ),
     # Special projects
     RamsesBinarySensorEntityDescription(
         key="bit_2_4",
-        name="Bit 2/4",
         ramses_rf_class=OtbGateway,
+        ramses_rf_attr="bit_2_4",
+        name="Bit 2/4",
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_2_5",
-        name="Bit 2/5",
         ramses_rf_class=OtbGateway,
+        ramses_rf_attr="bit_2_5",
+        name="Bit 2/5",
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_2_6",
-        name="Bit 2/6",
         ramses_rf_class=OtbGateway,
+        ramses_rf_attr="bit_2_6",
+        name="Bit 2/6",
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_2_7",
-        name="Bit 2/7",
         ramses_rf_class=OtbGateway,
+        ramses_rf_attr="bit_2_7",
+        name="Bit 2/7",
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_3_7",
-        name="Bit 3/7",
         ramses_rf_class=OtbGateway,
+        ramses_rf_attr="bit_3_7",
+        name="Bit 3/7",
         entity_registry_enabled_default=False,
     ),
     RamsesBinarySensorEntityDescription(
         key="bit_6_6",
-        name="Bit 6/6",
         ramses_rf_class=OtbGateway,
+        ramses_rf_attr="bit_6_6",
+        name="Bit 6/6",
         entity_registry_enabled_default=False,
     ),
 )
