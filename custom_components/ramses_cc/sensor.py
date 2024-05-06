@@ -75,7 +75,7 @@ from ramses_rf.device.heat import (
 )
 from ramses_rf.device.hvac import HvacCarbonDioxideSensor, HvacHumiditySensor
 from ramses_rf.entity_base import Entity as RamsesRFEntity
-from ramses_rf.system.heat import SystemBase
+from ramses_rf.system.heat import System
 from ramses_rf.system.zones import ZoneBase
 from ramses_tx.const import (
     SZ_DEWPOINT_TEMP,
@@ -279,7 +279,7 @@ SENSOR_DESCRIPTIONS: tuple[RamsesSensorEntityDescription, ...] = (
     ),
     RamsesSensorEntityDescription(  # not OtbGateway
         key=SZ_HEAT_DEMAND,
-        ramses_rf_class=SystemBase | TrvActuator | UfhController | ZoneBase,
+        ramses_rf_class=System | TrvActuator | UfhController | ZoneBase,
         ramses_rf_attr=SZ_HEAT_DEMAND,
         name="Heat demand",
         icon="mdi:radiator",
