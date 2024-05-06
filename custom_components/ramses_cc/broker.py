@@ -124,10 +124,10 @@ class RamsesBroker:
         ):
             try:
                 self.client = self._create_client(merged_schema)
-            except (LookupError, vol.MultipleInvalid) as exc:
+            except (LookupError, vol.MultipleInvalid) as err:
                 # LookupError:     ...in the schema, but also in the block_list
                 # MultipleInvalid: ...extra keys not allowed @ data['???']
-                _LOGGER.warning("Failed to initialise with merged schema: %s", exc)
+                _LOGGER.warning("Failed to initialise with merged schema: %s", err)
 
         if not self.client:
             self.client = self._create_client(config_schema)
@@ -335,14 +335,11 @@ class RamsesBroker:
 
         try:
             device = self.client.fake_device(call.data["device_id"])
-        except LookupError as exc:
-            _LOGGER.error("%s", exc)
+        except LookupError as err:
+            _LOGGER.error("%s", err)
             return
 
-        if call.data["device_info"]:
-            cmd = Command(call.data["device_info"])
-        else:
-            cmd = None
+        cmd = Command(call.data["device_info"]) if call.data["device_info"] else None
 
         await device._initiate_binding_process(  # may: BindingFlowFailed
             list(call.data["offer"].keys()),
