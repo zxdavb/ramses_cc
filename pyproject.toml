@@ -30,7 +30,8 @@
   warn_unused_ignores = true
 
   # Getting these passing should be easy
-  # extra_checks = true  # was: strict_equality, strict_concatenate = true
+  extra_checks = true  # now incl.: strict_concatenate = true
+  strict_equality = true
 
   # Strongly recommend enabling this one as soon as you can
   check_untyped_defs = true
@@ -46,7 +47,7 @@
   disallow_incomplete_defs = true
   disallow_untyped_defs = true
 
-  # # This one isn't too hard to get passing, but return on investment is lower
+  # This one isn't too hard to get passing, but return on investment is lower
   no_implicit_reexport = true
 
   # This one can be tricky to get passing if you use a lot of untyped libraries
@@ -78,11 +79,15 @@
     "E",  # pycodestyle
     "F",  # Pyflakes
     "I",  # isort
-    # "SIM",  # flake8-simplify
+    "SIM",  # flake8-simplify
     "UP",  # pyupgrade
   ]
-  ignore = ["E501"]
-  # E501  - Line too long
+  ignore = ["E501", "SIM102", "SIM114"]
+
+  # E501   - Line too long
+  # SIM102 - Use a single `if` statement instead of nested `if` statements
+  # SIM114 - Combine `if` branches using logical `or` operator
+
 
 [tool.ruff.lint.flake8-import-conventions.extend-aliases]
   voluptuous = "vol"

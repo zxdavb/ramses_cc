@@ -9,7 +9,7 @@ def auto_enable_custom_integrations(enable_custom_integrations: pytest.fixture):
 
 
 @pytest.fixture(autouse=True)
-def patches_for_tests(monkeypatch: pytest.MonkeyPatch):
+def patches_for_tests(monkeypatch: pytest.MonkeyPatch) -> None:
     try:
         # refactored protocol / transport modules
         monkeypatch.setattr(
