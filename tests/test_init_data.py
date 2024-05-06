@@ -24,6 +24,29 @@ from .virtual_rf import VirtualRf
 # patched constants
 _CALL_LATER_DELAY: Final = 0  # from: custom_components.ramses_cc.broker.py
 
+# fmt: off
+EXPECTED_ENTITIES = [
+    "18:006402-status",
+    "01:145038-status", "01:145038", "01:145038-heat_demand", "01:145038-active_fault",
+
+    "01:145038_02", "01:145038_02-heat_demand", "01:145038_02-window_open",
+    "01:145038_0A", "01:145038_0A-heat_demand", "01:145038_0A-window_open",
+    "01:145038_HW", "01:145038_HW-heat_demand", "01:145038_HW-relay_demand",
+
+    "04:056053-battery_low", "04:056053-heat_demand", "04:056053-temperature", "04:056053-window_open",
+    "04:189082-battery_low", "04:189082-heat_demand", "04:189082-temperature", "04:189082-window_open",
+
+    "07:046947-battery_low", "07:046947-temperature",
+
+    "13:081775-active", "13:081775-relay_demand",
+    "13:120241-active", "13:120241-relay_demand",
+    "13:120242-active", "13:120242-relay_demand",
+    "13:202850-active", "13:202850-relay_demand",
+
+    "22:140285-battery_low", "22:140285-temperature",
+    "34:092243-battery_low", "34:092243-temperature",
+]
+# fmt: on
 
 NUM_DEVS_SETUP = 1  # HGI (before casting packets to RF)
 NUM_DEVS_AFTER = 13  # proxy for success of cast_packets_to_rf()
@@ -68,7 +91,7 @@ async def _test_common(hass: HomeAssistant, entry: ConfigEntry, rf: VirtualRf) -
 
     await broker.async_update()
     await hass.async_block_till_done()
-    assert len(broker._entities) == 36  # HA entities
+    assert sorted(broker._entities) == sorted(EXPECTED_ENTITIES)
 
     # ramses_rf entities
     assert len(broker._devices) == NUM_DEVS_AFTER
