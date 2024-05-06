@@ -20,7 +20,7 @@ from .virtual_rf import VirtualRf
 _CALL_LATER_DELAY: Final = 0  # from: custom_components.ramses_cc.broker.py
 
 # fmt: off
-EXPECTED_ENTITIES = [
+EXPECTED_ENTITIES = [  # TODO: add OTB entities
     "18:006402-status",
     "01:145038-status", "01:145038", "01:145038-heat_demand", "01:145038-active_fault",
 
@@ -86,7 +86,9 @@ async def _test_common(hass: HomeAssistant, rf: VirtualRf) -> None:
 
     await broker.async_update()
     await hass.async_block_till_done()
-    assert sorted(broker._entities) == sorted(EXPECTED_ENTITIES)
+
+    assert not [x for x in broker._entities if x not in EXPECTED_ENTITIES]  # extras
+    assert not [x for x in EXPECTED_ENTITIES if x not in broker._entities]  # missing
 
     # ramses_rf entities
     assert len(broker._devices) == NUM_DEVS_AFTER
