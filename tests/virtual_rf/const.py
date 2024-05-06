@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#
 """A virtual RF network useful for testing."""
 
 from enum import StrEnum
