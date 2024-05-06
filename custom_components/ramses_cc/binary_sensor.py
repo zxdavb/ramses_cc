@@ -148,7 +148,7 @@ class RamsesLogbookBinarySensor(RamsesBinarySensor):
     @property
     def is_on(self) -> bool:
         """Return the state of the binary sensor."""
-        return self._device.active_fault is not None
+        return bool(self._device.active_faults)
 
 
 class RamsesSystemBinarySensor(RamsesBinarySensor):
@@ -269,13 +269,13 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         device_class=BinarySensorDeviceClass.BATTERY,
     ),
     RamsesBinarySensorEntityDescription(
-        key="active_fault",
+        key="active_faults",
         name="Active fault",
         ramses_rf_class=Logbook,
         ramses_cc_class=RamsesLogbookBinarySensor,
         device_class=BinarySensorDeviceClass.PROBLEM,
         ramses_cc_extra_attributes={
-            ATTR_ACTIVE_FAULT: "active_fault",
+            ATTR_ACTIVE_FAULT: "active_faults",
             ATTR_LATEST_EVENT: "latest_event",
             ATTR_LATEST_FAULT: "latest_fault",
         },
