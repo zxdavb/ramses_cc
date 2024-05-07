@@ -46,7 +46,7 @@ from ramses_tx.const import SZ_BYPASS_POSITION, SZ_IS_EVOFW3
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import (
-    ATTR_ACTIVE_FAULT,
+    ATTR_ACTIVE_FAULTS,
     ATTR_BATTERY_LEVEL,
     ATTR_LATEST_EVENT,
     ATTR_LATEST_FAULT,
@@ -265,7 +265,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[RamsesBinarySensorEntityDescription, ...] = (
         ramses_cc_class=RamsesLogbookBinarySensor,
         device_class=BinarySensorDeviceClass.PROBLEM,
         ramses_cc_extra_attributes={
-            ATTR_ACTIVE_FAULT: "active_faults",
+            ATTR_ACTIVE_FAULTS: "active_faults",
             ATTR_LATEST_EVENT: "latest_event",
             ATTR_LATEST_FAULT: "latest_fault",
         },

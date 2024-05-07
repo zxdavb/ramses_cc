@@ -242,6 +242,12 @@ class RamsesController(RamsesEntity, ClimateEntity):
     # the following methods are integration-specific service calls
 
     @callback
+    async def async_get_system_faults(self, num_entries: int) -> None:
+        """Get the nth latest fault log entries from the Controller."""
+        await self._device.get_faultlog(limit=num_entries, force_refresh=True)
+        self.async_write_ha_state_delayed()
+
+    @callback
     def async_reset_system_mode(self) -> None:
         """Reset the (native) operating mode of the Controller."""
         self._device.reset_mode()
