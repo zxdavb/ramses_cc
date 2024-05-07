@@ -52,6 +52,7 @@ from .const import (
     ATTR_MIN_TEMP,
     ATTR_MODE,
     ATTR_MULTIROOM,
+    ATTR_NUM_ENTRIES,
     ATTR_NUM_REPEATS,
     ATTR_OPENWINDOW,
     ATTR_OVERRUN,
@@ -421,6 +422,19 @@ SCH_SET_ZONE_SCHEDULE = cv.make_entity_service_schema(
     }
 )
 
+DEFAULT_NUM_ENTRIES: Final[float] = 6
+MIN_NUM_ENTRIES: Final[float] = 1
+MAX_NUM_ENTRIES: Final[float] = 64
+
+SVC_GET_SYSTEM_FAULTS: Final = "get_system_faults"
+SCH_GET_SYSTEM_FAULTS = cv.make_entity_service_schema(
+    {
+        vol.Required(ATTR_NUM_ENTRIES, default=DEFAULT_NUM_ENTRIES): vol.All(
+            cv.positive_int, vol.Range(min=MIN_NUM_ENTRIES, max=MAX_NUM_ENTRIES)
+        ),
+    }
+)
+
 SVC_FAKE_ZONE_TEMP: Final = "fake_zone_temp"
 SVC_GET_ZONE_SCHEDULE: Final = "get_zone_schedule"
 SVC_RESET_SYSTEM_MODE: Final = "reset_system_mode"
@@ -437,6 +451,7 @@ SVCS_RAMSES_CLIMATE = {
     SVC_RESET_ZONE_MODE: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_GET_ZONE_SCHEDULE: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_SET_ZONE_SCHEDULE: SCH_SET_ZONE_SCHEDULE,
+    SVC_GET_SYSTEM_FAULTS: SCH_GET_SYSTEM_FAULTS,
 }
 
 # services for water_heater platform
