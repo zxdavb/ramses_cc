@@ -2,7 +2,7 @@
     "domain": "ramses_cc",
     "name": "RAMSES RF",
     "codeowners": ["@zxdavb"],
-    "dependencies": ["mqtt"],
+    "dependencies": [],
     "documentation": "https://github.com/zxdavb/ramses_cc",
     "issue_tracker": "https://github.com/zxdavb/ramses_cc/issues",
     "loggers": ["ramses_rf"],
