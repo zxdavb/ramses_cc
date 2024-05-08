@@ -105,8 +105,8 @@ get_system_faults:
 
     num_entries:
       description: >-
-        The number of fault log entries to retreive. Default is 6.
-      example: 6
+        The number of fault log entries to retreive. Default is 8.
+      example: 8
       selector:
         number:
           min: 1

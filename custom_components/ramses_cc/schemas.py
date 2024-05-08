@@ -338,7 +338,7 @@ SCH_SET_ZONE_SCHEDULE = cv.make_entity_service_schema(
     }
 )
 
-DEFAULT_NUM_ENTRIES: Final[float] = 6
+DEFAULT_NUM_ENTRIES: Final[float] = 8
 MIN_NUM_ENTRIES: Final[float] = 1
 MAX_NUM_ENTRIES: Final[float] = 64
 
