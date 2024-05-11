@@ -61,6 +61,12 @@ PLATFORMS: Final[Platform] = (
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Create a ramses_rf (RAMSES_II)-based system."""
 
+    if hass.config_entries.async_entries(DOMAIN):
+        _LOGGER.error(
+            f"You should revert to the config_flow version of {DOMAIN} (a config flow "
+            "entry exists): this version only supports the configuration.yaml file"
+        )
+
     broker = RamsesBroker(hass, config)
     try:
         await broker.start()
