@@ -100,6 +100,7 @@ TEST_CONFIG = {
         "32:097710": {"class": "CO2"},
         "32:139773": {"class": "HUM"},
         "40:123456": {"class": "REM", "faked": True},
+        "37:123456": {"class": "FAN"}
     },
 }
 
@@ -789,6 +790,20 @@ async def test_svc_send_packet(hass: HomeAssistant, entry: ConfigEntry) -> None:
         "verb": " I",
         "code": "1FC9",
         "payload": "00",
+    }
+    schemas = {SVC_SEND_PACKET: SCH_SEND_PACKET}
+
+    await _test_service_call(hass, SVC_SEND_PACKET, data, schemas=schemas)
+
+async def test_svc_send_packet_with_impersonation(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Test the service call."""
+
+    data = {
+        "device_id": "32:123456",
+        "from_id": "40:123456",
+        "verb": " I",
+        "code": "22F1",
+        "payload": "000304",
     }
     schemas = {SVC_SEND_PACKET: SCH_SEND_PACKET}
 
