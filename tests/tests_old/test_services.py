@@ -799,7 +799,7 @@ async def test_svc_send_packet_with_impersonation(hass: HomeAssistant, entry: Co
     """Test the service call."""
 
     data = {
-        "device_id": "32:123456",
+        "device_id": "37:123456",
         "from_id": "40:123456",
         "verb": " I",
         "code": "22F1",
