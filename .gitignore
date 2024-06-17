@@ -31,6 +31,7 @@ custom_components/*
 
 !custom_components/ramses_cc
 !custom_components/ramses_cc/manifest.json
+!custom_components/ramses_cc/services.yaml
 
 !.flake8
 !.gitignore

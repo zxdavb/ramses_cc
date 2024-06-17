@@ -152,7 +152,7 @@
             "advanced_features": {
                 "title": "Advanced features",
                 "data": {
-                    "send_packet": "Enable send_packet service for broadcasting bespoke packets",
+                    "send_packet": "Enable send_packet service for sending bespoke packets",
                     "message_events": "Emit events for messages matching regular expression"
                 },
                 "data_description": {
