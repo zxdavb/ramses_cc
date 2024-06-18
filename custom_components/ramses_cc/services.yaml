@@ -69,7 +69,7 @@ send_packet:
       description: >-
         The source device ID (a RAMSES ID, not an entity_id).
         This can be used to send a packet from a faked device.
-        If not specified, the device ID of the gateway is used.
+        Optional: if not specified, the device ID of the gateway is used.
       example: 18:123456
       required: false
 
