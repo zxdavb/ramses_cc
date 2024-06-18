@@ -99,8 +99,8 @@ TEST_CONFIG = {
         "03:123456": {"class": "THM", "faked": True},
         "32:097710": {"class": "CO2"},
         "32:139773": {"class": "HUM"},
-        "40:123456": {"class": "REM", "faked": True},
-        "37:123456": {"class": "FAN"}
+        "37:123456": {"class": "FAN"},
+        "40:123456": {"class": "REM", "faked": True}
     },
 }
 
