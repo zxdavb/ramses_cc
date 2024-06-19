@@ -91,9 +91,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Unrecoverable problem with the serial port: %s", err)
         return False
     except exc.TransportError as err:
-        msg = f"There is a problem with the serial port: {err}"
-        _LOGGER.debug("Failed to set up entry %s (will retry): %s", entry.entry_id, msg)
-        raise ConfigEntryNotReady(msg) from err
+        msg = f"There is a problem with the serial port: {err} (check config)"
+        _LOGGER.warning(
+            "Failed to set up entry %s (will retry): %s", entry.entry_id, msg
+        )
+        raise ConfigEntryNotReady(msg) from err  # TODO: when to give up?
 
     # Setup is complete and config is valid, so start polling
     hass.data[DOMAIN][entry.entry_id] = broker
