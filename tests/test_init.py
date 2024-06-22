@@ -6,14 +6,15 @@ from unittest.mock import patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
-from homeassistant.const import Platform
+from homeassistant.const import CONF_SCAN_INTERVAL, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
     MockConfigEntry,
 )
 
-from custom_components.ramses_cc import DOMAIN, RamsesBroker
+from custom_components.ramses_cc import CONFIG_SCHEMA, DOMAIN, RamsesBroker
+from custom_components.ramses_cc.config_flow import SZ_RESTORE_CACHE
 from ramses_rf.gateway import Gateway
 
 from .virtual_rf import VirtualRf
@@ -27,9 +28,25 @@ TEST_CONFIGS = {
         "serial_port": {"port_name": None},
         "ramses_rf": {"disable_discovery": True},
     },
-    "config_01": {
+    "config_10": {
         "serial_port": {"port_name": None},
         "ramses_rf": {"disable_discovery": True},
+        "packet_log": None,
+    },
+    "config_11": {
+        "serial_port": {"port_name": None},
+        "ramses_rf": {"disable_discovery": True},
+        "packet_log": "packet.log",
+    },
+    "config_12": {
+        "serial_port": {"port_name": None},
+        "ramses_rf": {"disable_discovery": True},
+        "packet_log": {"file_name": "packet.log"},
+    },
+    "config_13": {
+        "serial_port": {"port_name": None},
+        "ramses_rf": {"disable_discovery": True},
+        "packet_log": {"file_name": "packet.log", "rotate_backups": 7},
     },
 }
 
@@ -87,6 +104,9 @@ async def test_services_entry_(
     """Test ramses_cc via config entry."""
 
     config["serial_port"]["port_name"] = rf.ports[0]
+    config = CONFIG_SCHEMA({DOMAIN: config})[DOMAIN]
+    config[CONF_SCAN_INTERVAL] = config[CONF_SCAN_INTERVAL].total_seconds()
+    config.pop(SZ_RESTORE_CACHE, None)
 
     assert len(hass.config_entries.async_entries(DOMAIN)) == 0
     entry = MockConfigEntry(domain=DOMAIN, options=config)
