@@ -3,25 +3,40 @@
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 from datetime import timedelta
 from typing import Any, Final, TypeAlias
 
-import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
+import voluptuous as vol  # type: ignore[import-untyped]
+from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers import config_validation as cv
 
 from ramses_rf.helpers import deep_merge, is_subset, shrink
 from ramses_rf.schemas import (
+    SCH_GATEWAY_CONFIG,
+    SCH_GLOBAL_SCHEMAS_DICT,
+    SCH_RESTORE_CACHE_DICT,
     SZ_APPLIANCE_CONTROL,
     SZ_BLOCK_LIST,
+    SZ_CONFIG,
     SZ_KNOWN_LIST,
     SZ_ORPHANS_HEAT,
     SZ_ORPHANS_HVAC,
+    SZ_RESTORE_CACHE,
     SZ_SENSOR,
     SZ_SYSTEM,
     SZ_ZONES,
 )
 from ramses_tx.const import COMMAND_REGEX
-from ramses_tx.schemas import sch_global_traits_dict_factory
+from ramses_tx.schemas import (
+    SCH_ENGINE_DICT,
+    SZ_PORT_CONFIG,
+    SZ_SERIAL_PORT,
+    extract_serial_port,
+    sch_global_traits_dict_factory,
+    sch_packet_log_dict_factory,
+    sch_serial_port_dict_factory,
+)
 
 from .const import (
     ATTR_ACTIVE,
@@ -47,7 +62,13 @@ from .const import (
     ATTR_TEMPERATURE,
     ATTR_TIMEOUT,
     ATTR_UNTIL,
+    CONF_ADVANCED_FEATURES,
     CONF_COMMANDS,
+    CONF_DEV_MODE,
+    CONF_MESSAGE_EVENTS,
+    CONF_RAMSES_RF,
+    CONF_SEND_PACKET,
+    CONF_UNKNOWN_CODES,
     SystemMode,
     ZoneMode,
 )
@@ -56,8 +77,48 @@ _SchemaT: TypeAlias = dict[str, Any]
 
 _LOGGER = logging.getLogger(__name__)
 
+#
+# Configuration schema for Integration/domain
+SCAN_INTERVAL_DEFAULT = timedelta(seconds=60)
+SCAN_INTERVAL_MINIMUM = timedelta(seconds=3)
+
+
+SCH_ADVANCED_FEATURES = vol.Schema(
+    {
+        vol.Optional(CONF_SEND_PACKET, default=False): cv.boolean,
+        vol.Optional(CONF_MESSAGE_EVENTS, default=None): vol.Any(None, cv.is_regex),
+        vol.Optional(CONF_DEV_MODE): cv.boolean,
+        vol.Optional(CONF_UNKNOWN_CODES): cv.boolean,
+    }
+)
+
 SCH_GLOBAL_TRAITS_DICT, SCH_TRAITS = sch_global_traits_dict_factory(
     hvac_traits={vol.Optional(CONF_COMMANDS): dict}
+)
+
+SCH_GATEWAY_CONFIG = SCH_GATEWAY_CONFIG.extend(
+    SCH_ENGINE_DICT,
+    extra=vol.PREVENT_EXTRA,
+)
+
+SCH_PACKET_LOG = sch_packet_log_dict_factory(default_backups=7)
+
+SCH_DOMAIN_CONFIG = (
+    vol.Schema(
+        {
+            vol.Optional(CONF_RAMSES_RF, default={}): SCH_GATEWAY_CONFIG,
+            vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL_DEFAULT): vol.All(
+                cv.time_period, vol.Range(min=SCAN_INTERVAL_MINIMUM)
+            ),
+            vol.Optional(CONF_ADVANCED_FEATURES, default={}): SCH_ADVANCED_FEATURES,
+        },
+        extra=vol.PREVENT_EXTRA,  # will be system, orphan schemas for ramses_rf
+    )
+    .extend(SCH_GLOBAL_SCHEMAS_DICT)
+    .extend(SCH_GLOBAL_TRAITS_DICT)
+    .extend(sch_packet_log_dict_factory(default_backups=7))
+    .extend(SCH_RESTORE_CACHE_DICT)
+    .extend(sch_serial_port_dict_factory())
 )
 
 SCH_MINIMUM_TCS = vol.Schema(
@@ -75,6 +136,31 @@ SCH_MINIMUM_TCS = vol.Schema(
     },
     extra=vol.PREVENT_EXTRA,
 )
+
+
+def normalise_config(config: _SchemaT) -> tuple[str, _SchemaT, _SchemaT]:
+    """Return a port/client_config/broker_config for the library."""
+
+    config = deepcopy(config)
+
+    config[SZ_CONFIG] = config.pop(CONF_RAMSES_RF)
+
+    port_name, port_config = extract_serial_port(config.pop(SZ_SERIAL_PORT))
+
+    remote_commands = {
+        k: v.pop(CONF_COMMANDS)
+        for k, v in config[SZ_KNOWN_LIST].items()
+        if v.get(CONF_COMMANDS)
+    }
+
+    broker_keys = (CONF_SCAN_INTERVAL, CONF_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
+    return (
+        port_name,
+        {k: v for k, v in config.items() if k not in broker_keys}
+        | {SZ_PORT_CONFIG: port_config},
+        {k: v for k, v in config.items() if k in broker_keys}
+        | {"remotes": remote_commands},
+    )
 
 
 def merge_schemas(config_schema: _SchemaT, cached_schema: _SchemaT) -> _SchemaT | None:

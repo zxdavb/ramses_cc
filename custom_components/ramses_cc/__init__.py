@@ -10,6 +10,7 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 
+import voluptuous as vol  # type: ignore[import-untyped]
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ID, Platform
@@ -35,6 +36,7 @@ from .const import (
 )
 from .schemas import (
     SCH_BIND_DEVICE,
+    SCH_DOMAIN_CONFIG,
     SCH_NO_SVC_PARAMS,
     SCH_SEND_PACKET,
     SVC_BIND_DEVICE,
@@ -49,7 +51,10 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-CONFIG_SCHEMA = cv.deprecated(DOMAIN, raise_if_present=False)
+CONFIG_SCHEMA = vol.All(
+    cv.deprecated(DOMAIN, raise_if_present=False),
+    vol.Schema({DOMAIN: SCH_DOMAIN_CONFIG}, extra=vol.ALLOW_EXTRA),
+)
 
 PLATFORMS: Final[Platform] = (
     Platform.BINARY_SENSOR,
