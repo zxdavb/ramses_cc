@@ -130,10 +130,6 @@ async def test_services_import(
 
     config["serial_port"]["port_name"] = rf.ports[0]
 
-    #
-    #
-    #
-
     assert await async_setup_component(hass, DOMAIN, {DOMAIN: config})
     # await hass.async_block_till_done()  # ?clear hass._tasks
 
