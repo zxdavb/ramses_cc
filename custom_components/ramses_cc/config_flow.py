@@ -6,7 +6,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from typing import Any, Final
 
-import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
+import voluptuous as vol  # type: ignore[import-untyped]
 from homeassistant.components import usb
 from homeassistant.config_entries import (
     ConfigEntry,
@@ -20,7 +20,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowHandler, FlowResult
 from homeassistant.helpers import config_validation as cv, selector
 from homeassistant.helpers.storage import Store
-from serial.tools import list_ports  # type: ignore[import-untyped, unused-ignore]
+from serial.tools import list_ports  # type: ignore[import-untyped]
 
 from ramses_rf.schemas import SCH_GATEWAY_DICT, SCH_GLOBAL_SCHEMAS, SZ_SCHEMA
 from ramses_tx.const import Code

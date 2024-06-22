@@ -10,7 +10,7 @@ from datetime import datetime as dt, timedelta
 from threading import Semaphore
 from typing import TYPE_CHECKING, Any, Final
 
-import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
+import voluptuous as vol  # type: ignore[import-untyped]
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL, Platform
 from homeassistant.core import HomeAssistant, ServiceCall

@@ -1,4 +1,4 @@
-"""Test the setup."""
+"""Test the services of ramses_cc."""
 
 from collections.abc import AsyncGenerator
 from datetime import datetime as dt, timedelta as td
