@@ -5,7 +5,7 @@
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.4
+    rev: v0.4.10
     hooks:
       - id: ruff         # linter
       - id: ruff-format  # formatter
@@ -18,7 +18,7 @@ repos:
     - id: python-no-log-warn
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
     # id: check-json  # don't enable this one
     - id: check-toml
