@@ -22,7 +22,12 @@ from homeassistant.helpers import config_validation as cv, selector
 from homeassistant.helpers.storage import Store
 from serial.tools import list_ports  # type: ignore[import-untyped]
 
-from ramses_rf.schemas import SCH_GATEWAY_DICT, SCH_GLOBAL_SCHEMAS, SZ_SCHEMA
+from ramses_rf.schemas import (
+    SCH_GATEWAY_DICT,
+    SCH_GLOBAL_SCHEMAS,
+    SZ_RESTORE_CACHE,
+    SZ_SCHEMA,
+)
 from ramses_tx.const import Code
 from ramses_tx.schemas import (
     SCH_ENGINE_DICT,
@@ -472,29 +477,12 @@ class RamsesConfigFlow(BaseRamsesFlow, ConfigFlow, domain=DOMAIN):  # type: igno
 
     async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
         """Import entry from configuration.yaml."""
-        if self._async_current_entries():
-            return self.async_abort(reason="single_instance_allowed")
 
-        import_data.pop("restore_cache", None)
-        if serial_port := import_data.pop(SZ_SERIAL_PORT, None):
-            if isinstance(serial_port, str):
-                serial_port = {SZ_PORT_NAME: serial_port}
-            self.options[SZ_SERIAL_PORT] = serial_port
-        if scan_interval := import_data.pop(CONF_SCAN_INTERVAL, None):
-            self.options[CONF_SCAN_INTERVAL] = int(scan_interval)
-        if gateway_config := import_data.pop(CONF_RAMSES_RF, None):
-            self.options[CONF_RAMSES_RF] = gateway_config
-        if advanced_features := import_data.pop(CONF_ADVANCED_FEATURES, None):
-            self.options[CONF_ADVANCED_FEATURES] = advanced_features
-        if known_list := import_data.pop(SZ_KNOWN_LIST, None):
-            self.options[SZ_KNOWN_LIST] = {
-                dev_id: traits or {} for dev_id, traits in known_list.items()
-            }
-        if packet_log := import_data.pop(SZ_PACKET_LOG, None):
-            if isinstance(packet_log, str):
-                packet_log = {SZ_FILE_NAME: packet_log}
-            self.options[SZ_PACKET_LOG] = packet_log
-        self.options[CONF_SCHEMA] = import_data
+        self.options = deepcopy(import_data)
+        self.options[CONF_SCAN_INTERVAL] = import_data[
+            CONF_SCAN_INTERVAL
+        ].total_seconds()
+        self.options.pop(SZ_RESTORE_CACHE, None)
 
         return self._async_save()
 
