@@ -8,19 +8,17 @@ on:
   push:
     branches: [ "master", "stable" ]
     paths: [
+        ".github/workflows/check-test.yml", "requirements_dev.txt",
         "custom_components/**.py",
         "tests/**",
-        "requirements_dev.txt",
-        ".github/workflows/check-test.yml",
     ]
 
   pull_request:
     branches: [ "master", "stable" ]
     paths: [
+        ".github/workflows/check-test.yml", "requirements_dev.txt",
         "custom_components/**.py",
         "tests/**",
-        "requirements_dev.txt",
-        ".github/workflows/check-test.yml",
     ]
 
   workflow_dispatch:

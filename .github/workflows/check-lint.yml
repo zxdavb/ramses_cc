@@ -7,11 +7,19 @@ name: Linting via ruff (check)
 on:
   push:
     branches: [ "master", "stable" ]
-    paths: ["custom_components/**.py", "tests/**", ".github/workflows/check-lint.yml"]
+    paths: [
+        ".github/workflows/check-lint.yml",
+        "custom_components/**.py",
+        "tests/**",
+    ]
 
   pull_request:
     branches: [ "master", "stable" ]
-    paths: ["custom_components/**.py", "tests/**", ".github/workflows/check-lint.yml"]
+    paths: [
+        ".github/workflows/check-lint.yml",
+        "custom_components/**.py",
+        "tests/**",
+    ]
 
   workflow_dispatch:
 
