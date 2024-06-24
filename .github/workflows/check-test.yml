@@ -7,11 +7,21 @@ name: Testing via pytest
 on:
   push:
     branches: [ "master", "stable" ]
-    paths: ["custom_components/**.py", "tests/**", ".github/workflows/check-test.yml"]
+    paths: [
+        "custom_components/**.py",
+        "tests/**",
+        "requirements_dev.txt",
+        ".github/workflows/check-test.yml",
+    ]
 
   pull_request:
     branches: [ "master", "stable" ]
-    paths: ["custom_components/**.py", "tests/**", ".github/workflows/check-test.yml"]
+    paths: [
+        "custom_components/**.py",
+        "tests/**",
+        "requirements_dev.txt",
+        ".github/workflows/check-test.yml",
+    ]
 
   workflow_dispatch:
 
@@ -36,7 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements_test.txt
           pip install pytest pytest-asyncio
 
       - name: Install the package
