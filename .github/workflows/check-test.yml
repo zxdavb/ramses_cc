@@ -48,6 +48,8 @@ jobs:
           pip install pytest pytest-asyncio
 
       - name: Test with pytest
+        env:
+          PYTEST_ADDOPTS: "--color=yes"
         run: pytest -v
 
       - run: echo "🍏 This job's status is ${{ job.status }}."
