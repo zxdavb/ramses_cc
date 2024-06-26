@@ -7,7 +7,7 @@ from copy import deepcopy
 from datetime import timedelta
 from typing import Any, Final, TypeAlias
 
-import voluptuous as vol  # type: ignore[import-untyped]
+import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers import config_validation as cv
 

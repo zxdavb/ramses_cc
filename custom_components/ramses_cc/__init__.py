@@ -10,7 +10,7 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 
-import voluptuous as vol  # type: ignore[import-untyped]
+import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ID, Platform

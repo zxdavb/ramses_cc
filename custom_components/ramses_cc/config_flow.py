@@ -20,7 +20,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowHandler, FlowResult
 from homeassistant.helpers import config_validation as cv, selector
 from homeassistant.helpers.storage import Store
-from serial.tools import list_ports  # type: ignore[import-untyped]
+from serial.tools import list_ports  # type: ignore[import-untyped, unused-ignore]
 
 from ramses_rf.schemas import (
     SCH_GATEWAY_DICT,
