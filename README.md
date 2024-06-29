@@ -1,6 +1,6 @@
-![ruff](https://github.com/zxdavb/ramses_cc/actions/workflows/check-lint.yml/badge.svg)
-![mypy](https://github.com/zxdavb/ramses_cc/actions/workflows/check-type.yml/badge.svg)
-![pytest](https://github.com/zxdavb/ramses_cc/actions/workflows/check-test.yml/badge.svg)
+![ruff](https://github.com/zxdavb/ramses_cc/actions/workflows/check-lint.yml/badge.svg?master)
+![mypy](https://github.com/zxdavb/ramses_cc/actions/workflows/check-type.yml/badge.svg?master)
+![pytest](https://github.com/zxdavb/ramses_cc/actions/workflows/check-test.yml/badge.svg?master)
 
 ## Overview
 **ramses_cc** is a HA custom component that works with RAMSES II-based RF 868 Mhz systems for (heating) **CH/DHW** (e.g. Honeywell Evohome) and (ventilation) **HVAC** (e.g. Itho Spider).
