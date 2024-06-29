@@ -1,7 +1,4 @@
-# This workflow will...
-# - see: https://docs.astral.sh/ruff/integrations/#github-actions
-
-name: Linting via ruff (check)
+name: Linting
 
 
 on:
@@ -34,10 +31,10 @@ jobs:
         python-version: ["3.12"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.1.7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -48,5 +45,8 @@ jobs:
 
       - name: Check with ruff
         run: ruff check --output-format=github .
+
+      - name: Check with ruff (format)
+        run: ruff format --check .
 
       - run: echo "🍏 This job's status is ${{ job.status }}."

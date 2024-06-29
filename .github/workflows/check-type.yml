@@ -1,7 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# - see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
-name: Typing via mypy
+name: Typing
 
 
 on:
@@ -34,10 +31,10 @@ jobs:
         python-version: ["3.12"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.1.7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ matrix.python-version }}
 
