@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from copy import deepcopy
 from datetime import timedelta
-from typing import Any, Final, TypeAlias
+from typing import Any, Final, NewType
 
 import voluptuous as vol  # type: ignore[import-untyped, unused-ignore]
 from homeassistant.const import CONF_SCAN_INTERVAL
@@ -73,7 +73,7 @@ from .const import (
     ZoneMode,
 )
 
-_SchemaT: TypeAlias = dict[str, Any]
+_SchemaT = NewType("_SchemaT", dict[str, Any])
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -154,7 +154,7 @@ def normalise_config(config: _SchemaT) -> tuple[str, _SchemaT, _SchemaT]:
     }
 
     broker_keys = (CONF_SCAN_INTERVAL, CONF_ADVANCED_FEATURES, SZ_RESTORE_CACHE)
-    return (
+    return (  # type: ignore[return-value]
         port_name,
         {k: v for k, v in config.items() if k not in broker_keys}
         | {SZ_PORT_CONFIG: port_config},

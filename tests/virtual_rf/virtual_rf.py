@@ -14,14 +14,14 @@ import tty
 from collections import deque
 from io import FileIO
 from selectors import EVENT_READ, DefaultSelector
-from typing import Any, Final, TypeAlias, TypedDict
+from typing import Any, Final, NewType, TypedDict
 
 from serial import Serial, serial_for_url  # type: ignore[import-untyped]
 
 from .const import HgiFwTypes
 
-_FD: TypeAlias = int  # file descriptor
-_PN: TypeAlias = str  # port name
+_FD = NewType("_FD", int)  # file descriptor
+_PN = NewType("_PN", str)  # port name
 
 # _FILEOBJ: TypeAlias = int | Any  # int | HasFileno
 
