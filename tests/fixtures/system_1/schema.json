@@ -1,0 +1,31 @@
+{
+    "01:145038": {
+        "system": {"appliance_control": "13:120241"},
+        "orphans": [],
+        "stored_hotwater": {
+            "sensor": "07:046947",
+            "hotwater_valve": "13:120242",
+            "heating_valve": null
+        },
+        "underfloor_heating": {},
+        "zones": {
+            "02": {
+                "_name": "Kitchen",
+                "class": "radiator_valve",
+                "sensor": "34:092243",
+                "actuators": ["04:056053"]
+            },
+            "0A": {
+                "_name": "Office",
+                "class": "radiator_valve",
+                "sensor": "22:140285",
+                "actuators": ["04:189082"]
+            }
+        }
+    },
+    "known_list": {
+        "03:123456": {"class": "THM", "faked": true},
+        "32:097710": {"class": "CO2"},
+        "32:139773": {"class": "HUM"}
+    }
+}
