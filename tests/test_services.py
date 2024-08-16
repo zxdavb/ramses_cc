@@ -1,5 +1,7 @@
 """Test the services of ramses_cc."""
 
+from __future__ import annotations
+
 from collections.abc import AsyncGenerator
 from datetime import datetime as dt, timedelta as td
 from typing import Any, Final

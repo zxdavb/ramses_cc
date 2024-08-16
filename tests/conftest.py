@@ -1,4 +1,6 @@
-"""Fixtures for testing."""
+"""Fixtures and helpers for the ramses_cc tests."""
+
+from __future__ import annotations
 
 import pytest
 

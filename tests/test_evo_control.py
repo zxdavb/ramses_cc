@@ -14,6 +14,8 @@ tested only indirectly here).
 This does not test any service calls, or any other endpoints.
 """
 
+from __future__ import annotations
+
 import json
 from typing import Any
 

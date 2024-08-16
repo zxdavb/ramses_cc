@@ -1,5 +1,7 @@
 """Test the ramses_cc custom component."""
 
+from __future__ import annotations
+
 import asyncio
 import json
 from datetime import datetime as dt, timedelta as td

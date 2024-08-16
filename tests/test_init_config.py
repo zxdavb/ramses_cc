@@ -1,5 +1,7 @@
 """Test the setup of ramses_cc with different configurations, but no data."""
 
+from __future__ import annotations
+
 from collections.abc import AsyncGenerator
 from typing import Any, Final
 from unittest.mock import patch

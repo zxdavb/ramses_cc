@@ -1,5 +1,7 @@
 """Tests for RAMSES_CC integration helper APIs."""
 
+from __future__ import annotations
+
 from custom_components.ramses_cc.schemas import deep_merge
 
 
