@@ -1,0 +1,19 @@
+{
+    "version": 1,
+    "minor_version": 1,
+    "key": "ramses_cc",
+    "data": {
+      "client_state": {
+        "schema": {
+          "main_tcs": "01:145038",
+          "01:145038": {},
+          "orphans_heat": [],
+          "orphans_hvac": []
+        },
+        "packets": {
+          "2024-08-15T22:34:55.029000": "...  I --- 01:145038 --:------ 01:145038 3150 002 FC00"
+        }
+      },
+      "remotes": {}
+    }
+  }

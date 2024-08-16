@@ -20,8 +20,8 @@ from custom_components.ramses_cc.broker import RamsesBroker
 from custom_components.ramses_cc.climate import RamsesController, RamsesHvac, RamsesZone
 from ramses_rf.gateway import Gateway
 
+from ..virtual_rf import VirtualRf
 from .helpers import TEST_DIR, cast_packets_to_rf
-from .virtual_rf import VirtualRf
 
 # patched constants
 _CALL_LATER_DELAY: Final = 0  # from: custom_components.ramses_cc.broker.py

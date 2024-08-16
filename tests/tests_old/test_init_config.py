@@ -19,7 +19,7 @@ from custom_components.ramses_cc import CONFIG_SCHEMA, DOMAIN, RamsesBroker
 from custom_components.ramses_cc.config_flow import SZ_RESTORE_CACHE
 from ramses_rf.gateway import Gateway
 
-from .virtual_rf import VirtualRf
+from ..virtual_rf import VirtualRf
 
 # patched constants
 _CALL_LATER_DELAY: Final = 0  # from: custom_components.ramses_cc.broker.py

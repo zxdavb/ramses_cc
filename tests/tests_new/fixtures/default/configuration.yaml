@@ -1,0 +1,30 @@
+ramses_cc:
+  serial_port: /dev/null
+
+  packet_log:
+    file_name: packet.log
+
+  restore_cache:
+    restore_schema: true
+    restore_state: true
+
+  scan_interval: 60
+
+  advanced_features:
+    send_packet: false
+
+  ramses_rf:
+    enforce_known_list: true
+    disable_sending: true
+
+  01:145038:
+    system:
+      appliance_control: "10:123456"
+    zones:
+      "00":
+        sensor: "01:145038"
+
+  known_list:
+    "01:145038": { class: "CTL" }
+    "03:123456": { class: "THM", faked: true }
+    "10:123456": { class: "OTB" }

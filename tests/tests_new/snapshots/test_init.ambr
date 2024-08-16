@@ -1,0 +1,112 @@
+# serializer version: 1
+# name: test_entities[default]
+  list([
+    StateSnapshot({
+      'attributes': ReadOnlyDict({
+        'battery_level': None,
+        'device_class': 'battery',
+        'friendly_name': 'THM 03:123456 Battery',
+        'id': '03:123456',
+      }),
+      'context': <ANY>,
+      'entity_id': 'binary_sensor.03_123456_battery_low',
+      'last_changed': <ANY>,
+      'last_reported': <ANY>,
+      'last_updated': <ANY>,
+      'state': 'off',
+    }),
+    StateSnapshot({
+      'attributes': ReadOnlyDict({
+        'device_class': 'problem',
+        'friendly_name': 'Controller 01:145038 System status',
+      }),
+      'context': <ANY>,
+      'entity_id': 'binary_sensor.01_145038_status',
+      'last_changed': <ANY>,
+      'last_reported': <ANY>,
+      'last_updated': <ANY>,
+      'state': 'unavailable',
+    }),
+    StateSnapshot({
+      'attributes': ReadOnlyDict({
+        'device_class': 'problem',
+        'friendly_name': 'Controller 01:145038 Active fault',
+      }),
+      'context': <ANY>,
+      'entity_id': 'binary_sensor.01_145038_active_fault',
+      'last_changed': <ANY>,
+      'last_reported': <ANY>,
+      'last_updated': <ANY>,
+      'state': 'unavailable',
+    }),
+    StateSnapshot({
+      'attributes': ReadOnlyDict({
+        'device_class': 'temperature',
+        'friendly_name': 'THM 03:123456 Temperature',
+        'id': '03:123456',
+        'setpoint': None,
+        'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+        'unit_of_measurement': <UnitOfTemperature.CELSIUS: '°C'>,
+      }),
+      'context': <ANY>,
+      'entity_id': 'sensor.03_123456_temperature',
+      'last_changed': <ANY>,
+      'last_reported': <ANY>,
+      'last_updated': <ANY>,
+      'state': 'unknown',
+    }),
+    StateSnapshot({
+      'attributes': ReadOnlyDict({
+        'friendly_name': 'Controller 01:145038 Heat demand',
+        'icon': 'mdi:radiator-off',
+        'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+        'unit_of_measurement': '%',
+      }),
+      'context': <ANY>,
+      'entity_id': 'sensor.01_145038_heat_demand',
+      'last_changed': <ANY>,
+      'last_reported': <ANY>,
+      'last_updated': <ANY>,
+      'state': 'unavailable',
+    }),
+    StateSnapshot({
+      'attributes': ReadOnlyDict({
+        'current_temperature': None,
+        'friendly_name': 'Controller 01:145038',
+        'heat_demand': None,
+        'heat_demands': None,
+        'hvac_modes': list([
+          <HVACMode.HEAT: 'heat'>,
+          <HVACMode.OFF: 'off'>,
+          <HVACMode.AUTO: 'auto'>,
+        ]),
+        'icon': 'mdi:thermostat',
+        'id': '01:145038',
+        'max_temp': None,
+        'min_temp': None,
+        'preset_mode': None,
+        'preset_modes': list([
+          'none',
+          'away',
+          'custom',
+          'home',
+          'eco',
+        ]),
+        'relay_demands': None,
+        'supported_features': <ClimateEntityFeature: 400>,
+        'system_mode': None,
+        'tpi_params': None,
+      }),
+      'context': <ANY>,
+      'entity_id': 'climate.01_145038',
+      'last_changed': <ANY>,
+      'last_reported': <ANY>,
+      'last_updated': <ANY>,
+      'state': 'unknown',
+    }),
+  ])
+# ---
+# name: test_entities[minimal]
+  list([
+  ])
+# ---

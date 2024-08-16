@@ -11,7 +11,7 @@ from typing import Any
 from custom_components.ramses_cc.const import STORAGE_KEY, STORAGE_VERSION
 from ramses_rf.gateway import Command, Gateway
 
-from .virtual_rf import VirtualRf
+from ..virtual_rf import VirtualRf
 
 TEST_DIR = Path(__file__).resolve().parent / "test_data"
 

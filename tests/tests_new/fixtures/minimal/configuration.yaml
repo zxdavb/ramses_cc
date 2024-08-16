@@ -1,0 +1,20 @@
+ramses_cc:
+  serial_port: /dev/null
+
+  packet_log:
+    file_name: packet.log
+
+  restore_cache:
+    restore_schema: true
+    restore_state: true
+
+  scan_interval: 60
+
+  advanced_features:
+    send_packet: false
+
+  ramses_rf:
+    enforce_known_list: true
+    disable_sending: true
+
+  01:145038: {}
