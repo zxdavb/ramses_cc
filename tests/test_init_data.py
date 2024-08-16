@@ -20,7 +20,7 @@ from custom_components.ramses_cc.broker import RamsesBroker
 from custom_components.ramses_cc.climate import RamsesController, RamsesHvac, RamsesZone
 from ramses_rf.gateway import Gateway
 
-from .common import TEST_DIR, cast_packets_to_rf
+from .helpers import TEST_DIR, cast_packets_to_rf
 from .virtual_rf import VirtualRf
 
 # patched constants

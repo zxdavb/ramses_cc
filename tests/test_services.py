@@ -72,7 +72,7 @@ from custom_components.ramses_cc.sensor import SVCS_RAMSES_SENSOR
 from custom_components.ramses_cc.water_heater import SVCS_RAMSES_WATER_HEATER
 from ramses_rf.gateway import Gateway
 
-from .common import TEST_DIR, cast_packets_to_rf
+from .helpers import TEST_DIR, cast_packets_to_rf
 from .virtual_rf import VirtualRf
 
 # patched constants

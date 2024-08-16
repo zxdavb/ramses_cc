@@ -34,7 +34,7 @@ from custom_components.ramses_cc.water_heater import WATER_HEATER_DESCRIPTIONS
 from ramses_rf.gateway import Gateway
 from ramses_rf.system import Evohome
 
-from .common import TEST_DIR
+from .helpers import TEST_DIR
 
 INPUT_FILE = "/system_1.log"
 SCHEMA_FILE = "/system_1.json"
