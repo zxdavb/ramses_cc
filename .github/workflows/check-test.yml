@@ -18,6 +18,9 @@ on:
         "tests/**",
     ]
 
+  schedule:
+    - cron: "0 18 * * 5"
+
   workflow_dispatch:
 
 
