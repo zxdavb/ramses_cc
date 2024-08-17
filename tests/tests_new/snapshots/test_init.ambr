@@ -112,5 +112,74 @@
 # ---
 # name: test_entities[remotes]
   list([
+    StateSnapshot({
+      'attributes': ReadOnlyDict({
+        'battery_level': None,
+        'device_class': 'battery',
+        'friendly_name': 'REM 29:179540 Battery',
+        'id': '29:179540',
+      }),
+      'context': <ANY>,
+      'entity_id': 'binary_sensor.29_179540_battery_low',
+      'last_changed': <ANY>,
+      'last_reported': <ANY>,
+      'last_updated': <ANY>,
+      'state': 'off',
+    }),
+    StateSnapshot({
+      'attributes': ReadOnlyDict({
+        'block_list': list([
+        ]),
+        'config': dict({
+          'enforce_known_list': False,
+        }),
+        'device_class': 'problem',
+        'friendly_name': 'HGI 18:006402 Gateway status',
+        'id': '18:006402',
+        'is_evofw3': True,
+        'known_list': list([
+          dict({
+            '29:179540': dict({
+              'class': 'switch',
+              'faked': True,
+            }),
+          }),
+          dict({
+            '32:157747': dict({
+              'class': 'FAN',
+            }),
+          }),
+          dict({
+            '18:006402': dict({
+              'class': 'gateway_interface',
+            }),
+          }),
+        ]),
+        'schema': dict({
+        }),
+      }),
+      'context': <ANY>,
+      'entity_id': 'binary_sensor.18_006402_status',
+      'last_changed': <ANY>,
+      'last_reported': <ANY>,
+      'last_updated': <ANY>,
+      'state': 'off',
+    }),
+    StateSnapshot({
+      'attributes': ReadOnlyDict({
+        'assumed_state': True,
+        'commands': dict({
+        }),
+        'friendly_name': 'REM 29:179540 None',
+        'id': '29:179540',
+        'supported_features': <RemoteEntityFeature: 3>,
+      }),
+      'context': <ANY>,
+      'entity_id': 'remote.29_179540',
+      'last_changed': <ANY>,
+      'last_reported': <ANY>,
+      'last_updated': <ANY>,
+      'state': 'on',
+    }),
   ])
 # ---

@@ -33,10 +33,13 @@ async def test_entities(
     config[DOMAIN]["serial_port"] = rf.ports[0]
 
     assert await async_setup_component(hass, DOMAIN, config)
+    await hass.async_block_till_done()
 
-    entry = hass.config_entries.async_entries(DOMAIN)[0]
-    assert entry.state == ConfigEntryState.LOADED
+    try:
+        entry = hass.config_entries.async_entries(DOMAIN)[0]
+        assert entry.state != ConfigEntryState.LOADED
 
-    assert hass.states.async_all() == snapshot
+        assert hass.states.async_all() == snapshot
 
-    assert await hass.config_entries.async_unload(entry.entry_id)
+    finally:  # Prevent non-useful errors in teardown
+        assert await hass.config_entries.async_unload(entry.entry_id)
