@@ -321,8 +321,8 @@ class RamsesBroker:
         await async_add_entities(Platform.CLIMATE, new_zones)
         await async_add_entities(Platform.WATER_HEATER, new_dhws)
 
-        if new_entities:  # FIXME: use DataUpdateCoordinator
-            async_call_later(self.hass, _CALL_LATER_DELAY, self.async_save_client_state)
+        if new_entities:
+            await self.async_save_client_state()
 
         # Trigger state updates of all entities
         async_dispatcher_send(self.hass, SIGNAL_UPDATE)
@@ -346,7 +346,7 @@ class RamsesBroker:
             confirm_code=list(call.data["confirm"].keys()),
             ratify_cmd=cmd,
         )  # TODO: will need to re-discover schema
-        async_call_later(self.hass, 5, self.async_update)
+        async_call_later(self.hass, _CALL_LATER_DELAY, self.async_update)
 
     async def async_force_update(self, _: ServiceCall) -> None:
         """Handle the force_update service call."""
@@ -378,4 +378,4 @@ class RamsesBroker:
                 cmd._repr = None
 
         self.client.send_cmd(cmd)
-        async_call_later(self.hass, 5, self.async_update)
+        async_call_later(self.hass, _CALL_LATER_DELAY, self.async_update)
