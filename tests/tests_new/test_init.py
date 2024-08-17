@@ -37,7 +37,7 @@ async def test_entities(
 
     try:
         entry = hass.config_entries.async_entries(DOMAIN)[0]
-        assert entry.state != ConfigEntryState.LOADED
+        assert entry.state == ConfigEntryState.LOADED
 
         assert hass.states.async_all() == snapshot
 
