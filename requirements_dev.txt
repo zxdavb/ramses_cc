@@ -15,9 +15,9 @@
   ramses_rf>=0.42.0                # -e ~/clients/ramses_rf
 
 # used for linting/typing
-  pre-commit>=3.7.1                # HA uses 3.7.1
-  ruff>=0.5.7                      # HA uses 0.2.1
+  pre-commit>=3.7.1
+  ruff>=0.5.7
 
-  mypy>=1.12.0a2                   # HA uses 1.8.0
+  mypy>=1.11.1
   types-paho-mqtt>=1.6.0.20240321
-# voluptuous>=0.15.2               # HA used 0.15.2
+# voluptuous>=0.15.2
