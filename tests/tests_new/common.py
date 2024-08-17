@@ -48,4 +48,4 @@ def storage_fixture(instance: str) -> JsonObjectType:
     try:
         return load_json_object_fixture(f"{instance}/storage.json", DOMAIN)
     except FileNotFoundError:
-        return load_json_object_fixture("default/storage.json", DOMAIN)
+        return load_json_object_fixture("minimal/storage.json", DOMAIN)

@@ -168,7 +168,10 @@
     StateSnapshot({
       'attributes': ReadOnlyDict({
         'assumed_state': True,
-        'commands': dict({
+        'commands': NodeDictClass({
+          'auto': ' I --- 29:179540 32:157747 --:------ 22F1 003 000404',
+          'away': ' I --- 29:179540 32:157747 --:------ 22F1 003 000004',
+          'high': ' I --- 29:179540 32:157747 --:------ 22F1 003 000304',
         }),
         'friendly_name': 'REM 29:179540 None',
         'id': '29:179540',
