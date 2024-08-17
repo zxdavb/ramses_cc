@@ -1,6 +1,6 @@
 # Setup venv for ramses_cc under Hass
 
-# last updated 2024-03-29, based on HA 2024.3.3
+# last updated 2024-08-17, based on HA 2024.8.x
 #  - to check against manifest.json, github workflows
 #
 
@@ -12,12 +12,12 @@
 
 # used for testing
   #
-  ramses_rf>=0.31.13               # -e ~/clients/ramses_rf
+  ramses_rf>=0.42.0                # -e ~/clients/ramses_rf
 
 # used for linting/typing
-  pre-commit>=3.7.0                # HA uses 3.6.2
-  ruff>=0.3.4                      # HA uses 0.2.1
+  pre-commit>=3.7.1                # HA uses 3.7.1
+  ruff>=0.5.7                      # HA uses 0.2.1
 
-  mypy>=1.9.0                      # HA uses 1.8.0
-  types-paho-mqtt>=1.6.0.20240106
-# voluptuous>=0.14.2               # HA used 0.13.1
+  mypy>=1.12.0a2                   # HA uses 1.8.0
+  types-paho-mqtt>=1.6.0.20240321
+# voluptuous>=0.15.2               # HA used 0.15.2
