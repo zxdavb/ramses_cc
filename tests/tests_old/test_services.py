@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator
 from datetime import datetime as dt, timedelta as td
 from typing import Any, Final
@@ -242,12 +243,22 @@ async def _setup_via_entry_(
     assert await hass.config_entries.async_setup(entry.entry_id)
     # await hass.async_block_till_done()  # ?clear hass._tasks
 
-    await _cast_packets_to_rf(hass, rf)  # FIXME: how to wait until last pkt Tx'd?
+    await _cast_packets_to_rf(hass, rf)
 
     broker: RamsesBroker = list(hass.data[DOMAIN].values())[0]
 
     await broker.async_update()
     await hass.async_block_till_done()
+
+    try:
+        assert len(broker._entities) == NUM_ENTS_AFTER  # proxy for success of above
+
+    except AssertionError:
+        await asyncio.sleep(0.05)  # FIXME: how best to wait until last pkt Tx'd?
+
+        await broker.async_update()
+        await hass.async_block_till_done()
+
     assert len(broker._entities) == NUM_ENTS_AFTER  # proxy for success of above
 
     return entry
