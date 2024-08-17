@@ -83,7 +83,7 @@
     "SIM",  #   flake8-simplify
     "UP",  #    pyupgrade
   ]
-  ignore = ["E501", "SIM102", "SIM114"]
+  ignore = ["ASYNC109", "E501", "SIM102", "SIM114"]
 
   # E501   - Line too long
   # SIM102 - Use a single `if` statement instead of nested `if` statements
