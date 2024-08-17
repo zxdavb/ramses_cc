@@ -7,4 +7,5 @@ from typing import Final
 TEST_SYSTEMS: Final = (
     "default",
     "minimal",
+    "remotes",
 )

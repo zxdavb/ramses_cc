@@ -110,3 +110,7 @@
   list([
   ])
 # ---
+# name: test_entities[remotes]
+  list([
+  ])
+# ---

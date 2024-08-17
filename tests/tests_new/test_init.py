@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from syrupy import SnapshotAssertion
@@ -32,11 +33,10 @@ async def test_entities(
     config[DOMAIN]["serial_port"] = rf.ports[0]
 
     assert await async_setup_component(hass, DOMAIN, config)
-    await hass.async_block_till_done()
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
-    try:
-        assert hass.states.async_all() == snapshot
-    finally:
-        assert await hass.config_entries.async_unload(entry.entry_id)
-        # await hass.async_block_till_done()
+    assert entry.state == ConfigEntryState.LOADED
+
+    assert hass.states.async_all() == snapshot
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
