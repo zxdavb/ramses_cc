@@ -321,7 +321,7 @@ class RamsesBroker:
         await async_add_entities(Platform.CLIMATE, new_zones)
         await async_add_entities(Platform.WATER_HEATER, new_dhws)
 
-        if new_entities:
+        if new_entities:  # FIXME: use DataUpdateCoordinator
             async_call_later(self.hass, _CALL_LATER_DELAY, self.async_save_client_state)
 
         # Trigger state updates of all entities
