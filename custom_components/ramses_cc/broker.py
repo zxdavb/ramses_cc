@@ -215,7 +215,9 @@ class RamsesBroker:
         """Set up a platform."""
         if platform not in self._platform_setup_tasks:
             self._platform_setup_tasks[platform] = self.hass.async_create_task(
-                self.hass.config_entries.async_forward_entry_setup(self.entry, platform)
+                self.hass.config_entries.async_forward_entry_setups(
+                    self.entry, [platform]
+                )
             )
         await self._platform_setup_tasks[platform]
 
