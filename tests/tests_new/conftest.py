@@ -18,6 +18,7 @@ from ..virtual_rf import VirtualRf
 def auto_enable_custom_integrations(enable_custom_integrations: pytest.fixture):  # type: ignore[no-untyped-def]
     yield
 
+
 # NOTE: ? workaround for: https://github.com/MatthewFlamm/pytest-homeassistant-custom-component/issues/198
 @pytest.fixture  # not loading from pytest_homeassistant_custom_component.plugins
 def snapshot(snapshot: SnapshotAssertion) -> SnapshotAssertion:
