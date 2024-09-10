@@ -39,7 +39,7 @@ async def test_entities(
         entry = hass.config_entries.async_entries(DOMAIN)[0]
         assert entry.state == ConfigEntryState.LOADED
 
-        assert hass.states.async_all() == snapshot
+        assert hass.states.async_all(domain_filter=DOMAIN) == snapshot
 
     finally:  # Prevent non-useful errors in teardown
         assert await hass.config_entries.async_unload(entry.entry_id)
