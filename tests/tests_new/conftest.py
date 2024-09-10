@@ -8,6 +8,8 @@ from unittest.mock import patch
 
 import pytest
 from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.syrupy import HomeAssistantSnapshotExtension
+from syrupy.assertion import SnapshotAssertion
 
 from ..virtual_rf import VirtualRf
 
@@ -15,6 +17,12 @@ from ..virtual_rf import VirtualRf
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations: pytest.fixture):  # type: ignore[no-untyped-def]
     yield
+
+# NOTE: ? workaround for: https://github.com/MatthewFlamm/pytest-homeassistant-custom-component/issues/198
+@pytest.fixture  # not loading from pytest_homeassistant_custom_component.plugins
+def snapshot(snapshot: SnapshotAssertion) -> SnapshotAssertion:
+    """Return snapshot assertion fixture with the Home Assistant extension."""
+    return snapshot.use_extension(HomeAssistantSnapshotExtension)
 
 
 @pytest.fixture(autouse=True)
