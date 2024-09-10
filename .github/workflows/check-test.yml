@@ -49,6 +49,6 @@ jobs:
       - name: Test with pytest
         env:
           PYTEST_ADDOPTS: "--color=yes"
-        run: pytest
+        run: pytest -v
 
       - run: echo "🍏 This job's status is ${{ job.status }}."
