@@ -8,7 +8,7 @@
   -r requirements_dev.txt
 
 
-# used for testing (incl. HA, voluptuous, pytest*, etc.)
+# used for testing (incl. HA, pytest*, syrupy, voluptuous, etc.)
 # - pytest
 
   pytest_homeassistant_custom_component >= 0.13.162
