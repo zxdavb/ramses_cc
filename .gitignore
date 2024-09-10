@@ -22,9 +22,11 @@ custom_components/*
 
 .vscode/*
 .secrets/*
+__snapshots__
 
 ### local .gitignore used by this repo
 
+!tests/**/*.ambr
 !tests/**/*.json
 !tests/**/*.log
 !tests/**/*.yaml
