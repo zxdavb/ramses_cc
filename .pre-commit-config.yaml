@@ -5,18 +5,10 @@
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.7
+    rev: v0.6.4
     hooks:
       - id: ruff         # linter
       - id: ruff-format  # formatter
-
-  - repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.10.0
-    hooks:
-      - id: python-check-blanket-noqa
-      - id: python-check-blanket-type-ignore
-      - id: python-no-eval  # in tests
-      - id: python-no-log-warn
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
@@ -29,6 +21,14 @@ repos:
       - id: end-of-file-fixer
       - id: mixed-line-ending
       - id: trailing-whitespace
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-check-blanket-noqa
+      - id: python-check-blanket-type-ignore
+      - id: python-no-eval  # in tests
+      - id: python-no-log-warn
 
   - repo: local
     hooks:
@@ -54,13 +54,6 @@ repos:
       language: pygrep
       args: [-i]
       exclude: .pre-commit-config.yaml  # avoid false +ve
-
-    # - id: fixme
-    #   name: check for FIXME flags
-    #   entry: '#.*(FIXME)'  # |TODO)'
-    #   language: pygrep
-    #   args: [-i]
-    #   exclude: (.pre-commit-config.yaml|^tests/.*\.py$)  # avoid false +ve
 
     # - id: private imports
     #   name: check for private imports

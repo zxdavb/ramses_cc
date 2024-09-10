@@ -7,7 +7,7 @@
     "issue_tracker": "https://github.com/zxdavb/ramses_cc/issues",
     "loggers": ["ramses_rf"],
     "requirements": [
-      "pyserial-asyncio-fast>=0.14",
+      "pyserial-asyncio-fast>=0.13",
       "ramses-rf==0.42.1"
     ],
     "config_flow": true,

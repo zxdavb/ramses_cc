@@ -1,15 +1,14 @@
-# Setup venv for pytest of ramses_cc
-
-# last updated 2024-05-06, based on HA 2024.5.0
-#  - to check against manifest.json, github workflows
+# Requirements to test the source code
+# - last checked/updated: 2024-09-10 (c.f. HA 2024.10.x)
 #
 
-# Pre-requisites & install...
-#   deactivate & rm -rf venv
-#   python3.12 -m venv --prompt ramses_cc venv
-#   source venv/bin/activate.fish
-#
+# for using the the library with HA
+# - pip list | grep -E 'pytest|voluptuous'
 
-# used for testing (includes HA)
-  pytest_homeassistant_custom_component>=0.13.151
-  ramses_rf>=0.42.0             # -e ~/clients/ramses_rf
+  -r requirements_dev.txt
+
+
+# used for testing (incl. HA, voluptuous, pytest*, etc.)
+# - pytest
+
+  pytest_homeassistant_custom_component >= 0.13.162
