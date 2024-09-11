@@ -8,10 +8,10 @@
     "loggers": ["ramses_rf"],
     "requirements": [
       "pyserial-asyncio-fast>=0.13",
-      "ramses-rf==0.42.1"
+      "ramses-rf==0.43.0"
     ],
     "config_flow": true,
     "single_config_entry": true,
     "type": "hub",
-    "version": "0.42.1"
+    "version": "0.43.0"
   }
