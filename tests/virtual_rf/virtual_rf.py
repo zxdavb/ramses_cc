@@ -195,7 +195,7 @@ class VirtualRfBase:
     def _set_comport_info(
         self, port_name: _PN, dev_type: HgiFwTypes | None = None
     ) -> VirtualComPortInfo:
-        """Add comport info to the list (wont fail if the entry already exists)."""
+        """Add comport info to the list (won't fail if the entry already exists)."""
         self._port_info_list.pop(port_name, None)
         self._port_info_list[port_name] = VirtualComPortInfo(port_name, dev_type)
         return self._port_info_list[port_name]
