@@ -1,28 +1,41 @@
-# .pre-commit-config.yaml file for https://github.com/zxdavb/ramses_cc
-# last updated 2024-08-17
 
-# exclude: (^.secrets/|^docs/|^misc)
+# exclude: ^(.secrets|docs|misc)/
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.4
+    rev: v0.6.9
     hooks:
       - id: ruff         # linter
       - id: ruff-format  # formatter
+
+  - repo: https://github.com/cdce8p/python-typing-update
+    rev: v0.6.0
+    hooks:
+      # Run `python-typing-update` hook manually from time to time
+      # to update python typing syntax.
+      # Will require manual work, before submitting changes!
+      # pre-commit run --hook-stage manual python-typing-update --all-files
+      - id: python-typing-update
+        stages: [manual]
+        args:
+          - --py311-plus
+          - --force
+          - --keep-updates
+        files: ^(custom_components|tests)/.+\.py$
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.3.0
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=hass,wont
+          - --ignore-words-list=hass
           - --skip="./.*,*.csv,*.json,*.ambr"
           - --quiet-level=2
         exclude_types: [csv, json, html]
-        exclude: ^tests/fixtures/|tests/snapshots/
+        exclude: ^(tests/.+/fixtures|tests/.+/snapshots)/
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-executables-have-shebangs
       # id: check-json  # don't enable this one
@@ -72,6 +85,7 @@ repos:
     #   language: pygrep
     #   args: [-i]
     #   exclude: .pre-commit-config.yaml  # avoid false +ve
+
 
   # We do not use pre-commit/mirrors-mypy, as it comes with opinionated defaults
   # (like --ignore-missing-imports) and is difficult to configure to run
