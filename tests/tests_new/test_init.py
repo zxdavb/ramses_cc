@@ -41,5 +41,5 @@ async def test_entities(
 
         assert hass.states.async_all() == snapshot
 
-    finally:  # Prevent non-useful errors in teardown
+    finally:  # Prevent useless errors in teardown
         assert await hass.config_entries.async_unload(entry.entry_id)

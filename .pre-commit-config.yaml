@@ -10,6 +10,17 @@ repos:
       - id: ruff         # linter
       - id: ruff-format  # formatter
 
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        args:
+          - --ignore-words-list=hass,wont
+          - --skip="./.*,*.csv,*.json,*.ambr"
+          - --quiet-level=2
+        exclude_types: [csv, json, html]
+        exclude: ^tests/fixtures/|tests/snapshots/
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:

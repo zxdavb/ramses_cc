@@ -219,8 +219,8 @@ class VirtualRfBase:
     def _cleanup(self) -> None:
         """Destroy file objects and file descriptors."""
 
-        for fo in self._port_to_object.values():
-            fo.close()  # also closes corresponding master fd
+        for fp in self._port_to_object.values():
+            fp.close()  # also closes corresponding master fd
         for fd in self._port_to_slave_.values():
             os.close(fd)  # else this slave fd will persist
 
@@ -234,8 +234,8 @@ class VirtualRfBase:
         """Send data received from any one port (as .write(data)) to all other ports."""
 
         with contextlib.ExitStack() as stack:
-            for fo in self._port_to_object.values():
-                stack.enter_context(fo)
+            for fp in self._port_to_object.values():
+                stack.enter_context(fp)
 
             while True:
                 for key, _ in self._selector.select(timeout=0):
@@ -264,7 +264,7 @@ class VirtualRfBase:
         for dst_port in self._port_to_master:
             self._push_frame_to_dst_port(dst_port, frame)
 
-        # see if there is a faked reponse (RP/I) for a given command (RQ/W)
+        # see if there is a faked response (RP/I) for a given command (RQ/W)
         if not (reply := self._find_reply_for_cmd(frame)):
             return
 
