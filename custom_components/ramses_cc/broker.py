@@ -309,6 +309,8 @@ class RamsesBroker:
             self._update_device(device)
 
         new_entities = new_devices + new_systems + new_zones + new_dhws
+        # these two are the only opportunity to use async_forward_entry_setups with
+        # multiple platforms (i.e. not just one)...
         await async_add_entities(Platform.BINARY_SENSOR, new_entities)
         await async_add_entities(Platform.SENSOR, new_entities)
 
