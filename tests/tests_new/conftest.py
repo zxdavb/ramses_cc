@@ -42,7 +42,7 @@ def patches_for_tests(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture()  # add hass fixture to ensure hass/rf use same event loop
-async def rf(hass: HomeAssistant) -> AsyncGenerator[Any, None]:
+async def rf(hass: HomeAssistant) -> AsyncGenerator[Any]:
     """Utilize a virtual evofw3-compatible gateway."""
 
     rf = VirtualRf(2)

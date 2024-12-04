@@ -262,7 +262,7 @@ async def _setup_via_entry_(
 
 
 @pytest.fixture()  # need hass fixture to ensure hass/rf use same event loop
-async def entry(hass: HomeAssistant) -> AsyncGenerator[ConfigEntry, None]:
+async def entry(hass: HomeAssistant) -> AsyncGenerator[ConfigEntry]:
     """Set up the test bed."""
 
     # Utilize a virtual evofw3-compatible gateway
@@ -379,7 +379,7 @@ async def test_send_command(hass: HomeAssistant, entry: ConfigEntry, idx: str) -
 
     data = {
         "entity_id": "remote.40_123456",
-        **TESTS_SEND_COMMAND[idx],
+        **TESTS_SEND_COMMAND[idx],  # type: ignore[dict-item]
     }
 
     await _test_entity_service_call(
@@ -568,7 +568,7 @@ async def test_set_dhw_mode_good(
 ) -> None:
     data = {
         "entity_id": "water_heater.01_145038_hw",
-        **TESTS_SET_DHW_MODE_GOOD[idx],
+        **TESTS_SET_DHW_MODE_GOOD[idx],  # type: ignore[dict-item]
     }
 
     await _test_entity_service_call(
