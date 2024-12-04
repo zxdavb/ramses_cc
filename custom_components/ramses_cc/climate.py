@@ -27,7 +27,7 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature
+from homeassistant.const import PRECISION_HALVES, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
@@ -290,7 +290,7 @@ class RamsesZone(RamsesEntity, ClimateEntity):
     _attr_supported_features: ClimateEntityFeature = (
         ClimateEntityFeature.PRESET_MODE | ClimateEntityFeature.TARGET_TEMPERATURE
     )
-    _attr_target_temperature_step: float = PRECISION_TENTHS
+    _attr_target_temperature_step: float = PRECISION_HALVES
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
 
     def __init__(
