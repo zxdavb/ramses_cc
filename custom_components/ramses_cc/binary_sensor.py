@@ -110,7 +110,7 @@ class RamsesBinarySensor(RamsesEntity, BinarySensorEntity):
         return getattr(self._device, self.entity_description.ramses_rf_attr)
 
     @property
-    def icon(self) -> str:
+    def icon(self) -> str | None:
         """Return the icon to use in the frontend, if any."""
         return (
             self.entity_description.icon
