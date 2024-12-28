@@ -100,7 +100,7 @@ TEST_CONFIG = {
         "32:097710": {"class": "CO2"},
         "32:139773": {"class": "HUM"},
         "37:123456": {"class": "FAN"},
-        "40:123456": {"class": "REM", "faked": True}
+        "40:123456": {"class": "REM", "faked": True},
     },
 }
 
@@ -795,7 +795,10 @@ async def test_svc_send_packet(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
     await _test_service_call(hass, SVC_SEND_PACKET, data, schemas=schemas)
 
-async def test_svc_send_packet_with_impersonation(hass: HomeAssistant, entry: ConfigEntry) -> None:
+
+async def test_svc_send_packet_with_impersonation(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
     """Test the service call."""
 
     data = {
