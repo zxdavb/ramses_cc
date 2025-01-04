@@ -13,7 +13,7 @@ from homeassistant.components.water_heater import (
     STATE_OFF,
     STATE_ON,
     WaterHeaterEntity,
-    WaterHeaterEntityEntityDescription,
+    WaterHeaterEntityDescription,
     WaterHeaterEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -227,7 +227,7 @@ class RamsesWaterHeater(RamsesEntity, WaterHeaterEntity):
 
 @dataclass(frozen=True, kw_only=True)
 class RamsesWaterHeaterEntityDescription(
-    RamsesEntityDescription, WaterHeaterEntityEntityDescription
+    RamsesEntityDescription, WaterHeaterEntityDescription
 ):
     """Class describing Ramses water heater entities."""
 
