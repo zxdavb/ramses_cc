@@ -231,7 +231,8 @@ SCH_BIND_DEVICE = vol.Schema(
 
 SCH_SEND_PACKET = vol.Schema(
     {
-        vol.Required(ATTR_DEVICE_ID): cv.matches_regex(r"^[0-9]{2}:[0-9]{6}$"),
+        vol.Required(ATTR_DEVICE_ID): _SCH_DEVICE_ID,
+        vol.Optional("from_id"): _SCH_DEVICE_ID,
         vol.Required("verb"): vol.In((" I", "I", "RQ", "RP", " W", "W")),
         vol.Required("code"): cv.matches_regex(r"^[0-9A-F]{4}$"),
         vol.Required("payload"): cv.matches_regex(r"^([0-9A-F][0-9A-F]){1,48}$"),
