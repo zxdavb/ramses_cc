@@ -2,6 +2,11 @@
 ![mypy](https://github.com/zxdavb/ramses_cc/actions/workflows/check-type.yml/badge.svg?master)
 ![pytest](https://github.com/zxdavb/ramses_cc/actions/workflows/check-test.yml/badge.svg?master)
 
+# New code owner wanted
+I no longer am able to work on this project and active development has ceased.
+
+Please reach out to me if you feel able to take over. I will hand over the entire repo to the right person.
+
 ## Overview
 **ramses_cc** is a HA custom component that works with RAMSES II-based RF 868 Mhz systems for (heating) **CH/DHW** (e.g. Honeywell Evohome) and (ventilation) **HVAC** (e.g. Itho Spider).
 
