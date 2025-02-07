@@ -1,3 +1,8 @@
+# New code owner wanted
+I no longer am able to work on this project and active development has ceased.
+
+Please reach out to me if you feel able to take over. I will hand over the entire repo to teh right person.
+
 ---
 name: Bug report
 about: Create a useful report to help us improve
