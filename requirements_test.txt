@@ -12,5 +12,3 @@
 # - pytest
 
   pytest_homeassistant_custom_component >= 0.13.214
-
-  aiousbwatcher >= 0.1.1                         # unclear why not added by above.
