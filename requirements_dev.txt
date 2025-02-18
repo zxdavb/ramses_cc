@@ -1,12 +1,12 @@
 # Requirements to dev the source code
-# - last checked/updated: 2024-09-10 (c.f. HA 2024.10.x)
+# - last checked/updated: 2025-02-18 (c.f. HA 2025.2.2)
 #
 
 # requirements (dependencies) are in manifest.json
 # - pip list | grep -E 'ramses|serial'
 
   ramses_rf == 0.50.0                            # as per: manifest.json
-  pyserial-asyncio-fast >= 0.13                  # as per: manifest.json
+  pyserial-asyncio-fast >= 0.14                  # as per: manifest.json
 
 
 # libraries required for development (lint/type/test)...
@@ -14,9 +14,9 @@
 
 # used for development (linting)
     pre-commit >= 4.0.1
-    ruff >= 0.8.1                                # also: pre-commit-config.yaml
+    ruff >= 0.9.1                                # also: pre-commit-config.yaml
 
 # used for development (typing)
-    mypy >= 1.13.0
+    mypy >= 1.16.0a1
     types-paho-mqtt >= 1.6.0
-    voluptuous >= 0.15.2
+    voluptuous >= 0.15.3
