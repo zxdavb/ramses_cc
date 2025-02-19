@@ -2,11 +2,12 @@
     "domain": "ramses_cc",
     "name": "RAMSES RF",
     "codeowners": ["@zxdavb"],
-    "dependencies": ["usb"],
+    "dependencies": [],
     "documentation": "https://github.com/zxdavb/ramses_cc",
     "issue_tracker": "https://github.com/zxdavb/ramses_cc/issues",
     "loggers": ["ramses_rf"],
     "requirements": [
+      "aiousbwatcher>=1.1.1",
       "pyserial-asyncio-fast>=0.14",
       "ramses-rf==0.50.1"
     ],

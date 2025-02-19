@@ -17,6 +17,6 @@
     ruff >= 0.9.1                                # also: pre-commit-config.yaml
 
 # used for development (typing)
-    mypy >= 1.16.0a1
+    mypy >= 1.15.0
     types-paho-mqtt >= 1.6.0
-    voluptuous >= 0.15.3
+    voluptuous >= 0.15.2
