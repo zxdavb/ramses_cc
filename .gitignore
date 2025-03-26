@@ -189,3 +189,4 @@ cython_debug/
 
 # IntelliJ IDE stuff
 /.idea/
+/docs/
