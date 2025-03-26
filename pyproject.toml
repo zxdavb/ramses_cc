@@ -70,7 +70,7 @@
 [tool.ruff]
   # exclude = ["tests/deprecated/*.py"]
   src = ["custom_components"]
-  target-version = "py312"
+  target-version = "py313"
 
 
 [tool.ruff.lint]

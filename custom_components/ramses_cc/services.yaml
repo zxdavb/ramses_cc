@@ -65,6 +65,14 @@ send_packet:
       example: 01:123456
       required: true
 
+    from_id:
+      description: >-
+        The source device ID (a RAMSES ID, not an entity_id).
+        This can be used to send a packet from a faked device.
+        Optional: if not specified, the device ID of the gateway is used.
+      example: 18:123456
+      required: false
+
     verb:
       description: 'The packet verb, one of: I, RQ, RP, W (leading space not required).'
       example: RQ

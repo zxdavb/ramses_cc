@@ -99,6 +99,7 @@ TEST_CONFIG = {
         "03:123456": {"class": "THM", "faked": True},
         "32:097710": {"class": "CO2"},
         "32:139773": {"class": "HUM"},
+        "37:123456": {"class": "FAN"},
         "40:123456": {"class": "REM", "faked": True},
     },
 }
@@ -262,7 +263,7 @@ async def _setup_via_entry_(
 
 
 @pytest.fixture()  # need hass fixture to ensure hass/rf use same event loop
-async def entry(hass: HomeAssistant) -> AsyncGenerator[ConfigEntry, None]:
+async def entry(hass: HomeAssistant) -> AsyncGenerator[ConfigEntry]:
     """Set up the test bed."""
 
     # Utilize a virtual evofw3-compatible gateway
@@ -379,7 +380,7 @@ async def test_send_command(hass: HomeAssistant, entry: ConfigEntry, idx: str) -
 
     data = {
         "entity_id": "remote.40_123456",
-        **TESTS_SEND_COMMAND[idx],
+        **TESTS_SEND_COMMAND[idx],  # type: ignore[dict-item]
     }
 
     await _test_entity_service_call(
@@ -568,7 +569,7 @@ async def test_set_dhw_mode_good(
 ) -> None:
     data = {
         "entity_id": "water_heater.01_145038_hw",
-        **TESTS_SET_DHW_MODE_GOOD[idx],
+        **TESTS_SET_DHW_MODE_GOOD[idx],  # type: ignore[dict-item]
     }
 
     await _test_entity_service_call(
@@ -789,6 +790,23 @@ async def test_svc_send_packet(hass: HomeAssistant, entry: ConfigEntry) -> None:
         "verb": " I",
         "code": "1FC9",
         "payload": "00",
+    }
+    schemas = {SVC_SEND_PACKET: SCH_SEND_PACKET}
+
+    await _test_service_call(hass, SVC_SEND_PACKET, data, schemas=schemas)
+
+
+async def test_svc_send_packet_with_impersonation(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Test the service call."""
+
+    data = {
+        "device_id": "37:123456",
+        "from_id": "40:123456",
+        "verb": " I",
+        "code": "22F1",
+        "payload": "000304",
     }
     schemas = {SVC_SEND_PACKET: SCH_SEND_PACKET}
 

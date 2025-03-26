@@ -1,6 +1,9 @@
 # Requirements to test the source code
-# - last checked/updated: 2024-09-10 (c.f. HA 2024.10.x)
+# - last checked/updated: 2025-02-18 (c.f. HA 2025.2.2)
 #
+
+# may need to use this version of ramses_rf...
+# -e ~/client/ramses_rf
 
 # for using the the library with HA
 # - pip list | grep -E 'pytest|voluptuous'
@@ -11,4 +14,4 @@
 # used for testing (incl. HA, pytest*, syrupy, voluptuous, etc.)
 # - pytest
 
-  pytest_homeassistant_custom_component >= 0.13.162
+  pytest_homeassistant_custom_component >= 0.13.205
