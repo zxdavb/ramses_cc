@@ -1,0 +1,184 @@
+{
+    "config": {
+        "abort": {
+            "single_instance_allowed": "Al geconfigureerd. Slechts één configuratie wordt ondersteund."
+        },
+        "error": {
+            "invalid_gateway_config": "Ongeldige ramses_rf configuratie: {error_detail}",
+            "invalid_port_config": "Ongeldige serial port config: {error_detail}",
+            "invalid_regex": "Ongeldige reguliere expressie: {error_detail}",
+            "invalid_schema": "Ongeldig schema: {error_detail}",
+            "invalid_traits": "Ongeldige device-kenmerken: {error_detail}"
+        },
+        "step": {
+            "init": {
+                "menu_options": {
+                    "choose_serial_port": "Seriële poort",
+                    "config": "Gateway-configuratie",
+                    "schema": "Systeemschema en erkende devices",
+                    "advanced_features": "Geavanceerde instellingen",
+                    "packet_log": "Packet-log",
+                    "clear_cache": "Wis cache"
+                }
+            },
+            "choose_serial_port": {
+                "title": "Selecteer de seriële poort",
+                "data": {
+                    "port_name": "Serieel "
+                }
+            },
+            "configure_serial_port": {
+                "title": "Seriële poort-instellingen",
+                "data": {
+                    "port_name": "Pad naar serieel device",
+                    "serial_port": "Geavanceerde instellingen seriële poort"
+                },
+                "data_description": {
+                    "serial_port": "Normaal niet nodig."
+                }
+            },
+            "config": {
+                "title": "Gateway-configuratie",
+                "data": {
+                    "scan_interval": "Scan-interval",
+                    "ramses_rf": "Geavanceerde instellingen ramses_rf gateway"
+                },
+                "data_description": {
+                    "scan_interval": "Hoe vaak pollen voor wijzigingen in toestand? Advies: waarde tussen 60 en 180s.",
+                    "ramses_rf": "Normaal niet nodig."
+                }
+            },
+            "schema": {
+                "title": "Systeemschema en erkende devices",
+                "description": "Zie voor meer info en voorbeelden de [wiki](https://github.com/zxdavb/ramses_cc/wiki/) onder het kopje Configuration.",
+                "data": {
+                    "schema": "Systeemschema(s)",
+                    "known_list": "Erkende device ID's",
+                    "enforce_known_list": "Accepteer alleen packets van erkende device ID's"
+                },
+                "data_description": {
+                    "schema": "Een mapping van systeem device-ID's naar hun schema's. Houd dit eenvoudig en vermeld alleen devices die niet automatisch verschijnen.",
+                    "known_list": "Een mapping van erkende device-ID's en (optioneel) hun kenmerken.",
+                    "enforce_known_list": "Aanbevolen zodra alle device-ID's zijn ingevuld, omdat het RAMSES II-protocol geen foutcorrectie biedt en corrupte device-ID's vaak voorkomen."
+                }
+            },
+            "advanced_features": {
+                "title": "Geavanceerde opties",
+                "data": {
+                    "send_packet": "Schakel send_packet service in om maatwerkpakketjes te broadcasten",
+                    "message_events": "Zend events voor berichten die aan de reguliere expressie voldoen"
+                },
+                "data_description": {
+                    "message_events": "Vul een reguliere expressie in waar berichten aan moeten voldoen, bijv. `RP.* 10:` zal events sturen voor alle berichten van een OTB."
+                }
+            },
+            "packet_log": {
+                "title": "Packet-log",
+                "description": "Optioneel packet-log voor oplossen van problemen en ontwikkeling van de integratie.",
+                "data": {
+                    "file_name": "Bestandsnaam packet-log",
+                    "rotate_bytes": "Maximumgrootte van elk packet-log",
+                    "rotate_backups": "Aantal te bewaren packet-logs"
+                },
+                "data_description": {
+                    "file_name": "Pad naar het packet-logbestand. Bewaarde backups gebruiken de bestandsnaam + een achtervoegsel."
+                }
+            }
+        }
+    },
+    "options": {
+        "abort": {
+            "cache_cleared": "Cache gewist."
+        },
+        "error": {
+            "invalid_gateway_config": "Ongeldige ramses_rf configuratie: {error_detail}",
+            "invalid_port_config": "Ongeldige serial port config: {error_detail}",
+            "invalid_regex": "Ongeldige reguliere expressie: {error_detail}",
+            "invalid_schema": "Ongeldig schema: {error_detail}",
+            "invalid_traits": "Ongeldige device-kenmerken: {error_detail}"
+        },
+        "step": {
+            "init": {
+                "menu_options": {
+                    "choose_serial_port": "Seriële poort",
+                    "config": "Gateway-configuratie",
+                    "schema": "Systeemschema en erkende devices",
+                    "advanced_features": "Geavanceerde opties",
+                    "packet_log": "Packet-log",
+                    "clear_cache": "Cache beheren"
+                }
+            },
+            "choose_serial_port": {
+                "title": "Selecteer een seriële poort",
+                "data": {
+                    "port_name": "Pad naar serieel device"
+                }
+            },
+            "configure_serial_port": {
+                "title": "Seriële poort config",
+                "data": {
+                    "port_name": "Pad naar serieel device",
+                    "serial_port": "Geavanceerde seriële poort-configuratie"
+                },
+                "data_description": {
+                    "serial_port": "Normaal niet nodig."
+                }
+            },
+            "config": {
+                "title": "Gateway-configuratie",
+                "data": {
+                    "scan_interval": "Scan-interval",
+                    "ramses_rf": "Geavanceerde ramses_rf gateway-configuratie"
+                },
+                "data_description": {
+                    "scan_interval": "Hoe vaak pollen voor wijzigingen in toestand? Advies: waarde tussen 60 en 180s.",
+                    "ramses_rf": "Normaal niet nodig."
+                }
+            },
+            "schema": {
+                "title": "Systeemschema en erkende devices",
+                "description": "Zie voor meer info en voorbeelden de [wiki](https://github.com/zxdavb/ramses_cc/wiki/) onder het kopje Configuration.",
+                "data": {
+                    "schema": "Systeemschema('s)",
+                    "known_list": "Erkende device ID's",
+                    "enforce_known_list": "Accepteer alleen packets van erkende device ID's"
+                },
+                "data_description": {
+                    "schema": "Een mapping van systeem device-ID's naar hun schema's. Houd dit eenvoudig en vermeld alleen devices die niet automatisch verschijnen.",
+                    "known_list": "Een mapping van erkende device-ID's en (optioneel) hun kenmerken.",
+                    "enforce_known_list": "Aanbevolen zodra alle device-ID's zijn ingevuld, omdat het RAMSES II-protocol geen foutcorrectie biedt en corrupte device-ID's vaak voorkomen."
+                }
+            },
+            "advanced_features": {
+                "title": "Geavanceerde opties",
+                "data": {
+                    "send_packet": "Schakel send_packet service in om maatwerk-packets te zenden",
+                    "message_events": "Stuur events voor berichten die voldoen aan een reguliere expressie"
+                },
+                "data_description": {
+                    "message_events": "Vul een reguliere expressie in waar berichten aan moeten voldoen, bijv. `RP.* 10:` zal events sturen voor alle berichten van een OTB."
+                }
+            },
+            "packet_log": {
+                "title": "Packet-log",
+                "description": "Optioneel packet-log voor oplossen van problemen en ontwikkeling van de integratie.",
+                "data": {
+                    "file_name": "Bestandsnaam packet-log",
+                    "rotate_bytes": "Maximumgrootte van elk packet-log",
+                    "rotate_backups": "Aantal te bewaren packet-logs"
+                },
+                "data_description": {
+                    "file_name": "Pad naar het packet-logbestand. Bewaarde backups gebruiken de bestandsnaam + een achtervoegsel."
+                }
+            },
+            "clear_cache": {
+                "title": "Cache beheren",
+                "description": "Selecteer hieronder welke caches direct gewist moeten worden en herlaad dan de integration bij grote veranderingen in het systeemschema of de configuratie.",
+                "data": {
+                    "clear_schema": "Wis ontdekte systeemschema('s)",
+                    "clear_packets": "Wis system state (recente packets)"
+                }
+            }
+        }
+    }
+}
