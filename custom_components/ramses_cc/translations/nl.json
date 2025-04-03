@@ -5,7 +5,7 @@
         },
         "error": {
             "invalid_gateway_config": "Ongeldige ramses_rf configuratie: {error_detail}",
-            "invalid_port_config": "Ongeldige serial port config: {error_detail}",
+            "invalid_port_config": "Ongeldige seriële poort-configuratie: {error_detail}",
             "invalid_regex": "Ongeldige reguliere expressie: {error_detail}",
             "invalid_schema": "Ongeldig schema: {error_detail}",
             "invalid_traits": "Ongeldige device-kenmerken: {error_detail}"
@@ -34,6 +34,7 @@
                     "serial_port": "Geavanceerde instellingen seriële poort"
                 },
                 "data_description": {
+                    "port_name": "Bijv. '/dev/cu.modem2' of 'mqtt://user:pwd@homeassistant.local:1883'",
                     "serial_port": "Normaal niet nodig."
                 }
             },
@@ -92,7 +93,7 @@
         },
         "error": {
             "invalid_gateway_config": "Ongeldige ramses_rf configuratie: {error_detail}",
-            "invalid_port_config": "Ongeldige serial port config: {error_detail}",
+          "invalid_port_config": "Ongeldige seriële poort-configuratie: {error_detail}",
             "invalid_regex": "Ongeldige reguliere expressie: {error_detail}",
             "invalid_schema": "Ongeldig schema: {error_detail}",
             "invalid_traits": "Ongeldige device-kenmerken: {error_detail}"
@@ -115,12 +116,13 @@
                 }
             },
             "configure_serial_port": {
-                "title": "Seriële poort config",
+                "title": "Seriële poort-configuratie",
                 "data": {
                     "port_name": "Pad naar serieel device",
                     "serial_port": "Geavanceerde seriële poort-configuratie"
                 },
                 "data_description": {
+                    "port_name": "Bijv. '/dev/cu.modem2' of 'mqtt://user:pwd@homeassistant.local:1883'",
                     "serial_port": "Normaal niet nodig."
                 }
             },
@@ -173,10 +175,10 @@
             },
             "clear_cache": {
                 "title": "Cache beheren",
-                "description": "Selecteer hieronder welke caches direct gewist moeten worden en herlaad dan de integration bij grote veranderingen in het systeemschema of de configuratie.",
+                "description": "Selecteer hieronder welke caches direct gewist moeten worden en herlaad dan de integratie bij grote veranderingen in het systeemschema of de configuratie.",
                 "data": {
                     "clear_schema": "Wis ontdekte systeemschema('s)",
-                    "clear_packets": "Wis system state (recente packets)"
+                    "clear_packets": "Wis systeemtoestand (recente packets)"
                 }
             }
         }
