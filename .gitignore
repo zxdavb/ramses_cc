@@ -186,7 +186,3 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-
-# IntelliJ IDE stuff
-/.idea/
-/docs/
