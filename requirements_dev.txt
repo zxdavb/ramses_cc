@@ -20,5 +20,5 @@
 
 # used for development (typing)
     mypy >= 1.15.0
-    types-paho-mqtt >= 1.6.0
+    types-paho-mqtt >= 1.6.0                     # no longer required when we use paho-mqtt 2.x
     voluptuous >= 0.15.2
