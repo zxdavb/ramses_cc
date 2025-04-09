@@ -5,7 +5,7 @@
 # may need to use this version of ramses_rf...
 # -e ~/client/ramses_rf
 
-# for using the the library with HA
+# for using the library with HA
 # - pip list | grep -E 'pytest|voluptuous'
 
   -r requirements_dev.txt
