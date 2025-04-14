@@ -27,8 +27,8 @@ bind_device:
       description: >-
         The command_code / domain_idx pairs for the binding offer.
 
-        If you include '10E0' (device info), ensure the domain id is is set to the
-        the hardware manufacturer's oem_code.
+        If you include '10E0' (device info), ensure the domain id is set to the
+        hardware manufacturer's oem_code.
       example: '{"30C9": "00"}'
       required: true
 
@@ -655,7 +655,7 @@ put_co2_level:
   description: >-
     Announce the measured CO2 level of a indoor sensor (experimental).
 
-    The device must faked (in the known_list), and should be bound to
+    The device must be faked (in the known_list), and should be bound to
     a fan/ventilation unit as a CO2 sensor.
 
   fields:
@@ -817,7 +817,7 @@ send_command:
 
 # If the service accepts entity IDs, target allows the user to specify entities by
 # entity, device, or area. If `target` is specified, `entity_id` should not be defined
-# in the `fields` map. By default it shows only targets matching entities from the same
+# in the `fields` map. By default, it shows only targets matching entities from the same
 # domain as the service, but if further customization is required, target supports the
 # entity, device, and area selectors
 # (https://www.home-assistant.io/docs/blueprint/selectors/).
