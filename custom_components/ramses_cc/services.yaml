@@ -581,6 +581,7 @@ fake_dhw_temp:
           domain: water_heater
 
     temperature:
+      name: Temperature
       description: The current temperature in degrees Celsius (not the setpoint).
       required: true
       example: 63.4
