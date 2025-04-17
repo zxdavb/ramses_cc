@@ -14,6 +14,7 @@ bind_device:
 
   fields:
     device_id:
+      name: Supplicant device_id
       description: >-
         The device id of the supplicant.
 
@@ -24,6 +25,7 @@ bind_device:
       required: true
 
     offer:
+      name: Offer
       description: >-
         The command_code / domain_idx pairs for the binding offer.
 
@@ -33,11 +35,13 @@ bind_device:
       required: true
 
     confirm:
+      name: Confirm
       description: >-
         The command_code / domain_idx pairs for the binding confirmation, if required.
       required: false
 
     device_info:
+      name: Device info
       description: >-
         The device_info command of the supplicant (needed to complete some bindings).
 
@@ -59,6 +63,7 @@ send_packet:
 
   fields:
     device_id:
+      name: Destination ID
       description: >-
         The destination device ID (a RAMSES ID, not an entity_id).
         Use "18:000730" (a sentinel value) to send a broadcast from the gateway.
@@ -66,6 +71,7 @@ send_packet:
       required: true
 
     from_id:
+      name: Source ID
       description: >-
         The source device ID (a RAMSES ID, not an entity_id).
         This can be used to send a packet from a faked device.
@@ -74,16 +80,19 @@ send_packet:
       required: false
 
     verb:
+      name: Packet verb
       description: 'The packet verb, one of: I, RQ, RP, W (leading space not required).'
       example: RQ
       required: true
 
     code:
+      name: Packet code
       description: The packet code (class).
       example: 1F09
       required: true
 
     payload:
+      name: Payload as hex
       description: The packet payload as a hexadecimal string.
       example: '"00"'
       required: true
@@ -112,6 +121,7 @@ get_system_faults:
           domain: climate
 
     num_entries:
+      name: Number of log entries
       description: >-
         The number of fault log entries to retrieve. Default is 8.
       example: 8
@@ -246,6 +256,7 @@ set_zone_config:
     entity_id: *entity_id_zone
 
     min_temp:
+      name: Minimum
       description: The minimum permitted setpoint in degrees Celsius (5-21 °C).
       example: 5
       selector:
@@ -257,6 +268,7 @@ set_zone_config:
           mode: slider
 
     max_temp:
+      name: Maximum
       description: The maximum permitted setpoint in degrees Celsius (21-35 °C).
       example: 30
       selector:
@@ -457,6 +469,7 @@ set_dhw_params:
     entity_id: *entity_id_dhw
 
     setpoint:
+      name: Setpoint
       description: >-
         The target temperature in degrees Celsius. Default is 50.0.
       example: 50.0
@@ -469,6 +482,7 @@ set_dhw_params:
           mode: slider
 
     overrun:
+      name: Overrun
       description: >-
         The overrun in minutes. Default is 5.
       example: 5
@@ -481,6 +495,7 @@ set_dhw_params:
           mode: slider
 
     differential:
+      name: Differential
       description: >-
         The differential in degrees Celsius. Default is 1.0.
       example: 1
@@ -533,6 +548,7 @@ fake_zone_temp:
           domain: climate
 
     temperature:
+      name: Temperature
       description: The current temperature in degrees Celsius (not the setpoint).
       required: true
       example: 21.3
@@ -565,6 +581,7 @@ fake_dhw_temp:
           domain: water_heater
 
     temperature:
+      name: Temperature
       description: The current temperature in degrees Celsius (not the setpoint).
       required: true
       example: 63.4
@@ -603,6 +620,7 @@ put_room_temp:
           device_class: temperature
 
     temperature:
+      name: Temperature
       description: The current temperature in degrees Celsius (not the setpoint).
       required: true
       example: 21.3
@@ -638,6 +656,7 @@ put_dhw_temp:
           device_class: dhw_temp
 
     temperature:
+      name: Temperature
       description: The current temperature in degrees Celsius (not the setpoint).
       required: true
       example: 63.4
@@ -660,6 +679,7 @@ put_co2_level:
 
   fields:
     entity_id:
+      name: Entity_id
       description: >-
         The entity_id of the sensor. Raises an exception if it is not faked.
         Does not raise an exception if not is not bound.
@@ -672,6 +692,7 @@ put_co2_level:
           device_class: carbon_dioxide
 
     co2_level:
+      name: CO2 level
       description: The current CO2 level in ppm.
       required: true
       example: 363
@@ -694,6 +715,7 @@ put_indoor_humidity:
 
   fields:
     entity_id:
+      name: Entity_id
       description: >-
         The entity_id of the sensor. Raises an exception if it is not faked.
         Does not raise an exception if not is not bound.
@@ -706,6 +728,7 @@ put_indoor_humidity:
           device_class: humidity
 
     indoor_humidity:
+      name: Indoor humidity
       description: The current relative humidity as a perecentage (%).
       required: true
       example: 59.3
@@ -730,6 +753,7 @@ delete_command:
 
   fields:
     entity_id: &entity_id_remote
+      name: Entity_id
       description: >-
         The entity_id of the remote, usually a HVAC device.
       required: true
@@ -762,6 +786,7 @@ learn_command:
     command: *command_remote
 
     timeout:
+      name: Timeout
       description: Timeout for the command to be learned.
       required: false
       default: 30
@@ -771,7 +796,7 @@ learn_command:
           unit_of_measurement: seconds
           min: 30
           max: 300
-          steps: 5
+          step: 5
           mode: slider
 
 
@@ -790,6 +815,7 @@ send_command:
     command: *command_remote
 
     num_repeats:
+      name: Repeats
       description: The number of times you want to repeat the command.
       required: false
       default: 3
@@ -798,10 +824,11 @@ send_command:
         number:
           min: 1
           max: 5
-          steps: 1
+          step: 1
           mode: slider
 
     delay_secs:
+      name: Delay
       description: The time you want to wait in between repeated commands.
       required: false
       default: 0.05
@@ -811,7 +838,7 @@ send_command:
           unit_of_measurement: seconds
           min: 0.02
           max: 1.0
-          steps: 0.01
+          step: 0.01
           mode: slider
 
 
