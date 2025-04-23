@@ -32,7 +32,7 @@ from ramses_tx.const import SZ_ACTIVE, SZ_MODE, SZ_SYSTEM_MODE
 from . import RamsesEntity, RamsesEntityDescription
 from .broker import RamsesBroker
 from .const import DOMAIN, SystemMode, ZoneMode
-from .schemas import SVCS_RAMSES_WATER_HEATER, SVCS_RAMSES_WATER_HEATER_NO_ENTITY
+from .schemas import SVCS_RAMSES_WATER_HEATER
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,9 +57,6 @@ async def async_setup_entry(
 
     for k, v in SVCS_RAMSES_WATER_HEATER.items():
         platform.async_register_entity_service(k, v, f"async_{k}")
-
-    for k, v in SVCS_RAMSES_WATER_HEATER_NO_ENTITY.items():
-        platform.async_register_service(k, v, f"async_{k}")
 
     @callback
     def add_devices(devices: list[DhwZone]) -> None:

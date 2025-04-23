@@ -199,7 +199,6 @@ def async_register_domain_services(
         DOMAIN, SVC_FORCE_UPDATE, async_force_update, schema=SCH_NO_SVC_PARAMS
     )
 
-    # Load depending on Advanced setting in config_flow:
     if entry.options.get(CONF_ADVANCED_FEATURES, {}).get(CONF_SEND_PACKET):
         hass.services.async_register(
             DOMAIN, SVC_SEND_PACKET, async_send_packet, schema=SCH_SEND_PACKET

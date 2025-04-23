@@ -202,13 +202,7 @@ def schema_is_minimal(schema: _SchemaT) -> bool:
 
 
 SCH_NO_SVC_PARAMS = vol.Schema({}, extra=vol.PREVENT_EXTRA)
-SCH_NO_ENTITY_SVC_PARAMS = cv.make_entity_service_schema(  # Issue #233: Will stop working in 2025.9
-    {},      # this is not allowed, and not needed. No fields = no entities. Split method? Replace by vol.Any()?
-    # see https://developers.home-assistant.io/docs/dev_101_services/#entity-service-actions
-    # "... if the entity service action has fields." No fields?
-    extra=vol.PREVENT_EXTRA,
-)
-
+SCH_NO_ENTITY_SVC_PARAMS = None  # Fixes issue #233: {} will stop working in 2025.9
 
 # services for ramses_cc integration
 
@@ -440,27 +434,23 @@ SCH_GET_SYSTEM_FAULTS = cv.make_entity_service_schema(
     }
 )
 
-# extra keys for SVCS_RAMSES_CLIMATE
 SVC_FAKE_ZONE_TEMP: Final = "fake_zone_temp"
 SVC_GET_ZONE_SCHEDULE: Final = "get_zone_schedule"
 SVC_RESET_SYSTEM_MODE: Final = "reset_system_mode"
 SVC_RESET_ZONE_CONFIG: Final = "reset_zone_config"
 SVC_RESET_ZONE_MODE: Final = "reset_zone_mode"
 
-SVCS_RAMSES_CLIMATE = {  # these items have fields = item values, and fetch a vol.Schema(...)
+SVCS_RAMSES_CLIMATE = {
     SVC_FAKE_ZONE_TEMP: SCH_PUT_ROOM_TEMP,  # a convenience for SVC_PUT_ROOM_TEMP
     SVC_SET_SYSTEM_MODE: SCH_SET_SYSTEM_MODE,
     SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
     SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,
-    SVC_SET_ZONE_SCHEDULE: SCH_SET_ZONE_SCHEDULE,
-    SVC_GET_SYSTEM_FAULTS: SCH_GET_SYSTEM_FAULTS,
-}
-
-SVCS_RAMSES_CLIMATE_NO_ENTITY = {  # for issue #233: services without entities
     SVC_RESET_SYSTEM_MODE: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_RESET_ZONE_CONFIG: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_RESET_ZONE_MODE: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_GET_ZONE_SCHEDULE: SCH_NO_ENTITY_SVC_PARAMS,
+    SVC_SET_ZONE_SCHEDULE: SCH_SET_ZONE_SCHEDULE,
+    SVC_GET_SYSTEM_FAULTS: SCH_GET_SYSTEM_FAULTS,
 }
 
 # services for water_heater platform
@@ -554,16 +544,13 @@ SVC_SET_DHW_BOOST: Final = "set_dhw_boost"
 
 SVCS_RAMSES_WATER_HEATER = {
     SVC_FAKE_DHW_TEMP: SCH_PUT_DHW_TEMP,  # a convenience for SVC_PUT_DHW_TEMP
-    SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,
-    SVC_SET_DHW_PARAMS: SCH_SET_DHW_PARAMS,
-    SVC_SET_DHW_SCHEDULE: SCH_SET_DHW_SCHEDULE,
-}
-
-SVCS_RAMSES_WATER_HEATER_NO_ENTITY = {  # for issue #233: services without entities
     SVC_RESET_DHW_MODE: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_RESET_DHW_PARAMS: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_SET_DHW_BOOST: SCH_NO_ENTITY_SVC_PARAMS,
+    SVC_SET_DHW_MODE: SCH_SET_DHW_MODE,
+    SVC_SET_DHW_PARAMS: SCH_SET_DHW_PARAMS,
     SVC_GET_DHW_SCHEDULE: SCH_NO_ENTITY_SVC_PARAMS,
+    SVC_SET_DHW_SCHEDULE: SCH_SET_DHW_SCHEDULE,
 }
 
 # services for remote platform
