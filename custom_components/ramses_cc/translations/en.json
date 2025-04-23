@@ -242,7 +242,7 @@
 
         "get_system_faults": {
             "name": "Get the Fault log of a TCS (Controller)",
-            "description": "Obtains the controllers's latest fault log entries.",
+            "description": "Obtains the controller's latest fault log entries.",
             "fields": {
                 "entity_id": {
                     "name": "Controller",
@@ -257,13 +257,23 @@
 
         "reset_system_mode": {
             "name": "Fully reset the Mode of a TCS (Controller)",
-            "description": "The system will be in auto mode and all zones will be in follow_schedule mode, including (if supported) those in permanent_override mode."
+            "description": "The system will be in auto mode and all zones will be in follow_schedule mode, including (if supported) those in permanent_override mode.",
+            "fields": {
+                "entity_id": {
+                    "name": "Controller",
+                    "description": "The entity_id of the evohome Controller (TCS, temperature control system). NB: Most of this integration's climate entities are not Controllers (such entities, e.g. zones, will raise an AttributeError)."
+                }
+            }
         },
 
         "set_system_mode": {
             "name": "Set the Mode of a TCS (Controller)",
             "description": "The system will be in the new mode and all zones not in permanent_override mode will be affected. Some modes have the option of a period (of days), others a duration (of hours/minutes).",
             "fields": {
+                "entity_id": {
+                    "name": "Controller",
+                    "description": "The entity_id of the evohome Controller (TCS, temperature control system). NB: Most of this integration's climate entities are not Controllers (such entities, e.g. zones, will raise an AttributeError)."
+                },
                 "mode": {
                     "name": "System Mode",
                     "description": "One of: auto, eco_boost, away, day_off, day_off_eco, heat_off, or custom. All modes can be set indefinitely, some can be set for a period of days, and others for a duration in hours/minutes."
@@ -292,23 +302,45 @@
 
         "put_zone_temp": {
             "name": "Fake the Sensor temperature of a Zone",
-            "description": "Currently deprecated, use `fake_zone_temp` or `put_room_temp` instead."
+            "description": "Currently deprecated, use `fake_zone_temp` or `put_room_temp` instead.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                }
+            }
         },
 
         "reset_zone_config": {
             "name": "Reset the Configuration of a Zone",
-            "description": "Reset the configuration of the zone."
+            "description": "Reset the configuration of the zone.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                }
+            }
         },
 
         "reset_zone_mode": {
             "name": "Reset the Mode of a Zone",
-            "description": "Reset the operating mode of the zone."
+            "description": "Reset the operating mode of the zone.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                }
+            }
         },
 
         "set_zone_config": {
             "name": "Set the Configuration of a Zone",
             "description": "Set the configuration of the zone.",
             "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                },
                 "min_temp": {
                     "name": "Minimum",
                     "description": "The minimum permitted setpoint in degrees Celsius (5-21 °C)."
@@ -324,6 +356,10 @@
             "name": "Set the Mode of a Zone",
             "description": "Set the operating mode of the zone, either indefinitely or for a given duration.",
             "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                },
                 "mode": {
                     "name": "Zone Mode",
                     "description": "The permanency of the override. Required, one of: follow_schedule, advanced_override (until next scheduled setpoint), temporary_override (must specify duration or until), or permanent_override (indefinitely)."
@@ -347,6 +383,10 @@
             "name": "Set the Weekly schedule of a Zone",
             "description": "Upload the zone's weekly schedule from a portable format.",
             "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                },
                 "schedule": {
                     "name": "Schedule",
                     "description": "The weekly schedule of the zone in JSON format."
@@ -367,23 +407,45 @@
 
         "reset_dhw_mode": {
             "name": "Reset the Mode of a DHW",
-            "description": "Reset the operating mode of the system's DHW."
+            "description": "Reset the operating mode of the system's DHW.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                }
+            }
         },
 
         "reset_dhw_params": {
             "name": "Reset the Configuration of a DHW",
-            "description": "Reset the configuration of the system's DHW."
+            "description": "Reset the configuration of the system's DHW.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                }
+            }
         },
 
         "set_dhw_boost": {
             "name": "Start Boost mode for a DHW",
-            "description": "Enable the system's DHW for an hour."
+            "description": "Enable the system's DHW for an hour.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                }
+            }
         },
 
         "set_dhw_mode": {
             "name": "Set the Mode of a DHW",
             "description": "Set the operating mode of the system's DHW, optionally for a given duration.",
             "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                },
                 "mode": {
                     "name": "DHW mode",
                     "description": "The permanency of the override. Required, one of: follow_schedule, advanced_override (until next scheduled setpoint), temporary_override (see: duration and until), or permanent_override (indefinitely)."
@@ -407,6 +469,10 @@
             "name": "Set the Configuration of a DHW",
             "description": "Set the configuration of the system's DHW.",
             "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                },
                 "setpoint": {
                     "name": "Setpoint",
                     "description": "The target temperature in degrees Celsius. Default is 50.0 °C"
@@ -426,6 +492,10 @@
             "name": "Set the Weekly schedule of a DHW",
             "description": "Upload the DHW's weekly schedule from a portable format.",
             "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                },
                 "schedule": {
                     "name": "Schedule",
                     "description": "The weekly schedule of the DHW in JSON format."
@@ -439,7 +509,7 @@
             "fields": {
                 "entity_id": {
                     "name": "Zone",
-                    "description": "The entity_id of the evohome zone. Raises an exception if its sensor is not faked (fully-faked, or impersonated)."
+                    "description": "The entity_id of the evohome zone. Raises an exception if its sensor is not faked (`fully-faked`, or `impersonated`)."
                 },
                 "temperature": {
                     "name": "Temperature",
@@ -454,7 +524,7 @@
             "fields": {
                 "entity_id": {
                     "name": "Stored HW",
-                    "description": "The entity_id of the evohome water heater. Raises an exception if its sensor is not faked (fully-faked, or impersonated)."
+                    "description": "The entity_id of the evohome water heater. Raises an exception if its sensor is not faked (`fully-faked`, or `impersonated`)."
                 },
                 "temperature": {
                     "name": "Temperature",
@@ -469,7 +539,7 @@
             "fields": {
                 "entity_id": {
                     "name": "Thermostat",
-                    "description": "The entity_id of the sensor. Raises an exception if it is not faked. Does not raise an exception if not bound."
+                    "description": "The entity_id of the sensor. Raises an exception if it is not `faked`. Does not raise an exception if not bound."
                 },
                 "temperature": {
                     "name": "Temperature",
@@ -484,7 +554,7 @@
             "fields": {
                 "entity_id": {
                     "name": "Stored DHW",
-                    "description": "The entity_id of the sensor. Raises an exception if it is not faked. Does not raise an exception if not bound."
+                    "description": "The entity_id of the sensor. Raises an exception if it is not `faked`. Does not raise an exception if not bound."
                 },
                 "temperature": {
                     "name": "Temperature",
@@ -499,7 +569,7 @@
             "fields": {
                 "entity_id": {
                     "name": "Entity_id",
-                    "description": "The entity_id of the sensor. Raises an exception if it is not faked. Does not raise an exception if not bound."
+                    "description": "The entity_id of the CO2 sensor. Raises an exception if it is not `faked`. Does not raise an exception if not bound."
                 },
                 "co2_level": {
                     "name": "CO2 level",
@@ -514,7 +584,7 @@
             "fields": {
                 "entity_id": {
                     "name": "Entity_id",
-                    "description": "The entity_id of the sensor. Raises an exception if it is not faked. Does not raise an exception if not bound."
+                    "description": "The entity_id of the RH sensor. Raises an exception if it is not `faked`. Does not raise an exception if not bound."
                 },
                 "indoor_humidity": {
                     "name": "Indoor humidity",

@@ -1,13 +1,11 @@
 #
 # integration-wide service calls
+# See for UI translated strings ./translations/lang.json
 
 bind_device:
   # Bind a Device
-  name: see ./translations/lang.json
   fields:
     device_id:
-      name: notused but can't be empty
-      description: notused
       # The device id of the supplicant.
       example: 03:123456
       required: true
@@ -32,7 +30,6 @@ force_update:
 
 send_packet:
   # Send a completely bespoke RAMSES II command packet from the gateway.
-  name: see ./translations/lang.json
   fields:
     device_id:
       example: 01:123456
@@ -47,12 +44,10 @@ send_packet:
       required: true
 
     code:
-      name: not used
       example: 1F09
       required: true
 
     payload:
-      name: not used
       example: '"00"'
       required: true
 
@@ -66,8 +61,6 @@ get_system_faults:
   fields:
     entity_id: &entity_id_system
       # Controller
-      name: notused but can't be empty
-      description: notused
       example: climate.01_123456
       required: true
       selector:
@@ -77,7 +70,6 @@ get_system_faults:
 
     num_entries:
       # Number of log entries
-      name: see ./translations/lang.json
       example: 8
       selector:
         number:
@@ -143,8 +135,6 @@ get_zone_schedule:
   fields:
     entity_id: &entity_id_zone
       # Zone
-      name: notused but can't be empty
-      description: notused
       example: climate.01_123456_02
       required: true
       selector:
@@ -264,8 +254,6 @@ get_dhw_schedule:
   fields:
     entity_id: &entity_id_dhw
       # Stored DHW
-      name: notused but can't be empty
-      description: notused
       example: water_heater.01_123456_hw
       required: true
       selector:
@@ -384,7 +372,7 @@ set_dhw_schedule:
           multiline: true
 
 
-#
+
 # faked entity service calls
 
 fake_zone_temp:
@@ -393,8 +381,6 @@ fake_zone_temp:
   fields:
     entity_id:
       # Zone
-      name: notused but can't be empty
-      description: notused
       example: climate.01_123456_02
       required: true
       selector:
@@ -420,8 +406,6 @@ fake_dhw_temp:
   fields:
     entity_id:
       # Stored HW
-      name: notused but can't be empty
-      description: notused
       example: water_heater.01_123456
       required: true
       selector:
@@ -450,8 +434,6 @@ put_room_temp:
   fields:
     entity_id:
       # Thermostat
-      name: notused but can't be empty
-      description: notused
       example: sensor.03_123456_temperature
       required: true
       selector:
@@ -478,8 +460,6 @@ put_dhw_temp:
   fields:
     entity_id:
       # Stored DHW
-      name: notused but can't be empty
-      description: notused
       example: sensor.07_123456_temperature
       required: true
       selector:
@@ -505,8 +485,6 @@ put_co2_level:
 
   fields:
     entity_id:
-      name: notused but can't be empty
-      description: notused
       example: sensor.30_123456_co2_level
       required: true
       selector:
@@ -516,8 +494,6 @@ put_co2_level:
           device_class: carbon_dioxide
 
     co2_level:
-      name: notused but can't be empty
-      description: notused
       required: true
       example: 363
       selector:
@@ -534,8 +510,6 @@ put_indoor_humidity:
 
   fields:
     entity_id:
-      name: notused but can't be empty
-      description: notused
       example: sensor.30_123456_indoor_humidity
       required: true
       selector:
@@ -545,8 +519,6 @@ put_indoor_humidity:
           device_class: humidity
 
     indoor_humidity:
-      name: notused but can't be empty
-      description: notused
       required: true
       example: 59.3
       selector:
@@ -566,8 +538,6 @@ delete_command:
 
   fields:
     entity_id: &entity_id_remote
-      name: notused but can't be empty
-      description: notused
       required: true
       example: remote.30_123456
       selector:
@@ -576,8 +546,6 @@ delete_command:
           domain: remote
 
     command: &command_remote
-      name: notused but can't be empty
-      description: notused
       required: true
       example: Boost
       selector:
