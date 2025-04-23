@@ -110,15 +110,7 @@ async def async_setup_entry(
     platform: EntityPlatform = async_get_current_platform()
 
     for k, v in SVCS_RAMSES_CLIMATE.items():
-        platform.async_register_entity_service(
-            k,
-            v,
-            f"async_{k}"
-        )
-        # issue #233: registers an entity service with a non-entity service schema, will stop working in HA 25.09
-        # see https://developers.home-assistant.io/blog/2024/08/27/entity-service-schema-validation/
-        # and https://developers.home-assistant.io/docs/dev_101_services/#entity-service-actions
-        # calls SVCS_RAMSES_CLIMATE from ./schemas.py:448
+        platform.async_register_entity_service(k, v, f"async_{k}")
 
     @callback
     def add_devices(devices: list[Evohome | Zone | HvacVentilator]) -> None:
