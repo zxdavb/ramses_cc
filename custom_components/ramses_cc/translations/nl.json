@@ -592,8 +592,8 @@
                     "description": "Entity_id van de afstandsbediening, meestal een HVAC-apparaat."
                 },
                 "command": {
-                    "name": "Command name",
-                    "description": "Naam van het commando. Eén commando per opdracht."
+                    "name": "Commando",
+                    "description": "Naam van het commando. Eén per opdracht."
                 }
             }
         },
@@ -602,6 +602,14 @@
             "name": "Leer Afstandsbediening-commando",
             "description": "Vangt een RAMSES commando op en voegt het toe aan de database. Dit is een makkelijke actie voor HA's eigen `learn_command` actie. De afstandsbediening moet als schakelaar al gekoppeld zijn aan een fan/ventilator.",
             "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "Entity_id van de afstandsbediening, meestal een HVAC-apparaat."
+                },
+                "command": {
+                    "name": "Commando",
+                    "description": "Naam van het commando. Eén per opdracht."
+                },
                 "timeout": {
                     "name": "Timeout",
                     "description": "Timeout voor het leren van het commando."

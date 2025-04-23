@@ -612,6 +612,14 @@
             "name": "Learn a Remote command",
             "description": "Learns a RAMSES command and adds it to the database. This is a convenience wrapper for HA's own `learn_command` service call. The device should be bound to a fan/ventilation unit as a switch.",
             "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "The entity_id of the remote, usually a HVAC device."
+                },
+                "command": {
+                    "name": "Command name",
+                    "description": "The name of the command. Only include a single command at a time."
+                },
                 "timeout": {
                     "name": "Timeout",
                     "description": "Timeout for the command to be learned (in seconds)."
