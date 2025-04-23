@@ -29,6 +29,7 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PRECISION_HALVES, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv, service
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
     EntityPlatform,
@@ -50,7 +51,7 @@ from .const import (
     SystemMode,
     ZoneMode,
 )
-from .schemas import SVCS_RAMSES_CLIMATE
+from .schemas import SVCS_RAMSES_CLIMATE, SVCS_RAMSES_CLIMATE_NO_ENTITY
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,7 +111,23 @@ async def async_setup_entry(
     platform: EntityPlatform = async_get_current_platform()
 
     for k, v in SVCS_RAMSES_CLIMATE.items():
-        platform.async_register_entity_service(k, v, f"async_{k}")
+        platform.async_register_entity_service(
+            k,
+            v,  # check all have a schema in ./schemas.py:448
+            f"async_{k}"
+        )
+        # issue #233: registers an entity service with a non-entity service schema, will stop working in HA 25.09
+        # see https://developers.home-assistant.io/blog/2024/08/27/entity-service-schema-validation/
+        # and https://developers.home-assistant.io/docs/dev_101_services/#entity-service-actions
+        # calls SVCS_RAMSES_CLIMATE from ./schemas.py:448
+
+    # Some services are not entity_services (eg. Reset_system). Split these out
+    for k, v in SVCS_RAMSES_CLIMATE_NO_ENTITY.items():
+        platform.async_register_service(
+            k,
+            v,
+            f"async_{k}"
+        )
 
     @callback
     def add_devices(devices: list[Evohome | Zone | HvacVentilator]) -> None:
@@ -403,7 +420,7 @@ class RamsesZone(RamsesEntity, ClimateEntity):
             self.async_reset_zone_mode()
         elif hvac_mode == HVACMode.HEAT:  # TemporaryOverride
             self.async_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)
-        else:  # HVACMode.OFF, PermentOverride, temp = min
+        else:  # HVACMode.OFF, PermanentOverride, temp = min
             self.async_set_zone_mode(self._device.set_frost_mode)
 
     @callback
