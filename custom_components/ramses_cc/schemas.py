@@ -383,9 +383,7 @@ SCH_SET_ZONE_MODE = vol.All(
     ),
     cv.make_entity_service_schema(
         {
-            vol.Required(ATTR_MODE): vol.In(
-                [ZoneMode.PERMANENT, ZoneMode.ADVANCED]
-            ),
+            vol.Required(ATTR_MODE): vol.In([ZoneMode.PERMANENT, ZoneMode.ADVANCED]),
             vol.Required(ATTR_SETPOINT): vol.All(
                 cv.positive_float, vol.Range(min=5, max=35)
             ),
