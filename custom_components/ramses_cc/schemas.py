@@ -320,34 +320,26 @@ SCH_PERIOD = vol.All(  # of days (0-99)
 )
 
 SVC_SET_SYSTEM_MODE: Final = "set_system_mode"
-SCH_SET_SYSTEM_MODE = vol.All(
-    cv.make_entity_service_schema(  # canBeTemporary: false
-        {  # also: Off, Heat, Cool (for pre-evohome)
-            vol.Required(ATTR_MODE): vol.In(
-                [SystemMode.AUTO, SystemMode.HEAT_OFF, SystemMode.RESET]
-            )
-        }
-    ),
-    cv.make_entity_service_schema(  # canBeTemporary: true, timingMode: Duration
-        {
-            vol.Required(ATTR_MODE): vol.In([SystemMode.ECO_BOOST]),
-            vol.Optional(ATTR_DURATION): vol.Any(SCH_DURATION, None),
-        }
-    ),  # Duration: : None is indefinitely; 0 is invalid
-    cv.make_entity_service_schema(  # canBeTemporary: true, timingMode: Period
-        {
-            vol.Required(ATTR_MODE): vol.In(
-                [
-                    SystemMode.AWAY,
-                    SystemMode.CUSTOM,
-                    SystemMode.DAY_OFF,
-                    SystemMode.DAY_OFF_ECO,
-                ]
-            ),
-            vol.Optional(ATTR_PERIOD): vol.Any(SCH_PERIOD, None),
-        }
-    ),  # Period: None is indefinitely; 0 is the end of today, 1 is end of tomorrow
-    extra=vol.PREVENT_EXTRA,
+SCH_SET_SYSTEM_MODE = cv.make_entity_service_schema(
+    # nested schemas not allowed after HA 2025.9
+    {
+        vol.Required(ATTR_MODE): vol.In(
+            [
+                SystemMode.AUTO,  # also: Off, Heat, Cool (for pre-evohome)?
+                SystemMode.HEAT_OFF,
+                SystemMode.RESET,
+                SystemMode.ECO_BOOST,  # optionally with ATTR_DURATION
+                SystemMode.AWAY,  # optionally with ATTR_PERIOD
+                SystemMode.CUSTOM,  # optionally with ATTR_PERIOD
+                SystemMode.DAY_OFF,  # optionally with ATTR_PERIOD
+                SystemMode.DAY_OFF_ECO,  # optionally with ATTR_PERIOD
+            ]
+        ),
+        vol.Optional(ATTR_DURATION): vol.Any(SCH_DURATION, None),
+        # canBeTemporary: true, timingMode: Duration
+        vol.Optional(ATTR_PERIOD): vol.Any(SCH_PERIOD, None),
+        # Period: None is indefinitely; 0 is the end of today, 1 is end of tomorrow
+    }
 )
 
 DEFAULT_MIN_TEMP: Final[float] = 5
@@ -374,42 +366,32 @@ SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
 )
 
 SVC_SET_ZONE_MODE: Final = "set_zone_mode"
-SCH_SET_ZONE_MODE = vol.All(
-    cv.make_entity_service_schema(
-        {
-            vol.Required(ATTR_MODE): vol.In([ZoneMode.SCHEDULE]),
-            # only mode with no setpoint
-        }
-    ),
-    cv.make_entity_service_schema(
-        {
-            vol.Required(ATTR_MODE): vol.In([ZoneMode.PERMANENT, ZoneMode.ADVANCED]),
-            vol.Required(ATTR_SETPOINT): vol.All(
-                cv.positive_float, vol.Range(min=5, max=35)
-            ),
-        }
-    ),
-    cv.make_entity_service_schema(
-        {
-            vol.Required(ATTR_MODE): vol.In([ZoneMode.TEMPORARY]),
-            vol.Required(ATTR_SETPOINT): vol.All(
-                cv.positive_float, vol.Range(min=5, max=35)
-            ),
-            vol.Required(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
-                cv.time_period,
-                vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
-            ),
-        }
-    ),
-    cv.make_entity_service_schema(
-        {
-            vol.Required(ATTR_MODE): vol.In([ZoneMode.TEMPORARY]),
-            vol.Required(ATTR_SETPOINT): vol.All(
-                cv.positive_float, vol.Range(min=5, max=35)
-            ),
-            vol.Required(ATTR_UNTIL): cv.datetime,
-        }
-    ),
+SCH_SET_ZONE_MODE = cv.make_entity_service_schema(
+    # nested schemas not allowed after HA 2025.9
+    {
+        vol.Required(ATTR_MODE): vol.In(
+            [
+                ZoneMode.SCHEDULE,
+                ZoneMode.PERMANENT,
+                ZoneMode.ADVANCED,
+                ZoneMode.TEMPORARY,
+            ]
+        ),
+        vol.Optional(ATTR_SETPOINT): vol.All(
+            cv.positive_float, vol.Range(min=5, max=35)
+        ),
+        vol.Optional(ATTR_SETPOINT): vol.All(
+            cv.positive_float, vol.Range(min=5, max=35)
+        ),
+        vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
+            cv.time_period,
+            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
+        ),
+        vol.Optional(ATTR_SETPOINT): vol.All(
+            cv.positive_float, vol.Range(min=5, max=35)
+        ),
+        vol.Optional(ATTR_UNTIL): cv.datetime,
+    }
 )
 
 SVC_SET_ZONE_SCHEDULE: Final = "set_zone_schedule"
@@ -440,9 +422,9 @@ SVC_RESET_ZONE_MODE: Final = "reset_zone_mode"
 
 SVCS_RAMSES_CLIMATE = {
     SVC_FAKE_ZONE_TEMP: SCH_PUT_ROOM_TEMP,  # a convenience for SVC_PUT_ROOM_TEMP
-    SVC_SET_SYSTEM_MODE: SCH_SET_SYSTEM_MODE,
+    SVC_SET_SYSTEM_MODE: SCH_SET_SYSTEM_MODE,  # failing
     SVC_SET_ZONE_CONFIG: SCH_SET_ZONE_CONFIG,
-    SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,
+    SVC_SET_ZONE_MODE: SCH_SET_ZONE_MODE,  # failing
     SVC_RESET_SYSTEM_MODE: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_RESET_ZONE_CONFIG: SCH_NO_ENTITY_SVC_PARAMS,
     SVC_RESET_ZONE_MODE: SCH_NO_ENTITY_SVC_PARAMS,
