@@ -1,5 +1,5 @@
 #
-# integration-wide service calls
+# integration-wide service action calls
 
 bind_device:
   name: Bind a Device
@@ -842,6 +842,9 @@ send_command:
           mode: slider
 
 
+# TODO change entity_id (selector) to HA targets
+# since HA 2024.8 Update all references to "services" to "service actions"
+# see docs https://developers.home-assistant.io/docs/dev_101_services/
 # If the service accepts entity IDs, target allows the user to specify entities by
 # entity, device, or area. If `target` is specified, `entity_id` should not be defined
 # in the `fields` map. By default, it shows only targets matching entities from the same
