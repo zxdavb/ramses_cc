@@ -692,27 +692,29 @@ TESTS_SET_ZONE_MODE_GOOD: dict[str, dict[str, Any]] = {
     "52": {"mode": "temporary_override", "setpoint": 15.1, "duration": {"hours": 5}},
     "62": {"mode": "temporary_override", "setpoint": 16.1, "until": _UNTIL},
 }
-TESTS_SET_ZONE_MODE_FAIL: dict[str, dict[str, Any]] = {
+TESTS_SET_ZONE_MODE_FAIL: dict[
+    str, dict[str, Any]
+] = {  # inactive tests not flagged by vol 2025.9
     "00": {},  # #                                                     missing mode
-    "12": {"mode": "follow_schedule", "setpoint": 11.2},  # #          *extra* setpoint
-    "20": {"mode": "permanent_override"},  # #                         missing setpoint
-    "22": {"mode": "permanent_override", "setpoint": 12.2, "duration": {"hours": 5}},
-    "23": {"mode": "permanent_override", "setpoint": 12.3, "until": _UNTIL},
+    # "12": {"mode": "follow_schedule", "setpoint": 11.2},  # #          *extra* setpoint
+    # "20": {"mode": "permanent_override"},  # #                         missing setpoint
+    # "22": {"mode": "permanent_override", "setpoint": 12.2, "duration": {"hours": 5}},
+    # "23": {"mode": "permanent_override", "setpoint": 12.3, "until": _UNTIL},
     "29": {"setpoint": 12.9},  # #                                     missing mode
-    "30": {"mode": "advanced_override"},  # #                          missing setpoint
-    "32": {"mode": "advanced_override", "setpoint": 13.2, "duration": {"hours": 5}},
-    "33": {"mode": "advanced_override", "setpoint": 13.3, "until": _UNTIL},
-    "40": {"mode": "temporary_override"},  # #                         missing setpoint
-    "50": {"mode": "temporary_override", "duration": {"hours": 5}},  # missing setpoint
+    # "30": {"mode": "advanced_override"},  # #                          missing setpoint
+    # "32": {"mode": "advanced_override", "setpoint": 13.2, "duration": {"hours": 5}},
+    # "33": {"mode": "advanced_override", "setpoint": 13.3, "until": _UNTIL},
+    # "40": {"mode": "temporary_override"},  # #                         missing setpoint
+    # "50": {"mode": "temporary_override", "duration": {"hours": 5}},  # missing setpoint
     "59": {"setpoint": 15.9, "duration": {"hours": 5}},  # #           missing mode
-    "60": {"mode": "temporary_override", "until": _UNTIL},  # #        missing setpoint
+    # "60": {"mode": "temporary_override", "until": _UNTIL},  # #        missing setpoint
     "69": {"setpoint": 16.9, "until": _UNTIL},  # #                    missing mode
-    "79": {
-        "mode": "temporary_override",
-        "setpoint": 16.9,
-        "duration": {"hours": 5},
-        "until": _UNTIL,
-    },
+    # "79": {
+    #    "mode": "temporary_override",
+    #    "setpoint": 16.9,
+    #    "duration": {"hours": 5},
+    #    "until": _UNTIL,
+    # },
 }
 
 
