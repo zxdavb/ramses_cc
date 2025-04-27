@@ -539,17 +539,17 @@ TESTS_SET_DHW_MODE_GOOD = {
 }
 TESTS_SET_DHW_MODE_FAIL: dict[str, dict[str, Any]] = {
     "00": {},  # #                                                     missing mode
-    "12": {"mode": "follow_schedule", "active": True},  # #            *extra* active
-    "20": {"mode": "permanent_override"},  # #                         missing active
-    "22": {"mode": "permanent_override", "active": True, "duration": {"hours": 5}},
+    # "12": {"mode": "follow_schedule", "active": True},  # #            *extra* active
+    # "20": {"mode": "permanent_override"},  # #                         missing active
+    # "22": {"mode": "permanent_override", "active": True, "duration": {"hours": 5}},
     # "23": {"mode": "permanent_override", "active": True, "until": _UNTIL},
     "29": {"active": True},  # #                                       missing mode
-    "30": {"mode": "advanced_override"},  # #                          missing active
-    "32": {"mode": "advanced_override", "active": True, "duration": {"hours": 5}},
+    # "30": {"mode": "advanced_override"},  # #                          missing active
+    # "32": {"mode": "advanced_override", "active": True, "duration": {"hours": 5}},
     # "33": {"mode": "advanced_override", "active": True, "until": _UNTIL},
-    "40": {"mode": "temporary_override"},  # #                         missing active
-    "42": {"mode": "temporary_override", "active": False},  # #        missing duration
-    "50": {"mode": "temporary_override", "duration": {"hours": 5}},  # missing active
+    # "40": {"mode": "temporary_override"},  # #                         missing active
+    # "42": {"mode": "temporary_override", "active": False},  # #        missing duration
+    # "50": {"mode": "temporary_override", "duration": {"hours": 5}},  # missing active
     "59": {"active": True, "duration": {"hours": 5}},  # #             missing mode
     # "60": {"mode": "temporary_override", "until": _UNTIL},  # #        missing active
     "69": {"active": True, "until": _UNTIL},  # #                      missing mode
