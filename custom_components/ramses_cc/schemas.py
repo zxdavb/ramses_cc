@@ -436,50 +436,31 @@ SVCS_RAMSES_CLIMATE = {
 # services for water_heater platform
 
 SVC_SET_DHW_MODE: Final = "set_dhw_mode"
-SCH_SET_DHW_MODE = vol.Schema(
-    vol.Any(
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In([ZoneMode.SCHEDULE]),
-                # only mode with no active
-            }
+SCH_SET_DHW_MODE = cv.make_entity_service_schema(
+    # nested schemas not allowed after HA 2025.9
+    {
+        vol.Required(ATTR_MODE): vol.In(
+            [
+                ZoneMode.SCHEDULE,
+                ZoneMode.PERMANENT,
+                ZoneMode.ADVANCED,
+                ZoneMode.TEMPORARY,
+            ]
         ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In(
-                    [ZoneMode.PERMANENT, ZoneMode.ADVANCED]
-                ),
-                vol.Required(ATTR_ACTIVE): cv.boolean,
-            }
+        vol.Optional(ATTR_ACTIVE): cv.boolean,
+        vol.Optional(ATTR_ACTIVE): True,  # TODO: vol.Any(truthy)
+        vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
+            cv.time_period,
+            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
         ),
-        cv.make_entity_service_schema(  # a.k.a DHW boost
-            {
-                vol.Required(ATTR_MODE): vol.In([ZoneMode.TEMPORARY]),
-                vol.Required(ATTR_ACTIVE): True,  # TODO: vol.Any(truthy)
-                vol.Required(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
-                ),
-            }
+        vol.Optional(ATTR_ACTIVE): cv.boolean,
+        vol.Optional(ATTR_DURATION): vol.All(
+            cv.time_period,
+            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
         ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In([ZoneMode.TEMPORARY]),
-                vol.Required(ATTR_ACTIVE): cv.boolean,
-                vol.Required(ATTR_DURATION): vol.All(
-                    cv.time_period,
-                    vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
-                ),
-            }
-        ),
-        cv.make_entity_service_schema(
-            {
-                vol.Required(ATTR_MODE): vol.In([ZoneMode.TEMPORARY]),
-                vol.Required(ATTR_ACTIVE): cv.boolean,
-                vol.Required(ATTR_UNTIL): cv.datetime,
-            }
-        ),
-    )
+        vol.Required(ATTR_ACTIVE): cv.boolean,
+        vol.Required(ATTR_UNTIL): cv.datetime,
+    }
 )
 
 DEFAULT_DHW_SETPOINT: Final[float] = 50  # degrees celsius, float
