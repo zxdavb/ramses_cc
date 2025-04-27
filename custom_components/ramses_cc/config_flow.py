@@ -571,8 +571,8 @@ class RamsesOptionsFlow(BaseRamsesFlow, OptionsFlow):
             return self.async_abort(reason="cache_cleared")
 
         data_schema = {
-            vol.Required("clear_schema", default=True): selector.BooleanSelector(),
-            vol.Required("clear_packets", default=True): selector.BooleanSelector(),
+            vol.Required("clear_schema", default=False): selector.BooleanSelector(),
+            vol.Required("clear_packets", default=False): selector.BooleanSelector(),
         }
 
         return self.async_show_form(
