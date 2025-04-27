@@ -458,8 +458,8 @@ SCH_SET_DHW_MODE = cv.make_entity_service_schema(
             cv.time_period,
             vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
         ),
-        vol.Required(ATTR_ACTIVE): cv.boolean,
-        vol.Required(ATTR_UNTIL): cv.datetime,
+        vol.Optional(ATTR_ACTIVE): cv.boolean,
+        vol.Optional(ATTR_UNTIL): cv.datetime,
     }
 )
 
