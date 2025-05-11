@@ -106,20 +106,15 @@ get_system_faults:
   description: >-
     Obtains the controllers's latest fault log entries.
 
-  fields:
-    entity_id: &entity_id_system
-      name: Controller
-      description: >-
-        The entity_id of the evohome Controller (TCS, temperature control system).
-        NB: Most of this integration's climate entities are not Controllers
-        (such entities, e.g. zones, will raise an AttributeError).
-      example: climate.01_123456
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: climate
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: climate
+        # The entity_id of the evohome Controller (TCS, temperature control system).
+        # NB: Most of this integration's climate entities are not Controllers
+        # (such entities, e.g. zones, will raise an AttributeError).
 
+  fields:
     num_entries:
       name: Number of log entries
       description: >-
@@ -140,8 +135,10 @@ reset_system_mode:
     The system will be in auto mode and all zones will be in follow_schedule mode,
     including (if supported) those in permanent_override mode.
 
-  fields:
-    entity_id: *entity_id_system
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: climate
 
 
 set_system_mode:
@@ -151,9 +148,12 @@ set_system_mode:
     will be affected.
     Some modes have the option of a period (of days), others a duration (of hours/minutes).
 
-  fields:
-    entity_id: *entity_id_system
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: climate
 
+  fields:
     mode:
       name: System Mode
       description: >-
@@ -212,19 +212,12 @@ get_zone_schedule:
     Note: only evohome-compatible zones have schedules and not all of this integration's
     climate entities are such zones (will raise a TypeError).
 
-  fields:
-    entity_id: &entity_id_zone
-      name: Zone
-      description: >-
-        The entity_id of the evohome Zone.
-        NB: Some of this integration's climate entities are not Zones
-        (such entities, e.g. Controllers, will raise an AttributeError).
-      example: climate.01_123456_02
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: climate
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: climate
+        # NB: Some of this integration's climate entities are not Zones
+        # (such entities, e.g. Controllers, will raise an AttributeError).
 
 
 put_zone_temp:
@@ -236,25 +229,32 @@ reset_zone_config:
   name: Reset the Configuration of a Zone
   description: Reset the configuration of the zone.
 
-  fields:
-    entity_id: *entity_id_zone
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: climate
 
 
 reset_zone_mode:
   name: Reset the Mode of a Zone
   description: Reset the operating mode of the zone.
 
-  fields:
-    entity_id: *entity_id_zone
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: climate
 
 
 set_zone_config:
   name: Set the Configuration of a Zone
   description: Reset the configuration of the zone.
 
-  fields:
-    entity_id: *entity_id_zone
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: climate
 
+  fields:
     min_temp:
       name: Minimum
       description: The minimum permitted setpoint in degrees Celsius (5-21 °C).
@@ -285,9 +285,12 @@ set_zone_mode:
   description: >-
     Set the operating mode of the zone, either indefinitely or for a given duration.
 
-  fields:
-    entity_id: *entity_id_zone
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: climate
 
+  fields:
     mode:
       name: Zone Mode
       description: >-
@@ -345,9 +348,12 @@ set_zone_schedule:
   description: >-
     Upload the zone's weekly schedule from a portable format.
 
-  fields:
-    entity_id: *entity_id_zone
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: climate
 
+  fields:
     schedule:
       name: Schedule
       description: The weekly schedule of the zone in JSON format.
@@ -361,7 +367,7 @@ set_zone_schedule:
 # evohome DHW service calls (CH/DHW)
 
 get_dhw_schedule:
-  name: Get the Weekly schedule of a DHW
+  name: Get the Weekly schedule of a Stored DHW
   description: >-
     Obtains the DHW's latest weekly schedule from the controller and updates the
     entity's state attributes with that data.
@@ -369,40 +375,40 @@ get_dhw_schedule:
     The schedule will be available at:
     `{{ state_attr('water_heater.stored_hw', 'schedule') }}`
 
-  fields:
-    entity_id: &entity_id_dhw
-      name: Stored DHW
-      description: The entity_id of the stored DHW.
-      example: water_heater.01_123456_hw
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: water_heater
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: water_heater
 
 
 reset_dhw_mode:
   name: Reset the Mode of a DHW
   description: Reset the operating mode of the system's DHW.
 
-  fields:
-    entity_id: *entity_id_dhw
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: water_heater
 
 
 reset_dhw_params:
   name: Reset the Configuration of a DHW
   description: Reset the configuration of the system's DHW.
 
-  fields:
-    entity_id: *entity_id_dhw
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: water_heater
 
 
 set_dhw_boost:
   name: Start Boost mode for a DHW
   description: Enable the system's DHW for an hour.
 
-  fields:
-    entity_id: *entity_id_dhw
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: water_heater
 
 
 set_dhw_mode:
@@ -410,9 +416,12 @@ set_dhw_mode:
   description: >-
     Set the operating mode of the system's DHW, optionally for a given duration.
 
-  fields:
-    entity_id: *entity_id_dhw
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: water_heater
 
+  fields:
     mode:
       name: DHW mode
       description: >-
@@ -465,9 +474,12 @@ set_dhw_params:
   name: Set the Configuration of a DHW
   description: Set the configuration of the system's DHW.
 
-  fields:
-    entity_id: *entity_id_dhw
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: water_heater
 
+  fields:
     setpoint:
       name: Setpoint
       description: >-
@@ -513,9 +525,12 @@ set_dhw_schedule:
   description: >-
     Upload the DHW's weekly schedule from a portable format.
 
-  fields:
-    entity_id: *entity_id_dhw
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: water_heater
 
+  fields:
     schedule:
       name: Schedule
       description: The weekly schedule of the DHW in JSON format.
@@ -532,21 +547,15 @@ fake_zone_temp:
   name: Fake a Room temperature
   description: >-
     Set the current temperature (not setpoint) of an evohome zone.
+    Zone sensor should be faked (fully-faked, or impersonated).
     This is a convenience wrapper for `put_zone_temp` service call.
 
-  fields:
-    entity_id:
-      name: Zone
-      description: >-
-        The entity_id of the evohome zone.
-        Raises an exception if its sensor is not faked (fully-faked, or impersonated).
-      example: climate.01_123456_02
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: climate
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: climate
 
+  fields:
     temperature:
       name: Temperature
       description: The current temperature in degrees Celsius (not the setpoint).
@@ -565,21 +574,15 @@ fake_dhw_temp:
   name: Fake a DHW temperature
   description: >-
     Set the current temperature (not setpoint) of an evohome water heater.
+    Sensor should be faked (fully-faked, or impersonated).
     This is a convenience wrapper for the `put_dhw_temp` service call.
 
-  fields:
-    entity_id:
-      name: Stored HW
-      description: >-
-        The entity_id of the evohome water heater.
-        Raises an exception if its sensor is not faked (fully-faked, or impersonated).
-      example: water_heater.01_123456
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: water_heater
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: water_heater
 
+  fields:
     temperature:
       name: Temperature
       description: The current temperature in degrees Celsius (not the setpoint).
@@ -600,25 +603,18 @@ fake_dhw_temp:
 put_room_temp:
   name: Announce a Room temperature
   description: >-
-    Announce the measured room temperature of an evohome zone sensor.
+    Announce the measured room temperature of an evohome zone sensor (Thermostat).
 
     The device must be faked (in the known_list), and should be bound to
     a CH/DHW controller as a zone sensor.
 
-  fields:
-    entity_id:
-      name: Thermostat
-      description: >-
-        The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an exception if not is not bound.
-      example: sensor.03_123456_temperature
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: sensor
-          device_class: temperature
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: sensor
+        device_class: temperature
 
+  fields:
     temperature:
       name: Temperature
       description: The current temperature in degrees Celsius (not the setpoint).
@@ -636,25 +632,18 @@ put_room_temp:
 put_dhw_temp:
   name: Announce a DHW temperature
   description: >-
-    Announce the measured temperature of an evohome DHW sensor.
+    Announce the measured temperature of an evohome Stored DHW sensor.
 
     The device must be faked (in the known_list), and should be bound to
     a CH/DHW controller as a DHW sensor.
 
-  fields:
-    entity_id:
-      name: Stored DHW
-      description: >-
-        The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an exception if not is not bound.
-      example: sensor.07_123456_temperature
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: sensor
-          device_class: dhw_temp
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: sensor
+        device_class: dhw_temp
 
+  fields:
     temperature:
       name: Temperature
       description: The current temperature in degrees Celsius (not the setpoint).
@@ -677,20 +666,13 @@ put_co2_level:
     The device must be faked (in the known_list), and should be bound to
     a fan/ventilation unit as a CO2 sensor.
 
-  fields:
-    entity_id:
-      name: Entity_id
-      description: >-
-        The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an exception if not is not bound.
-      example: sensor.30_123456_co2_level
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: sensor
-          device_class: carbon_dioxide
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: sensor
+        device_class: carbon_dioxide
 
+  fields:
     co2_level:
       name: CO2 level
       description: The current CO2 level in ppm.
@@ -713,20 +695,13 @@ put_indoor_humidity:
     The device must be faked (in the known_list), and should be bound to
     a fan/ventilation unit as a humidity sensor.
 
-  fields:
-    entity_id:
-      name: Entity_id
-      description: >-
-        The entity_id of the sensor. Raises an exception if it is not faked.
-        Does not raise an exception if not is not bound.
-      example: sensor.30_123456_indoor_humidity
-      required: true
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: sensor
-          device_class: humidity
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: sensor
+        device_class: humidity
 
+  fields:
     indoor_humidity:
       name: Indoor humidity
       description: The current relative humidity as a perecentage (%).
@@ -742,7 +717,7 @@ put_indoor_humidity:
 
 
 #
-# faked remote service calls
+# faked remote service calls. Target is usually a HVAC device.
 
 delete_command:
   name: Delete a Remote command
@@ -751,18 +726,12 @@ delete_command:
 
     This is a convenience wrapper for HA's own `delete_command` service call.
 
-  fields:
-    entity_id: &entity_id_remote
-      name: Entity_id
-      description: >-
-        The entity_id of the remote, usually a HVAC device.
-      required: true
-      example: remote.30_123456
-      selector:
-        entity:
-          integration: ramses_cc
-          domain: remote
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: remote
 
+  fields:
     command: &command_remote
       name: Command name
       description: The name of the command. Only include a single command at a time.
@@ -780,9 +749,12 @@ learn_command:
     This is a convenience wrapper for HA's own `learn_command` service call.
     The device should be bound to a fan/ventilation unit as a switch.
 
-  fields:
-    entity_id: *entity_id_remote
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: remote
 
+  fields:
     command: *command_remote
 
     timeout:
@@ -809,9 +781,12 @@ send_command:
     The device must be faked (in the known_list), and should be bound to
     a fan/ventilation unit as a switch.
 
-  fields:
-    entity_id: *entity_id_remote
+  target:
+    entity:
+      - integration: ramses_cc
+        domain: remote
 
+  fields:
     command: *command_remote
 
     num_repeats:
@@ -842,14 +817,15 @@ send_command:
           mode: slider
 
 
-# TODO change entity_id (selector) to HA targets
+# changed entity_id (selector) to HA targets
 # since HA 2024.8 Update all references to "services" to "service actions"
 # see docs https://developers.home-assistant.io/docs/dev_101_services/
 # If the service accepts entity IDs, target allows the user to specify entities by
 # entity, device, or area. If `target` is specified, `entity_id` should not be defined
 # in the `fields` map. By default, it shows only targets matching entities from the same
 # domain as the service, but if further customization is required, target supports the
-# entity, device, and area selectors
+# entity, device, and area selectors.
+# Note that Descriptions for entity_ids (now targets) were lost and have been deleted.
 # (https://www.home-assistant.io/docs/blueprint/selectors/).
 # Entity selector parameters will automatically be applied to device and area, and
 # device selector parameters will automatically be applied to area
