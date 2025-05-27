@@ -567,6 +567,8 @@ TESTS_SET_DHW_MODE_FAIL: dict[str, dict[str, Any]] = {
 async def test_set_dhw_mode_good(
     hass: HomeAssistant, entry: ConfigEntry, idx: str
 ) -> None:
+    """Confirm that valid params are acceptible to the entity service schema."""
+
     data = {
         "entity_id": "water_heater.01_145038_hw",
         **TESTS_SET_DHW_MODE_GOOD[idx],  # type: ignore[dict-item]
@@ -576,11 +578,17 @@ async def test_set_dhw_mode_good(
         hass, SVC_SET_DHW_MODE, data, schemas=SVCS_RAMSES_WATER_HEATER
     )
 
+    # # without the mock, can confirm the params are acceptible to the library
+    # _ = await hass.services.async_call(
+    #     DOMAIN, service=SVC_SET_DHW_MODE, service_data=data, blocking=True
+    # )
 
 @pytest.mark.parametrize("idx", TESTS_SET_DHW_MODE_FAIL)
 async def test_set_dhw_mode_fail(
     hass: HomeAssistant, entry: ConfigEntry, idx: str
 ) -> None:
+    """Confirm that invalid params are unacceptible to the entity service schema."""
+
     data = {
         "entity_id": "water_heater.01_145038_hw",
         **TESTS_SET_DHW_MODE_FAIL[idx],
@@ -716,11 +724,12 @@ TESTS_SET_ZONE_MODE_FAIL: dict[str, dict[str, Any]] = {
 }
 
 
-# TODO: extended test of underlying method (duration/until)
 @pytest.mark.parametrize("idx", TESTS_SET_ZONE_MODE_GOOD)
 async def test_set_zone_mode_good(
     hass: HomeAssistant, entry: ConfigEntry, idx: str
 ) -> None:
+    """Confirm that valid params are acceptible to the entity service schema."""
+
     data = {
         "entity_id": "climate.01_145038_02",
         **TESTS_SET_ZONE_MODE_GOOD[idx],
@@ -730,11 +739,18 @@ async def test_set_zone_mode_good(
         hass, SVC_SET_ZONE_MODE, data, schemas=SVCS_RAMSES_CLIMATE
     )
 
+    # # without the mock, can confirm the params are acceptible to the library
+    # _ = await hass.services.async_call(
+    #     DOMAIN, service=SVC_SET_ZONE_MODE, service_data=data, blocking=True
+    # )
+
 
 @pytest.mark.parametrize("idx", TESTS_SET_ZONE_MODE_FAIL)
 async def test_set_zone_mode_fail(
     hass: HomeAssistant, entry: ConfigEntry, idx: str
 ) -> None:
+    """Confirm that invalid params are unacceptible to the entity service schema."""
+
     data = {
         "entity_id": "climate.01_145038_02",
         **TESTS_SET_ZONE_MODE_FAIL[idx],
