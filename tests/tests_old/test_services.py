@@ -583,6 +583,7 @@ async def test_set_dhw_mode_good(
     #     DOMAIN, service=SVC_SET_DHW_MODE, service_data=data, blocking=True
     # )
 
+
 @pytest.mark.parametrize("idx", TESTS_SET_DHW_MODE_FAIL)
 async def test_set_dhw_mode_fail(
     hass: HomeAssistant, entry: ConfigEntry, idx: str
