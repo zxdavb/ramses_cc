@@ -209,7 +209,7 @@ class RamsesRemote(RamsesEntity, RemoteEntity):
         for x in range(num_repeats):  # TODO: use ramses_rf's QoS
             if x != 0:
                 await asyncio.sleep(delay_secs)
-            self._broker.client.send_cmd(cmd, priority=Priority.HIGH)
+            await self._broker.client.async_send_cmd(cmd, priority=Priority.HIGH)
 
         await self._broker.async_update()
 

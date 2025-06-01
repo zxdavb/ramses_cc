@@ -381,5 +381,5 @@ class RamsesBroker:
                 cmd._addrs[1], cmd._addrs[2] = cmd._addrs[2], cmd._addrs[1]
                 cmd._repr = None
 
-        self.client.send_cmd(cmd)
+        await self.client.async_send_cmd(cmd)
         async_call_later(self.hass, _CALL_LATER_DELAY, self.async_update)
