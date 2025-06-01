@@ -1,11 +1,11 @@
 {
     "config": {
         "abort": {
-            "single_instance_allowed": "Al geconfigureerd. Slechts één configuratie wordt ondersteund."
+            "single_instance_allowed": "Ramses RF is al geconfigureerd. Slechts één configuratie wordt ondersteund."
         },
         "error": {
             "invalid_gateway_config": "Ongeldige ramses_rf configuratie: {error_detail}",
-            "invalid_port_config": "Ongeldige seriële poort-configuratie: {error_detail}",
+            "invalid_port_config": "Ongeldige seriële-poortconfiguratie: {error_detail}",
             "invalid_regex": "Ongeldige reguliere expressie: {error_detail}",
             "invalid_schema": "Ongeldig schema: {error_detail}",
             "invalid_traits": "Ongeldige device-kenmerken: {error_detail}"
@@ -24,18 +24,18 @@
             "choose_serial_port": {
                 "title": "Selecteer de seriële poort",
                 "data": {
-                    "port_name": "Serieel "
+                    "port_name": "Pad naar seriële poort"
                 }
             },
             "configure_serial_port": {
-                "title": "Seriële poort-instellingen",
+                "title": "Seriële-poortinstellingen",
                 "data": {
-                    "port_name": "Pad naar serieel device",
+                    "port_name": "Pad naar serieel apparaat",
                     "serial_port": "Geavanceerde instellingen seriële poort"
                 },
                 "data_description": {
-                    "port_name": "Bijv. '/dev/cu.modem2' of 'mqtt://user:pwd@homeassistant.local:1883'",
-                    "serial_port": "Normaal niet nodig."
+                    "port_name": "Bijv. '/dev/cu.modem2', 'COM6' (Windows) of 'mqtt://user:pwd@homeassistant.local:1883'",
+                    "serial_port": "Voor standaardgebruik niet vereist."
                 }
             },
             "config": {
@@ -45,8 +45,8 @@
                     "ramses_rf": "Geavanceerde instellingen ramses_rf gateway"
                 },
                 "data_description": {
-                    "scan_interval": "Hoe vaak pollen voor wijzigingen in toestand? Advies: waarde tussen 60 en 180s.",
-                    "ramses_rf": "Normaal niet nodig."
+                    "scan_interval": "Hoe vaak opvragen (pollen) voor wijzigingen? Advies: waarde tussen 60 en 180 s.",
+                    "ramses_rf": "Voor standaardgebruik niet vereist."
                 }
             },
             "schema": {
@@ -54,35 +54,35 @@
                 "description": "Zie voor meer info en voorbeelden de [wiki](https://github.com/zxdavb/ramses_cc/wiki/) onder het kopje Configuration.",
                 "data": {
                     "schema": "Systeemschema(s)",
-                    "known_list": "Erkende device ID's",
-                    "enforce_known_list": "Accepteer alleen packets van erkende device ID's"
+                    "known_list": "Erkende device_id's",
+                    "enforce_known_list": "Accepteer alleen berichten van erkende device ID's"
                 },
                 "data_description": {
                     "schema": "Een mapping van systeem device-ID's naar hun schema's. Houd dit eenvoudig en vermeld alleen devices die niet automatisch verschijnen.",
                     "known_list": "Een mapping van erkende device-ID's en (optioneel) hun kenmerken.",
-                    "enforce_known_list": "Aanbevolen zodra alle device-ID's zijn ingevuld, omdat het RAMSES II-protocol geen foutcorrectie biedt en corrupte device-ID's vaak voorkomen."
+                    "enforce_known_list": "Aanbevolen om in te schakelen zodra alle device_id's zijn ingevuld,. Het RAMSES II-protocol biedt namelijk geen foutcorrectie en corrupte device_id's komen vaak voor."
                 }
             },
             "advanced_features": {
                 "title": "Geavanceerde opties",
                 "data": {
-                    "send_packet": "Schakel send_packet service in om maatwerkpakketjes te broadcasten",
+                    "send_packet": "Schakel `send_packet service` in om maatwerkberichten (bytes) te broadcasten",
                     "message_events": "Zend events voor berichten die aan de reguliere expressie voldoen"
                 },
                 "data_description": {
-                    "message_events": "Vul een reguliere expressie in waar berichten aan moeten voldoen, bijv. `RP.* 10:` zal events sturen voor alle berichten van een OTB."
+                    "message_events": "Vul een reguliere expressie in waaraan berichten moeten voldoen, bijv. `RP.* 10:` = events sturen voor alle berichten van een OTB."
                 }
             },
             "packet_log": {
                 "title": "Packet-log",
-                "description": "Optioneel packet-log voor oplossen van problemen en ontwikkeling van de integratie.",
+                "description": "Optioneel packet-logbestand voor probleemoplossing en doorontwikkeling van de ramses_rf integratie.",
                 "data": {
                     "file_name": "Bestandsnaam packet-log",
-                    "rotate_bytes": "Maximumgrootte van elk packet-log",
+                    "rotate_bytes": "Maximumgrootte per packet-log",
                     "rotate_backups": "Aantal te bewaren packet-logs"
                 },
                 "data_description": {
-                    "file_name": "Pad naar het packet-logbestand. Bewaarde backups gebruiken de bestandsnaam + een achtervoegsel."
+                    "file_name": "Pad naar het packet-logbestand. Bewaarde backups krijgen deze bestandsnaam + een achtervoegsel."
                 }
             }
         }
@@ -112,18 +112,18 @@
             "choose_serial_port": {
                 "title": "Selecteer een seriële poort",
                 "data": {
-                    "port_name": "Pad naar serieel device"
+                    "port_name": "Pad naar serieel apparaat"
                 }
             },
             "configure_serial_port": {
-                "title": "Seriële poort-configuratie",
+                "title": "Seriële-poortconfiguratie",
                 "data": {
-                    "port_name": "Pad naar serieel device",
-                    "serial_port": "Geavanceerde seriële poort-configuratie"
+                    "port_name": "Pad naar serieel apparaat",
+                    "serial_port": "Geavanceerde seriële-poortconfiguratie"
                 },
                 "data_description": {
-                    "port_name": "Bijv. '/dev/cu.modem2' of 'mqtt://user:pwd@homeassistant.local:1883'",
-                    "serial_port": "Normaal niet nodig."
+                    "port_name": "Bijv. '/dev/cu.modem2', 'COM6' of 'mqtt://user:pwd@homeassistant.local:1883'",
+                    "serial_port": "Voor standaardgebruik niet vereist."
                 }
             },
             "config": {
@@ -133,17 +133,17 @@
                     "ramses_rf": "Geavanceerde ramses_rf gateway-configuratie"
                 },
                 "data_description": {
-                    "scan_interval": "Hoe vaak pollen voor wijzigingen in toestand? Advies: waarde tussen 60 en 180s.",
-                    "ramses_rf": "Normaal niet nodig."
+                    "scan_interval": "Hoe vaak opvragen (pollen) voor wijzigingen? Advies: waarde tussen 60 en 180s.",
+                    "ramses_rf": "Voor standaardgebruik niet vereist."
                 }
             },
             "schema": {
-                "title": "Systeemschema en erkende devices",
+                "title": "Systeemschema en erkende apparaten",
                 "description": "Zie voor meer info en voorbeelden de [wiki](https://github.com/zxdavb/ramses_cc/wiki/) onder het kopje Configuration.",
                 "data": {
                     "schema": "Systeemschema('s)",
-                    "known_list": "Erkende device ID's",
-                    "enforce_known_list": "Accepteer alleen packets van erkende device ID's"
+                    "known_list": "Erkende device_id's",
+                    "enforce_known_list": "Accepteer alleen berichten van erkende device ID's"
                 },
                 "data_description": {
                     "schema": "Een mapping van systeem device-ID's naar hun schema's. Houd dit eenvoudig en vermeld alleen devices die niet automatisch verschijnen.",
@@ -154,7 +154,7 @@
             "advanced_features": {
                 "title": "Geavanceerde opties",
                 "data": {
-                    "send_packet": "Schakel send_packet service in om maatwerk-packets te zenden",
+                    "send_packet": "Schakel send_packet service in om maatwerk-berichten te versturen",
                     "message_events": "Stuur events voor berichten die voldoen aan een reguliere expressie"
                 },
                 "data_description": {
@@ -162,25 +162,483 @@
                 }
             },
             "packet_log": {
-                "title": "Packet-log",
-                "description": "Optioneel packet-log voor oplossen van problemen en ontwikkeling van de integratie.",
+                "title": "Berichten-logboek",
+                "description": "Optioneel berichten-logbestand voor oplossen van problemen en ontwikkeling van de integratie.",
                 "data": {
-                    "file_name": "Bestandsnaam packet-log",
-                    "rotate_bytes": "Maximumgrootte van elk packet-log",
-                    "rotate_backups": "Aantal te bewaren packet-logs"
+                    "file_name": "Bestandsnaam berichten-logbestanden",
+                    "rotate_bytes": "Maximumgrootte van elk berichten-logbestanden",
+                    "rotate_backups": "Aantal te bewaren berichten-logbestanden"
                 },
                 "data_description": {
-                    "file_name": "Pad naar het packet-logbestand. Bewaarde backups gebruiken de bestandsnaam + een achtervoegsel."
+                    "file_name": "Pad naar het berichten-logbestand. Bewaarde backups gebruiken deze naam + een achtervoegsel."
                 }
             },
             "clear_cache": {
                 "title": "Cache beheren",
-                "description": "Selecteer hieronder welke caches direct gewist moeten worden en herlaad dan de integratie bij grote veranderingen in het systeemschema of de configuratie.",
+                "description": "De geselecteerde caches worden direct gewist als je op [VERZENDEN] klikt. Herlaad daarna de integratie na grote aanpassingen in het systeemschema of de configuratie. Beide schuifjes naar links = niets wissen",
                 "data": {
                     "clear_schema": "Wis ontdekte systeemschema('s)",
-                    "clear_packets": "Wis systeemtoestand (recente packets)"
+                    "clear_packets": "Wis systeemtoestand (recente berichten)"
                 }
             }
         }
+    },
+    "services": {
+
+        "bind_device": {
+            "name": "Koppel een apparaat",
+            "description": "Koppel een apparaat aan een CH/DHW controller of aan een fan/WTW-eenheid. Het te koppelen apparaat is een sensor (bijv. temperatuur, relatieve vochtigheid, etc.) of een afstandsbediening (bijv. een 4-knops RF-schakelaar). En het moet vermeld staan in de `known_list`, correct geconfigureerd met de juiste apparaat-klasse en met `faking` ingeschakeld.",
+            "fields": {
+                "device_id": {
+                    "name": "Device_id van het apparaat",
+                    "description": "Device_id van het te koppelen apparaat. ID's van Verwarmingsapparaten (CH/DHW) moeten beginnen met een `well-known device type`. ID's van HVAC-apparaten moeten beginnen met een type dat past bij het schema van de fabrikant."
+                },
+                "offer": {
+                    "name": "Aanbod",
+                    "description": "De `commando_code` / `domain_idx` paren van het koppel-verzoek. Als de code '10E0' (device info) wordt gebruikt, zorg dan dat `domain_idx` overeenkomt met de `oem_code` van de fabrikant."
+                },
+                "confirm": {
+                    "name": "Bevestiging",
+                    "description": "De `commando_code` / `domain_idx` bericht-combinaties om de koppeling te bevestigen, indien vereist."
+                },
+                "device_info": {
+                    "name": "Apparaat-info",
+                    "description": "Het `device_info` commando van de aanvrager (voor sommige koppelingen vereist). Vereist als `10E0` (device info) in het koppelverzoek voorkomt. Dit moet de juiste `payload` zijn voor de apparaat-klasse."
+                }
+            }
+        },
+
+        "force_update": {
+            "name": "Werk systeemstatus bij",
+            "description": "Werk nu de systeemstatus bij i.p.v. wachten tot de eerstvolgende geplande update."
+        },
+
+        "send_packet": {
+            "name": "Verstuur een maatwerkbericht",
+            "description": "Verstuur een op maat gemaakt RAMSES II commando-bericht (bytes) vanaf de gateway/dongel.",
+            "fields": {
+                "device_id": {
+                    "name": "Bestemming",
+                    "description": "Apparaat ID (een RAMSES ID, geen entity_id) waar het bericht naartoe gestuurd wordt. Gebruik `18:000730` (een algemene waarde) om vanaf de gateway een `broadcast` te sturen naar alle apparaten."
+                },
+                "from_id": {
+                    "name": "Bron",
+                    "description": "Apparaat ID (een RAMSES ID, geen entity_id) dat als verzender van het bericht geldt. Gebruik dit om een bericht vanaf een geïmiteerd (`faked`) apparaat te versturen. Optioneel: als dit veld leeg is, wordt het apparaat ID van de gateway als afzender gebruikt."
+                },
+                "verb": {
+                    "name": "Opdracht-code",
+                    "description": "De opdracht-code (`verb`) van het bericht: I, RQ, RP of W (voorloop-spatie voor I en W niet nodig)."
+                },
+                "code": {
+                    "name": "Bericht-code",
+                    "description": "De Bericht-code (klasse)."
+                },
+                "payload": {
+                    "name": "Inhoud (HEX)",
+                    "description": "De inhoud (`payload`) als hexadecimale string."
+                }
+            }
+        },
+
+        "get_system_faults": {
+            "name": "Haal foutenlog van een TCS (Controller) op",
+            "description": "Verzamelt het meest recente foutenlog van een Controller.",
+            "fields": {
+                "entity_id": {
+                    "name": "Controller",
+                    "description": "Entity_id van de evohome Controller (TCS, Temperature Control System). NB: De meeste HVAC-apparaten in ramses_rf zijn geen Controllers (zulke apparaten, bijv. zones, zullen een fout `AttributeError` melden)."
+                },
+                "num_entries": {
+                    "name": "Aantal logberichten",
+                    "description": "Het aantal op te halen foutmeldingen. Standaard: 8 meldingen."
+                }
+            }
+        },
+
+        "reset_system_mode": {
+            "name": "Reset TCS (Controller)",
+            "description": "Het systeem gaat in `Auto` modus en alle zones gaan naar `follow_schedule` modus, incl. (voor zover ondersteund) zones die nu in `permanent_override` modus staan."
+        },
+
+        "set_system_mode": {
+            "name": "Stel modus van een TCS (Controller) in",
+            "description": "Het systeem gaat in de nieuwe modus en alle zones die nu niet in `permanent_override` modus staan worden aangepast. Sommige modi bevatten de optie om een periode (dagen), of een duur (uren/minuten) mee te geven.",
+            "fields": {
+                "mode": {
+                    "name": "Systeem-modus",
+                    "description": "Kies uit: auto, eco_boost, away, day_off, day_off_eco, heat_off, of custom. Alle modi kunnen permanent ingeschakeld worden, sommige voor een periode (in dagen), en andere voor een bepaalde tijd (in uren/minuten)"
+                },
+                "period": {
+                    "name": "Periode (dagen)",
+                    "description": "Optioneel. Een tijdsperiode in dagen; alleen geldig met de modi: away, day_off, day_off_eco of custom. Het systeem gaat terug naar auto om middernacht (tot 99 dagen, 0 is tot vannacht 0:00 uur)."
+                },
+                "duration": {
+                    "name": "Gedurende (uren/minuten)",
+                    "description": "Optioneel. Duur in uren/minuten (tot max. 24u); alleen geldig met modus: eco_boost."
+                }
+            }
+        },
+
+        "get_zone_schedule": {
+            "name": "Haal weekschema van een Zone op",
+            "description": "Leest het laatste weekschema van een zone uit de Controller en werkt met die data de device-status bij. Het weekschema is op te vragen als: `{{ state_attr('climate.main_room', 'schedule') }}`. Noot: alleen evohome-compatibele zones hebben een weekschema en in Ramses RF hebben niet alle klimaat-entiteiten zulke zones (er volgt een `TypeError`).",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "Entity_id van de evohome Zone. NB: in Ramses RF zijn sommige klimaat-entiteiten geen zones (zij zullen een `AttributeError` geven)."
+                }
+            }
+        },
+
+        "put_zone_temp": {
+            "name": "Imiteer sensortemperatuur van een Zone",
+            "description": "Niet mee gebruikt. Gebruik `fake_zone_temp` of `put_room_temp`.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "Entity_id van de evohome Zone. NB: in Ramses RF zijn sommige klimaat-entiteiten geen zones (zij zullen een `AttributeError` geven)."
+                }
+            }
+        },
+
+        "reset_zone_config": {
+            "name": "Reset Configuratie van een Zone",
+            "description": "Reset de configuratie van de zone.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "Entity_id van de evohome Zone. NB: in Ramses RF zijn sommige klimaat-entiteiten geen zones (zij zullen een `AttributeError` geven)."
+                }
+            }
+        },
+
+        "reset_zone_mode": {
+            "name": "Reset Modus van een Zone",
+            "description": "Reset de werkmodus van de zone.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "Entity_id van de evohome Zone. NB: in Ramses RF zijn sommige klimaat-entiteiten geen zones (zij zullen een `AttributeError` geven)."
+                }
+            }
+        },
+
+        "set_zone_config": {
+            "name": "Stel Configuratie van een Zone in",
+            "description": "Stel de configuratie van de zone in als:",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "Entity_id van de evohome Zone. NB: in Ramses RF zijn sommige klimaat-entiteiten geen zones (zij zullen een `AttributeError` geven)."
+                },
+                "min_temp": {
+                    "name": "Minimum",
+                    "description": "Het laagst mogelijke instelpunt in graden Celsius (5-21 °C)."
+                },
+                "max_temp": {
+                    "name": "Maximum",
+                    "description": "Het hoogst mogelijke instelpunt in graden Celsius (21-35 °C)."
+                }
+            }
+        },
+
+        "set_zone_mode": {
+            "name": "Stel Modus van een Zone in",
+            "description": "Stel de werkmodus van de zone in, permanent of voor een bepaalde periode.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "Entity_id van de evohome Zone. NB: in Ramses RF zijn sommige klimaat-entiteiten geen zones (zij zullen een `AttributeError` geven)."
+                },
+                "mode": {
+                    "name": "Zone-modus",
+                    "description": "Hoe lang is de aanpassing geldig? Kies uit: `follow_schedule`, `advanced_override` (tot vlg. geplande instelling), `temporary_override` (vul hiervoor ook de duur of tot-moment in), of `permanent_override` (vanaf nu)."
+                },
+                "setpoint": {
+                    "name": "Instelpunt",
+                    "description": "De doeltemperatuur in graden Celsius. Is vereist voor alle modi behalve `follow_schedule`. Er is geen standaardwaarde."
+                },
+                "duration": {
+                    "name": "Duur",
+                    "description": "Hoe lang de `temporary_override` van kracht is. Niet tegelijk met `Tot` toepasbaar."
+                },
+                "until": {
+                    "name": "Tot",
+                    "description": "Eindmoment van de `temporary_override`. Niet tegelijk met `Duur` toepasbaar."
+                }
+            }
+        },
+
+        "set_zone_schedule": {
+            "name": "Stel weekschema van een Zone in",
+            "description": "Upload het weekschema voor een zone in JSON formaat.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "Entity_id van de evohome Zone. NB: in Ramses RF zijn sommige klimaat-entiteiten geen zones (zij zullen een `AttributeError` geven)."
+                },
+                "schedule": {
+                    "name": "Weekschema",
+                    "description": "Nieuw weekschema voor een zone, in JSON format."
+                }
+            }
+        },
+
+        "get_dhw_schedule": {
+            "name": "Haal weekschema warmtapwater op",
+            "description": "Leest het laatste weekschema van een warmtapwaterapparaat op en werkt met die data de device-status bij. Het weekschema is op te vragen als:: `{{ state_attr('water_heater.stored_hw', 'schedule') }}`",
+            "fields": {
+                "entity_id": {
+                    "name": "Warmtapwater",
+                    "description": "Entity_id van het Warmtapwaterapparaat."
+                }
+            }
+        },
+
+        "reset_dhw_mode": {
+            "name": "Reset Modus Warmtapwater",
+            "description": "Reset de werkmodus van een warmtapwaterapparaat.",
+            "fields": {
+                "entity_id": {
+                    "name": "Warmtapwater",
+                    "description": "Entity_id van het Warmtapwaterapparaat."
+                }
+            }
+        },
+
+        "reset_dhw_params": {
+            "name": "Reset de Configuratie Warmtapwater",
+            "description": "Reset the configuratie van een warmtapwaterapparaat.",
+            "fields": {
+                "entity_id": {
+                    "name": "Warmtapwater",
+                    "description": "Entity_id van het Warmtapwaterapparaat."
+                }
+            }
+        },
+
+        "set_dhw_boost": {
+            "name": "Boost Warmtapwater",
+            "description": "Activeer een warmtapwaterapparaat voor 1 uur.",
+            "fields": {
+                "entity_id": {
+                    "name": "Warmtapwater",
+                    "description": "Entity_id van het Warmtapwaterapparaat."
+                }
+            }
+        },
+
+        "set_dhw_mode": {
+            "name": "Stel Modus voor Warmtapwater in",
+            "description": "Stel de werkmodus van een warmtapwaterapparaat in, optioneel voor een bepaalde tijd.",
+            "fields": {
+                "entity_id": {
+                    "name": "Warmtapwater",
+                    "description": "Entity_id van het Warmtapwaterapparaat."
+                },
+                "mode": {
+                    "name": "Warmwater-modus",
+                    "description": "Hoe lang is de aanpassing geldig? Kies uit: `follow_schedule`, `advanced_override` (tot vlg. geplande instelling), `temporary_override` (vul hiervoor ook de duur of tot-moment in), of `permanent_override` (vanaf nu)."
+                },
+                "active": {
+                    "name": "Warmwater-status",
+                    "description": "Status voor warmwater. Als de status `active` is, zal het water opgewarmd worden tot de temperatuur hoger is dan het ingestelde maximum. Is vereist voor alle modi behalve `follow_schedule`. Er is geen standaardwaarde."
+                },
+                "duration": {
+                    "name": "Duur",
+                    "description": "Hoe lang de `temporary_override` van kracht is. Niet tegelijk met `Tot` toepasbaar."
+                },
+                "until": {
+                    "name": "Tot",
+                    "description": "Eindmoment van de `temporary_override`. Niet tegelijk met `Duur` toepasbaar."
+                }
+            }
+        },
+
+        "set_dhw_params": {
+            "name": "Stel Configuratie van Warmtapwater in",
+            "description": "Instellingen voor warmtapwater-apparaat.",
+            "fields": {
+                "entity_id": {
+                    "name": "Warmtapwater",
+                    "description": "Entity_id van het Warmtapwaterapparaat."
+                },
+                "setpoint": {
+                    "name": "Instelpunt",
+                    "description": "Doeltemperatuur in ˚C. Standaardwaarde is 50.0"
+                },
+                "overrun": {
+                    "name": "Overrun",
+                    "description": "Overrun in minuten. Standaardwaarde: 5 min"
+                },
+                "differential": {
+                    "name": "Afwijking",
+                    "description": "Afwijking in ˚C. Standaardwaarde is 1,0˚C"
+                }
+            }
+        },
+
+        "set_dhw_schedule": {
+            "name": "Stel weekschema Warmtapwater in",
+            "description": "Upload het weekschema voor Warmtapwaterverwarming in JSON formaat.",
+            "fields": {
+                "entity_id": {
+                    "name": "Warmtapwater",
+                    "description": "Entity_id van het Warmtapwaterapparaat."
+                },
+                "schedule": {
+                    "name": "Weekschema",
+                    "description": "Nieuw weekschema voor Warmtapwaterverwarming, in JSON-formaat."
+                }
+            }
+        },
+
+        "fake_zone_temp": {
+            "name": "Simuleer Kamertemperatuur",
+            "description": "Stel een nieuwe ruimtetemperatuur in (niet het instelpunt) voor een evohome zone. Dit is een makkelijke versie van de `Meld Ruimtetemperatuur` actie.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "Entity_id van de evohome zone. Geeft een foutmelding als de sensor niet als `fully-faked` of `impersonated` in de `known_list` is vermeld."
+                },
+                "temperature": {
+                    "name": "Temperatuur",
+                    "description": "Nieuwe temperatuur in ˚C (niet de ingestelde temp.)."
+                }
+            }
+        },
+
+        "fake_dhw_temp": {
+            "name": "Pas warmtapwater-temperatuur aan",
+            "description": "Stel een nieuwe watertemperatuur in (niet het instelpunt) voor een evohome warmtapwaterapparaat. Dit is een makkelijke versie van de `Meld Warmtapwatertemperatuur` actie.",
+            "fields": {
+                "entity_id": {
+                    "name": "Warmwatervoorraad",
+                    "description": "Entity_id van het evohome warmtapwaterapparaat. Geeft een foutmelding als de sensor niet als `fully-faked` of `impersonated` in de `known_list` is vermeld."
+                },
+                "temperature": {
+                    "name": "Temperatuur",
+                    "description": "Nieuwe temperatuur in ˚C (niet de ingestelde temp.)."
+                }
+            }
+        },
+
+        "put_room_temp": {
+            "name": "Pas Ruimtetemperatuur aan",
+            "description": "Stel een nieuwe ruimtetemperatuur in (niet het instelpunt) voor een evohome zone-thermostaat. De thermostaat moet als `faked` in de `known_list` staan, en als zone-sensor zijn gekoppeld aan een Verwarming/Warmtapwater-controller.",
+            "fields": {
+                "entity_id": {
+                    "name": "Thermostaat",
+                    "description": "Entity_id van de sensor. Geeft een foutmelding als de sensor niet `faked` is. Geeft geen foutmelding als hij niet is gekoppeld (maar zal dan niet werken)."
+                },
+                "temperature": {
+                    "name": "Temperatuur",
+                    "description": "Nieuwe temperatuur in ˚C (niet de ingestelde)."
+                }
+            }
+        },
+
+        "put_dhw_temp": {
+            "name": "Pas Warmtapwatertemperatuur aan",
+            "description": "Stel een nieuwe temperatuur in voor een evohome warmwater-sensor. De sensor moet als `faked` in de `known_list` staan, en als warmwater-sensor zijn gekoppeld aan een Verwarming/Warmtapwater-controller.",
+            "fields": {
+                "entity_id": {
+                    "name": "Warmwatervoorraad",
+                    "description": "Entity_id van de sensor. Geeft een foutmelding als de sensor niet `faked` is. Geeft geen foutmelding als hij niet is gekoppeld (maar zal dan niet werken)."
+                },
+                "temperature": {
+                    "name": "Temperatuur",
+                    "description": "Nieuwe temperatuur in ˚C (niet de ingestelde)."
+                }
+            }
+        },
+
+        "put_co2_level": {
+            "name": "Pas CO2-waarde aan",
+            "description": "Stel een nieuwe CO2-waarde in voor een ruimtesensor (experimenteel). De sensor moet als `faked` in de `known_list` staan, en als CO2-sensor zijn gekoppeld aan een fan/ventilatie-eenheid.",
+            "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "Entity_id van de CO2-sensor. Geeft een foutmelding als de sensor niet `faked` is. Geeft geen foutmelding als hij niet is gekoppeld (maar zal dan niet werken)."
+                },
+                "co2_level": {
+                    "name": "CO2-niveau",
+                    "description": "Nieuw CO2-niveau (in ppm)."
+                }
+            }
+        },
+
+        "put_indoor_humidity": {
+            "name": "Pas Relatieve vochtigheid aan",
+            "description": "Stel een nieuwe waarde in voor de relatieve vochtigheid in een ruimte (experimenteel). De sensor moet als `faked` in de `known_list` staan, en als RV-sensor zijn gekoppeld aan een fan/ventilatie-eenheid.",
+            "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "Entity_id van de RV-sensor. Geeft een foutmelding als de sensor niet `faked` is. Geeft geen foutmelding als hij niet is gekoppeld (maar zal dan niet werken)."
+                },
+                "indoor_humidity": {
+                    "name": "Relatieve vochtigheid",
+                    "description": "Nieuwe waarde voor relatieve luchtvochtigheid (in %)."
+                }
+            }
+        },
+
+        "delete_command": {
+            "name": "Wis commando van Afstandsbediening",
+            "description": "Verwijdert een RAMSES commando uit de database. Dit is en makkelijke actie voor HA's eigen `delete_command` actie.",
+            "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "Entity_id van de afstandsbediening, meestal een HVAC-apparaat."
+                },
+                "command": {
+                    "name": "Commando",
+                    "description": "Naam van het commando. Eén per opdracht."
+                }
+            }
+        },
+
+        "learn_command": {
+            "name": "Leer Afstandsbediening-commando",
+            "description": "Vangt een RAMSES commando op en voegt het toe aan de database. Dit is een makkelijke actie voor HA's eigen `learn_command` actie. De afstandsbediening moet als schakelaar al gekoppeld zijn aan een fan/ventilator.",
+            "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "Entity_id van de afstandsbediening, meestal een HVAC-apparaat."
+                },
+                "command": {
+                    "name": "Commando",
+                    "description": "Naam van het commando. Eén per opdracht."
+                },
+                "timeout": {
+                    "name": "Timeout",
+                    "description": "Timeout voor het leren van het commando."
+                }
+            }
+        },
+
+        "send_command": {
+            "name": "Verstuur Afstandsbediening-commando",
+            "description": "Verstuurt een RAMSES commando alsof afkomstig van een afstandsbediening. Dit is een makkelijke actie voor HA's eigen `send_command` actie. Het apparaat moet in de `known_list` als `faked` staan en als schakelaar zijn gekoppeld aan een fan/ventilatie-unit.",
+            "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "Entity_id van de afstandsbediening, meestal een HVAC-apparaat."
+                },
+                "command": {
+                    "name": "Commando",
+                    "description": ""
+                },
+                "num_repeats": {
+                    "name": "Herhalen",
+                    "description": "Het aantal keren dat dit commando wordt herhaald."
+                },
+                "delay_secs": {
+                    "name": "Vertraging",
+                    "description": "Pauze tussen herhalingen (in sec.)"
+                }
+            }
+        }
+
     }
 }

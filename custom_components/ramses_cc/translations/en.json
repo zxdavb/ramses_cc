@@ -34,7 +34,7 @@
                     "serial_port": "Advanced serial port config"
                 },
                 "data_description": {
-                  "port_name": "Examples: '/dev/cu.modem2' or 'mqtt://user:pwd@homeassistant.local:1883'",
+                  "port_name": "Examples: '/dev/cu.modem2', 'COM6' (Windows) or 'mqtt://user:pwd@homeassistant.local:1883'",
                     "serial_port": "Not required for typical use."
                 }
             },
@@ -122,7 +122,7 @@
                     "serial_port": "Advanced serial port config"
                 },
                 "data_description": {
-                    "port_name": "Examples: '/dev/cu.modem2' or 'mqtt://user:pwd@homeassistant.local:1883'",
+                    "port_name": "Examples: '/dev/cu.modem2', 'COM6' (Windows) or 'mqtt://user:pwd@homeassistant.local:1883'",
                     "serial_port": "Not required for typical use."
                 }
             },
@@ -182,5 +182,473 @@
                 }
             }
         }
+    },
+    "services": {
+
+        "bind_device": {
+            "name": "Bind a Device",
+            "description": "Bind a device to a CH/DHW controller or a fan/ventilation unit. The device will be either a sensor (e.g. temperature, humidity, etc.) or a remote (e.g. a 4-way switch). It must be included in the known_list and correctly configured with an appropriate class and faking enabled.",
+            "fields": {
+                "device_id": {
+                    "name": "Supplicant device_id",
+                    "description": "The device id of the supplicant. Heating (CH/DHW) devices ids must start with a well-known device type. HVAC devices ids should start with a device type that is consistent with their hardware manufacturer's scheme."
+                },
+                "offer": {
+                    "name": "Offer",
+                    "description": "The command_code / domain_idx pairs for the binding offer. If you include '10E0' (device info), ensure the domain id is is set to the hardware manufacturer's oem_code."
+                },
+                "confirm": {
+                    "name": "Confirm",
+                    "description": "The command_code / domain_idx pairs for the binding confirmation, if required."
+                },
+                "device_info": {
+                    "name": "Device info",
+                    "description": "The device_info command of the supplicant (needed to complete some bindings). This is required if you include 10E0 (device info) within the offer. It must be the correct payload for the device class."
+                }
+            }
+        },
+
+        "force_update": {
+            "name": "Update the System state",
+            "description": "Immediately update the system state, without waiting for the next scheduled update."
+        },
+
+        "send_packet": {
+            "name": "Send a Command packet",
+            "description": "Send a completely bespoke RAMSES II command packet from the gateway.",
+            "fields": {
+                "device_id": {
+                    "name": "Destination ID",
+                    "description": "The destination device ID (a RAMSES ID, not an entity_id). Use `18:000730` (a sentinel value) to send a broadcast from the gateway."
+                },
+                "from_id": {
+                    "name": "Source ID",
+                    "description": "The source device ID (a RAMSES ID, not an entity_id). This can be used to send a packet from a faked device. Optional: if not specified, the device ID of the gateway is used."
+                },
+                "verb": {
+                    "name": "Packet verb",
+                    "description": "The packet verb, one of: I, RQ, RP, W (leading space not required)."
+                },
+                "code": {
+                    "name": "Packet code",
+                    "description": "The packet code (class)."
+                },
+                "payload": {
+                    "name": "Payload as hex",
+                    "description": "The packet payload as a hexadecimal string."
+                }
+            }
+        },
+
+        "get_system_faults": {
+            "name": "Get the Fault log of a TCS (Controller)",
+            "description": "Obtains the controller's latest fault log entries.",
+            "fields": {
+                "entity_id": {
+                    "name": "Controller",
+                    "description": "The entity_id of the evohome Controller (TCS, temperature control system). NB: Most of this integration's climate entities are not Controllers (such entities, e.g. zones, will raise an AttributeError)."
+                },
+                "num_entries": {
+                    "name": "Number of log entries",
+                    "description": "The number of fault log entries to retrieve. Default is 8 entries."
+                }
+            }
+        },
+
+        "reset_system_mode": {
+            "name": "Fully reset the Mode of a TCS (Controller)",
+            "description": "The system will be in auto mode and all zones will be in follow_schedule mode, including (if supported) those in permanent_override mode.",
+            "fields": {
+                "entity_id": {
+                    "name": "Controller",
+                    "description": "The entity_id of the evohome Controller (TCS, temperature control system). NB: Most of this integration's climate entities are not Controllers (such entities, e.g. zones, will raise an AttributeError)."
+                }
+            }
+        },
+
+        "set_system_mode": {
+            "name": "Set the Mode of a TCS (Controller)",
+            "description": "The system will be in the new mode and all zones not in permanent_override mode will be affected. Some modes have the option of a period (of days), others a duration (of hours/minutes).",
+            "fields": {
+                "entity_id": {
+                    "name": "Controller",
+                    "description": "The entity_id of the evohome Controller (TCS, temperature control system). NB: Most of this integration's climate entities are not Controllers (such entities, e.g. zones, will raise an AttributeError)."
+                },
+                "mode": {
+                    "name": "System Mode",
+                    "description": "One of: auto, eco_boost, away, day_off, day_off_eco, heat_off, or custom. All modes can be set indefinitely, some can be set for a period of days, and others for a duration in hours/minutes."
+                },
+                "period": {
+                    "name": "Period (days)",
+                    "description": "Optional. A period of time in days; valid only with away, day_off, day_off_eco or custom. The system will revert to auto at midnight (up to 99 days, 0 is until midnight tonight)."
+                },
+                "duration": {
+                    "name": "Duration (hours/minutes)",
+                    "description": "Optional. The duration in hours/minutes (up to 24h); valid only with eco_boost."
+                }
+            }
+        },
+
+        "get_zone_schedule": {
+            "name": "Get the Weekly schedule of a Zone",
+            "description": "Obtains the zone's latest weekly schedule from the controller and updates the entity's state attributes with that data. The schedule will be available at: `{{ state_attr('climate.main_room', 'schedule') }}`. Note: only evohome-compatible zones have schedules and not all of this integration's climate entities are such zones (will raise a TypeError).",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                }
+            }
+        },
+
+        "put_zone_temp": {
+            "name": "Fake the Sensor temperature of a Zone",
+            "description": "Currently deprecated, use `fake_zone_temp` or `put_room_temp` instead.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                }
+            }
+        },
+
+        "reset_zone_config": {
+            "name": "Reset the Configuration of a Zone",
+            "description": "Reset the configuration of the zone.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                }
+            }
+        },
+
+        "reset_zone_mode": {
+            "name": "Reset the Mode of a Zone",
+            "description": "Reset the operating mode of the zone.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                }
+            }
+        },
+
+        "set_zone_config": {
+            "name": "Set the Configuration of a Zone",
+            "description": "Set the configuration of the zone.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                },
+                "min_temp": {
+                    "name": "Minimum",
+                    "description": "The minimum permitted setpoint in degrees Celsius (5-21 °C)."
+                },
+                "max_temp": {
+                    "name": "Maximum",
+                    "description": "The maximum permitted setpoint in degrees Celsius (21-35 °C)."
+                }
+            }
+        },
+
+        "set_zone_mode": {
+            "name": "Set the Mode of a Zone",
+            "description": "Set the operating mode of the zone, either indefinitely or for a given duration.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                },
+                "mode": {
+                    "name": "Zone Mode",
+                    "description": "The permanency of the override. Required, one of: follow_schedule, advanced_override (until next scheduled setpoint), temporary_override (must specify duration or until), or permanent_override (indefinitely)."
+                },
+                "setpoint": {
+                    "name": "Setpoint",
+                    "description": "The target temperature in degrees Celsius. Required by all modes except for follow_schedule. There is no default value."
+                },
+                "duration": {
+                    "name": "Duration",
+                    "description": "The duration of the temporary_override. Mutually exclusive with until."
+                },
+                "until": {
+                    "name": "Until",
+                    "description": "The end of the temporary_override. Mutually exclusive with duration."
+                }
+            }
+        },
+
+        "set_zone_schedule": {
+            "name": "Set the Weekly schedule of a Zone",
+            "description": "Upload the zone's weekly schedule from a portable format.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome Zone. NB: Some of this integration's climate entities are not Zones (such entities, e.g. Controllers, will raise an AttributeError)."
+                },
+                "schedule": {
+                    "name": "Schedule",
+                    "description": "The weekly schedule of the zone in JSON format."
+                }
+            }
+        },
+
+        "get_dhw_schedule": {
+            "name": "Get the Weekly schedule of a DHW",
+            "description": "Obtains the DHW's latest weekly schedule from the controller and updates the entity's state attributes with that data. The schedule will be available at: `{{ state_attr('water_heater.stored_hw', 'schedule') }}`",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                }
+            }
+        },
+
+        "reset_dhw_mode": {
+            "name": "Reset the Mode of a DHW",
+            "description": "Reset the operating mode of the system's DHW.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                }
+            }
+        },
+
+        "reset_dhw_params": {
+            "name": "Reset the Configuration of a DHW",
+            "description": "Reset the configuration of the system's DHW.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                }
+            }
+        },
+
+        "set_dhw_boost": {
+            "name": "Start Boost mode for a DHW",
+            "description": "Enable the system's DHW for an hour.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                }
+            }
+        },
+
+        "set_dhw_mode": {
+            "name": "Set the Mode of a DHW",
+            "description": "Set the operating mode of the system's DHW, optionally for a given duration.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                },
+                "mode": {
+                    "name": "DHW mode",
+                    "description": "The permanency of the override. Required, one of: follow_schedule, advanced_override (until next scheduled setpoint), temporary_override (see: duration and until), or permanent_override (indefinitely)."
+                },
+                "active": {
+                    "name": "DHW state",
+                    "description": "The state of the water heater. If active is true, the system will heat the water until the current temperature exceeds the target setpoint. Required by all modes except for follow_schedule. There is no default value."
+                },
+                "duration": {
+                    "name": "Duration",
+                    "description": "The duration of the temporary_override. Mutually exclusive with until."
+                },
+                "until": {
+                    "name": "Until",
+                    "description": "The end of the temporary_override. Mutually exclusive with duration."
+                }
+            }
+        },
+
+        "set_dhw_params": {
+            "name": "Set the Configuration of a DHW",
+            "description": "Set the configuration of the system's DHW.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                },
+                "setpoint": {
+                    "name": "Setpoint",
+                    "description": "The target temperature in degrees Celsius. Default is 50.0 °C"
+                },
+                "overrun": {
+                    "name": "Overrun",
+                    "description": "The overrun in minutes. Default is 5 minutes"
+                },
+                "differential": {
+                    "name": "Differential",
+                    "description": "The differential in degrees Celsius. Default is 1.0 °C"
+                }
+            }
+        },
+
+        "set_dhw_schedule": {
+            "name": "Set the Weekly schedule of a DHW",
+            "description": "Upload the DHW's weekly schedule from a portable format.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the stored DHW."
+                },
+                "schedule": {
+                    "name": "Schedule",
+                    "description": "The weekly schedule of the DHW in JSON format."
+                }
+            }
+        },
+
+        "fake_zone_temp": {
+            "name": "Fake a Room temperature",
+            "description": "Set the current temperature (not setpoint) of an evohome zone. This is a convenience wrapper for `put_zone_temp` service call.",
+            "fields": {
+                "entity_id": {
+                    "name": "Zone",
+                    "description": "The entity_id of the evohome zone. Raises an exception if its sensor is not faked (`fully-faked`, or `impersonated`)."
+                },
+                "temperature": {
+                    "name": "Temperature",
+                    "description": "The current temperature in degrees Celsius (not the setpoint)."
+                }
+            }
+        },
+
+        "fake_dhw_temp": {
+            "name": "Fake a DHW temperature",
+            "description": "Set the current temperature (not setpoint) of an evohome water heater. This is a convenience wrapper for the `put_dhw_temp` service call.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored HW",
+                    "description": "The entity_id of the evohome water heater. Raises an exception if its sensor is not faked (`fully-faked`, or `impersonated`)."
+                },
+                "temperature": {
+                    "name": "Temperature",
+                    "description": "The current temperature in degrees Celsius (not the setpoint)."
+                }
+            }
+        },
+
+        "put_room_temp": {
+            "name": "Announce a Room temperature",
+            "description": "Announce the measured room temperature of an evohome zone sensor. The device must be faked (in the known_list), and should be bound to a CH/DHW controller as a zone sensor.",
+            "fields": {
+                "entity_id": {
+                    "name": "Thermostat",
+                    "description": "The entity_id of the sensor. Raises an exception if it is not `faked`. Does not raise an exception if not bound."
+                },
+                "temperature": {
+                    "name": "Temperature",
+                    "description": "The current temperature in degrees Celsius (not the setpoint)."
+                }
+            }
+        },
+
+        "put_dhw_temp": {
+            "name": "Announce a DHW temperature",
+            "description": "Announce the measured temperature of an evohome DHW sensor. The device must be faked (in the known_list), and should be bound to a CH/DHW controller as a DHW sensor.",
+            "fields": {
+                "entity_id": {
+                    "name": "Stored DHW",
+                    "description": "The entity_id of the sensor. Raises an exception if it is not `faked`. Does not raise an exception if not bound."
+                },
+                "temperature": {
+                    "name": "Temperature",
+                    "description": "The current temperature in degrees Celsius (not the setpoint)."
+                }
+            }
+        },
+
+        "put_co2_level": {
+            "name": "Announce an Indoor CO2 level",
+            "description": "Announce the measured CO2 level of a indoor sensor (experimental). The device must faked (in the known_list), and should be bound to a fan/ventilation unit as a CO2 sensor.",
+            "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "The entity_id of the CO2 sensor. Raises an exception if it is not `faked`. Does not raise an exception if not bound."
+                },
+                "co2_level": {
+                    "name": "CO2 level",
+                    "description": "The current CO2 level in ppm."
+                }
+            }
+        },
+
+        "put_indoor_humidity": {
+            "name": "Announce an Indoor relative humidity",
+            "description": "Announce the measured relative humidity of a indoor sensor (experimental). The device must be faked (in the known_list), and should be bound to a fan/ventilation unit as a humidity sensor.",
+            "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "The entity_id of the RH sensor. Raises an exception if it is not `faked`. Does not raise an exception if not bound."
+                },
+                "indoor_humidity": {
+                    "name": "Indoor humidity",
+                    "description": "The current relative humidity as a percentage (%)."
+                }
+            }
+        },
+
+        "delete_command": {
+            "name": "Delete a Remote command",
+            "description": "Deletes a RAMSES command from the database. This is a convenience wrapper for HA's own `delete_command` service call.",
+            "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "The entity_id of the remote, usually a HVAC device."
+                },
+                "command": {
+                    "name": "Command name",
+                    "description": "The name of the command. Only include a single command at a time."
+                }
+            }
+        },
+
+        "learn_command": {
+            "name": "Learn a Remote command",
+            "description": "Learns a RAMSES command and adds it to the database. This is a convenience wrapper for HA's own `learn_command` service call. The device should be bound to a fan/ventilation unit as a switch.",
+            "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "The entity_id of the remote, usually a HVAC device."
+                },
+                "command": {
+                    "name": "Command name",
+                    "description": "The name of the command. Only include a single command at a time."
+                },
+                "timeout": {
+                    "name": "Timeout",
+                    "description": "Timeout for the command to be learned (in seconds)."
+                }
+            }
+        },
+
+        "send_command": {
+            "name": "Send a Remote command",
+            "description": "Sends a RAMSES command as if from a remote. This is a convenience wrapper for HA's own `send_command` service call. The device must be faked (in the known_list), and should be bound to a fan/ventilation unit as a switch.",
+            "fields": {
+                "entity_id": {
+                    "name": "Entity_id",
+                    "description": "The entity_id of the remote, usually a HVAC device."
+                },
+                "command": {
+                    "name": "Command name",
+                    "description": "The name of the command. Only include a single command at a time."
+                },
+                "num_repeats": {
+                    "name": "Repeats",
+                    "description": "The number of times you want to repeat the command."
+                },
+                "delay_secs": {
+                    "name": "Delay",
+                    "description": "The time you want to wait in between repeated commands (in seconds)."
+                }
+            }
+        }
+
     }
 }
