@@ -322,18 +322,7 @@ SCH_PERIOD = vol.All(  # of days (0-99)
 SVC_SET_SYSTEM_MODE: Final = "set_system_mode"
 SCH_SET_SYSTEM_MODE = cv.make_entity_service_schema(
     {
-        vol.Required(ATTR_MODE): vol.In(
-            [
-                SystemMode.AUTO,  # also: Off, Heat, Cool (for pre-evohome)?
-                SystemMode.HEAT_OFF,
-                SystemMode.RESET,
-                SystemMode.ECO_BOOST,  # optionally with ATTR_DURATION
-                SystemMode.AWAY,  # optionally with ATTR_PERIOD
-                SystemMode.CUSTOM,  # optionally with ATTR_PERIOD
-                SystemMode.DAY_OFF,  # optionally with ATTR_PERIOD
-                SystemMode.DAY_OFF_ECO,  # optionally with ATTR_PERIOD
-            ]
-        ),
+        vol.Required(ATTR_MODE): vol.In(SystemMode),
         vol.Optional(ATTR_DURATION): vol.Any(SCH_DURATION, None),
         # canBeTemporary: true, timingMode: Duration
         vol.Optional(ATTR_PERIOD): vol.Any(SCH_PERIOD, None),
