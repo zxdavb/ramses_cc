@@ -321,7 +321,6 @@ SCH_PERIOD = vol.All(  # of days (0-99)
 
 SVC_SET_SYSTEM_MODE: Final = "set_system_mode"
 SCH_SET_SYSTEM_MODE = cv.make_entity_service_schema(
-    # nested schemas not allowed after HA 2025.9
     {
         vol.Required(ATTR_MODE): vol.In(
             [
@@ -367,7 +366,6 @@ SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
 
 SVC_SET_ZONE_MODE: Final = "set_zone_mode"
 SCH_SET_ZONE_MODE = cv.make_entity_service_schema(
-    # nested schemas not allowed after HA 2025.9
     {
         vol.Required(ATTR_MODE): vol.In(
             [
@@ -437,7 +435,6 @@ SVCS_RAMSES_CLIMATE = {
 
 SVC_SET_DHW_MODE: Final = "set_dhw_mode"
 SCH_SET_DHW_MODE = cv.make_entity_service_schema(
-    # nested schemas not allowed after HA 2025.9
     {
         vol.Required(ATTR_MODE): vol.In(
             [
