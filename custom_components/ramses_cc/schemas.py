@@ -353,39 +353,76 @@ SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
     }
 )
 
-SVC_SET_ZONE_MODE: Final = "set_zone_mode"
-SCH_SET_ZONE_MODE = cv.make_entity_service_schema(
+
+# adapted from
+# https://stackoverflow.com/questions/64402665/voluptuous-at-least-one-of-key-in-dictionary-validation
+mode_schema = vol.Schema( # canBeTemporary: false
+    {  # also: Off, Heat, Cool (for pre-evohome)
+        vol.Required(ATTR_MODE): vol.In(
+            [SystemMode.AUTO, SystemMode.HEAT_OFF, SystemMode.RESET]
+        )
+    }
+)
+boost_schema = vol.Schema( # canBeTemporary: true, timingMode: Duration
+    {
+        vol.Required(ATTR_MODE): vol.In([SystemMode.ECO_BOOST]),
+        vol.Optional(ATTR_DURATION): vol.Any(SCH_DURATION, None),
+    } # Duration: : None is indefinitely; 0 is invalid
+)
+period_schema = vol.Schema( # canBeTemporary: true, timingMode: Period
     {
         vol.Required(ATTR_MODE): vol.In(
             [
-                ZoneMode.SCHEDULE,
-                ZoneMode.PERMANENT,
-                ZoneMode.ADVANCED,
-                ZoneMode.TEMPORARY,
+                SystemMode.AWAY,
+                SystemMode.CUSTOM,
+                SystemMode.DAY_OFF,
+                SystemMode.DAY_OFF_ECO,
             ]
         ),
-        vol.Optional(ATTR_SETPOINT): vol.All(
-            cv.positive_float, vol.Range(min=5, max=35)
-        ),
-        vol.Optional(ATTR_SETPOINT): vol.All(
-            cv.positive_float, vol.Range(min=5, max=35)
-        ),
-        vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
-            cv.time_period,
-            vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
-        ),
-        vol.Optional(ATTR_SETPOINT): vol.All(
-            cv.positive_float, vol.Range(min=5, max=35)
-        ),
-        vol.Optional(ATTR_UNTIL): cv.datetime,
+        vol.Optional(ATTR_PERIOD): vol.Any(SCH_PERIOD, None),
+    } # Period: None is indefinitely; 0 is the end of today, 1 is end of tomorrow
+)
+
+SVC_SET_ZONE_MODE: Final = "set_zone_mode"
+SCH_SET_ZONE_MODE = cv.make_entity_service_schema(
+    {
+        vol.Required(mode_schema, boost_schema, period_schema),
     }
 )
+
+# SCH_SET_ZONE_MODE = cv.make_entity_service_schema(
+#     {
+#         vol.Required(ATTR_MODE): vol.In(
+#             [
+#                 ZoneMode.SCHEDULE,
+#                 ZoneMode.PERMANENT,
+#                 ZoneMode.ADVANCED,
+#                 ZoneMode.TEMPORARY,
+#             ]
+#         ),
+#         vol.Optional(ATTR_SETPOINT): vol.All(
+#             cv.positive_float, vol.Range(min=5, max=35)
+#         ),
+#         vol.Optional(ATTR_SETPOINT): vol.All(
+#             cv.positive_float, vol.Range(min=5, max=35)
+#         ),
+#         vol.Optional(ATTR_DURATION, default=timedelta(hours=1)): vol.All(
+#             cv.time_period,
+#             vol.Range(min=timedelta(minutes=5), max=timedelta(days=1)),
+#         ),
+#         vol.Optional(ATTR_SETPOINT): vol.All(
+#             cv.positive_float, vol.Range(min=5, max=35)
+#         ),
+#         vol.Optional(ATTR_UNTIL): cv.datetime,
+#     }
+# )
 
 SVC_SET_ZONE_SCHEDULE: Final = "set_zone_schedule"
 SCH_SET_ZONE_SCHEDULE = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_SCHEDULE): cv.string,
-    }
+    },
+    extra=vol.PREVENT_EXTRA,
 )
 
 DEFAULT_NUM_ENTRIES: Final[float] = 8

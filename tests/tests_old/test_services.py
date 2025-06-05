@@ -71,7 +71,6 @@ from custom_components.ramses_cc.schemas import (
 from custom_components.ramses_cc.sensor import SVCS_RAMSES_SENSOR
 from custom_components.ramses_cc.water_heater import SVCS_RAMSES_WATER_HEATER
 from ramses_rf.gateway import Gateway
-from ramses_rf.system.zones import Zone
 
 from ..virtual_rf import VirtualRf
 from .helpers import TEST_DIR, cast_packets_to_rf
@@ -208,8 +207,7 @@ SERVICES = {
         SCH_SET_ZONE_CONFIG,
     ),
     SVC_SET_ZONE_MODE: (
-        # "custom_components.ramses_cc.climate.RamsesZone.async_set_zone_mode",
-        "Zone.set_mode",
+        "custom_components.ramses_cc.climate.RamsesZone.async_set_zone_mode",
         SCH_SET_ZONE_MODE,
     ),
     SVC_SET_ZONE_SCHEDULE: (
