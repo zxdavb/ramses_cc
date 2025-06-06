@@ -354,22 +354,22 @@ SCH_SET_ZONE_CONFIG = cv.make_entity_service_schema(
 )
 
 
-# adapted from
+# SCH_SET_ZONE_MODE adapted from
 # https://stackoverflow.com/questions/64402665/voluptuous-at-least-one-of-key-in-dictionary-validation
-mode_schema = vol.Schema( # canBeTemporary: false
+mode_schema = vol.Schema(  # canBeTemporary: false
     {  # also: Off, Heat, Cool (for pre-evohome)
         vol.Required(ATTR_MODE): vol.In(
             [SystemMode.AUTO, SystemMode.HEAT_OFF, SystemMode.RESET]
         )
     }
 )
-boost_schema = vol.Schema( # canBeTemporary: true, timingMode: Duration
+boost_schema = vol.Schema(  # canBeTemporary: true, timingMode: Duration
     {
         vol.Required(ATTR_MODE): vol.In([SystemMode.ECO_BOOST]),
         vol.Optional(ATTR_DURATION): vol.Any(SCH_DURATION, None),
-    } # Duration: : None is indefinitely; 0 is invalid
+    }  # Duration: : None is indefinitely; 0 is invalid
 )
-period_schema = vol.Schema( # canBeTemporary: true, timingMode: Period
+period_schema = vol.Schema(  # canBeTemporary: true, timingMode: Period
     {
         vol.Required(ATTR_MODE): vol.In(
             [
@@ -380,15 +380,16 @@ period_schema = vol.Schema( # canBeTemporary: true, timingMode: Period
             ]
         ),
         vol.Optional(ATTR_PERIOD): vol.Any(SCH_PERIOD, None),
-    } # Period: None is indefinitely; 0 is the end of today, 1 is end of tomorrow
+    }  # Period: None is indefinitely; 0 is the end of today, 1 is end of tomorrow
 )
 
 SVC_SET_ZONE_MODE: Final = "set_zone_mode"
 SCH_SET_ZONE_MODE = cv.make_entity_service_schema(
     {
-        vol.Required(mode_schema, boost_schema, period_schema),
+        vol.Required("zone_mode_schema"): vol.Any(mode_schema, boost_schema, period_schema),
     }
 )
+
 
 # SCH_SET_ZONE_MODE = cv.make_entity_service_schema(
 #     {
