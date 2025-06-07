@@ -386,7 +386,9 @@ period_schema = vol.Schema(  # canBeTemporary: true, timingMode: Period
 SVC_SET_ZONE_MODE: Final = "set_zone_mode"
 SCH_SET_ZONE_MODE = cv.make_entity_service_schema(
     {
-        vol.Required("zone_mode_schema"): vol.Any(mode_schema, boost_schema, period_schema),
+        vol.Required("zone_mode_schema"): vol.Any(
+            mode_schema, boost_schema, period_schema
+        ),
     }
 )
 
@@ -422,8 +424,7 @@ SVC_SET_ZONE_SCHEDULE: Final = "set_zone_schedule"
 SCH_SET_ZONE_SCHEDULE = cv.make_entity_service_schema(
     {
         vol.Required(ATTR_SCHEDULE): cv.string,
-    },
-    extra=vol.PREVENT_EXTRA,
+    }
 )
 
 DEFAULT_NUM_ENTRIES: Final[float] = 8
