@@ -351,7 +351,7 @@ period_schema = vol.Schema(  # canBeTemporary: true, timingMode: Period
 SVC_SET_SYSTEM_MODE: Final = "set_system_mode"
 SCH_SET_SYSTEM_MODE = cv.make_entity_service_schema(
     {
-        vol.Required("set_system_mode_schema"): vol.Any(
+        vol.Required("set_system_mode_schema"): vol.In(
             mode_schema, boost_schema, period_schema
         ),
     },
