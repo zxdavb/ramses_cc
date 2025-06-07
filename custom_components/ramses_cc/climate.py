@@ -403,7 +403,7 @@ class RamsesZone(RamsesEntity, ClimateEntity):
             self.async_reset_zone_mode()
         elif hvac_mode == HVACMode.HEAT:  # TemporaryOverride
             self.async_set_zone_mode(mode=ZoneMode.PERMANENT, setpoint=25)
-        else:  # HVACMode.OFF, PermentOverride, temp = min
+        else:  # HVACMode.OFF, PermanentOverride, temp = min
             self.async_set_zone_mode(self._device.set_frost_mode)
 
     @callback
