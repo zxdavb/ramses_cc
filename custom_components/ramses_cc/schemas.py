@@ -355,7 +355,6 @@ SCH_SET_SYSTEM_MODE = cv.make_entity_service_schema(
             mode_schema, boost_schema, period_schema
         ),
     },
-    extra=vol.PREVENT_EXTRA,
 )
 
 DEFAULT_MIN_TEMP: Final[float] = 5
